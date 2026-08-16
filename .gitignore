@@ -1,0 +1,22 @@
+# 环境变量（含本地密码，不入库）
+.env
+
+# 二进制与构建产物
+/bin/
+*.exe
+*.test
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# macOS
+.DS_Store
+
+# 日志
+*.log
+
+# 本地调试产物与工具配置
+.playwright-mcp/
+.claude/
