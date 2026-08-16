@@ -1,6 +1,6 @@
 # handicap-service
 
-Go 学习项目：涨跌家数分布统计接口 + 老师管理（chatSys）接口。数据从 MySQL 查询返回（非硬编码），首次启动自动建表并写入种子数据。
+Go 学习项目：涨跌家数分布统计接口 + 老师管理（chatSys）接口 + 老师离职转移接口。数据从 MySQL 查询返回（非硬编码），首次启动自动建表并写入种子数据。
 
 ## 技术栈
 
@@ -58,6 +58,8 @@ GET /handicap/v1/index-points/houses_up_or_down?secuMarket=000001&range=today
 | 3 | PUT | `/api/v1/dxsf/chatSys/teacher/update` | 编辑老师（title / rating / avatar / signature） |
 | 4 | GET | `/api/v1/dxsf/chatSys/teacher/bindSales/list` | 老师绑定业务员列表（详情弹窗） |
 | 5 | POST | `/api/v1/dxsf/chatSys/teacher/bindSales` | 绑定业务员（全量替换，空数组 = 解绑全部） |
+| 6 | GET | `/api/v1/dxsf/chatSys/resign/list` | 离职转移记录列表（分页 + 多条件筛选） |
+| 7 | POST | `/api/v1/dxsf/chatSys/resign/add` | 新增离职转移 |
 
 ### 列表筛选参数
 
@@ -100,6 +102,57 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales' \
   -d '{"teacherId":1,"userIds":[1,2,3]}'
 ```
 
+## 老师离职转移接口（chatSys）
+
+对应前端 `gyz-admin/src/api/dxData/chatSys/resign.js`（同上，原为前端 mock）。姓名/部门为冗余快照，后端从 `teacher` 表回查（前端传的冗余字段忽略）；业务员快照取原老师全部绑定业务员（多个逗号分隔）。
+
+### 列表筛选参数
+
+| 参数 | 匹配 | 说明 |
+| --- | --- | --- |
+| deptId / originalTeacherId / replaceTeacherId | 精确 | deptId 匹配原老师部门 |
+| salesmanName | 模糊 | LIKE %val% |
+| transferBeginTime + transferEndTime | 范围 | yyyy-MM-dd，按 transferTime 闭区间，成对生效 |
+| pageIndex / pageSize | 分页 | 默认 1 / 10，pageSize 上限 100，id 倒序（最新在前） |
+
+### 新增请求体
+
+```json
+{ "originalTeacherId": 4, "replaceTeacherId": 1, "transferContent": ["group", "friend"], "remark": "离职交接" }
+```
+
+- `transferContent` 白名单 `group`（转移客户群）/ `friend`（转移好友），非空、非法值 400
+- 原/接替老师不能相同（400），老师不存在 404
+- `groupCount` / `friendCount` 可选携带（缺省 0，负数 400）：系统暂无群/好友业务表，前端不传即存 0
+- `operator` 无登录态固定 `admin`；`operateIp` 取 `c.ClientIP()`；`transferTime` 库端 NOW()
+
+### 响应约定
+
+- 列表 `data.list` / `data.count`；`transferContent` 输出数组（库存逗号串）；时间字段 `YYYY-MM-DD HH:mm:ss`
+- 新增成功 `{code:200, msg:"转移成功"}`
+
+### curl 示例
+
+```bash
+# 列表（部门 + 时间范围）
+curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/resign/list?deptId=3&transferBeginTime=2025-08-01&transferEndTime=2025-08-31&pageIndex=1&pageSize=10'
+
+# 新增离职转移
+curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/resign/add' \
+  -H 'Content-Type: application/json' \
+  -d '{"originalTeacherId":4,"replaceTeacherId":1,"transferContent":["group","friend"],"remark":"离职交接"}'
+```
+
+### 表设计
+
+| 表 | 说明 |
+| --- | --- |
+| `teacher_resign` | 离职转移记录；`transfer_content` 存逗号串（接口输出数组，`model.StringSlice`）；`salesman_name/dept` 存原老师全部绑定业务员逗号串；`original_teacher_dept_id` 供 deptId 筛选 |
+
+种子数据照抄 mock 的 6 条（id 101-106），仅在表为空时写入，重灌方式：`TRUNCATE TABLE teacher_resign;` 后重启。
+
+设计决策与实施记录见 [PLAN-resign.md](PLAN-resign.md)。
+
 ### 表设计
 
 | 表 | 说明 |
@@ -119,8 +172,8 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales' \
 ├── cmd/server/main.go        # 入口：加载配置 → 连库 → 建表/种子 → 路由 → 启动
 └── internal/
     ├── config/               # 配置：环境变量 + 默认值，组装 MySQL DSN
-    ├── database/             # 连接池 + 迁移（schema.sql）+ 种子（seed.sql / teacher_seed.sql）
-    ├── model/                # Entity/DTO：HouseUpDown、Teacher、DateTimeString
+    ├── database/             # 连接池 + 迁移（schema.sql）+ 种子（seed.sql / teacher_seed.sql / resign_seed.sql）
+    ├── model/                # Entity/DTO：HouseUpDown、Teacher、Resign、DateTimeString、StringSlice
     ├── repository/           # DAO/Mapper：按 secuMarket + range 查询 / teacher CRUD
     ├── service/              # Service：参数校验、默认值、白名单
     ├── handler/              # Controller：参数绑定、错误 → HTTP 状态码

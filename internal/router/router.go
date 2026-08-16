@@ -19,6 +19,7 @@ func New(db *sql.DB) *gin.Engine {
 	svc := service.New(repo)
 	h := handler.NewHouseUpDown(svc)
 	th := handler.NewTeacher(svc)
+	rh := handler.NewResign(svc)
 
 	v1 := r.Group("/handicap/v1")
 	v1.GET("/index-points/houses_up_or_down", h.Get)
@@ -30,5 +31,9 @@ func New(db *sql.DB) *gin.Engine {
 	chat.PUT("/teacher/update", th.Update)
 	chat.GET("/teacher/bindSales/list", th.SalesList)
 	chat.POST("/teacher/bindSales", th.Bind)
+
+	// 离职转移（路径与前端 resign.js 注释里的 URL 完全一致）
+	chat.GET("/resign/list", rh.List)
+	chat.POST("/resign/add", rh.Add)
 	return r
 }

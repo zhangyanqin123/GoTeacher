@@ -78,3 +78,40 @@ CREATE TABLE IF NOT EXISTS teacher_sales (
   UNIQUE KEY uk_teacher_user (teacher_id, user_id),
   KEY idx_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='老师-业务员绑定';
+
+-- ============================================================
+-- 老师离职转移（chatSys，对应前端 resign.js / teacherQuery.vue 离职转移 Tab）
+-- 兼容约定（与 mock 同构，勿改）：
+--   姓名/部门为冗余快照（离职后老师可能被改/删，记录保留转移当时值）
+--   original_teacher_dept_id 供 deptId 筛选（mock 按 originalTeacherDeptId 过滤）
+--   transfer_content 存逗号分隔 'group,friend'，接口输出为数组
+--   salesman_name/dept 存原老师全部绑定业务员，多个逗号分隔
+-- ============================================================
+
+-- 老师离职转移记录
+CREATE TABLE IF NOT EXISTS teacher_resign (
+  id                       BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  original_teacher_id      BIGINT UNSIGNED NOT NULL                COMMENT '原老师ID（teacher.id）',
+  original_teacher_name    VARCHAR(50)     NOT NULL DEFAULT ''     COMMENT '原老师姓名（冗余快照）',
+  original_teacher_dept_id BIGINT          NOT NULL DEFAULT 0      COMMENT '原老师部门ID（冗余，deptId 筛选用）',
+  original_teacher_dept    VARCHAR(50)     NOT NULL DEFAULT ''     COMMENT '原老师部门名（冗余快照）',
+  replace_teacher_id       BIGINT UNSIGNED NOT NULL                COMMENT '接替老师ID（teacher.id）',
+  replace_teacher_name     VARCHAR(50)     NOT NULL DEFAULT ''     COMMENT '接替老师姓名（冗余快照）',
+  replace_teacher_dept     VARCHAR(50)     NOT NULL DEFAULT ''     COMMENT '接替老师部门名（冗余快照）',
+  salesman_name            VARCHAR(500)    NOT NULL DEFAULT ''     COMMENT '业务员姓名（原老师全部绑定业务员，逗号分隔）',
+  salesman_dept            VARCHAR(500)    NOT NULL DEFAULT ''     COMMENT '业务员部门（逗号分隔，与姓名一一对应）',
+  transfer_content         VARCHAR(32)     NOT NULL DEFAULT ''     COMMENT '转移内容：group 转移客户群 / friend 转移好友，逗号分隔',
+  group_count              INT             NOT NULL DEFAULT 0      COMMENT '转移客户群数',
+  friend_count             INT             NOT NULL DEFAULT 0      COMMENT '转移好友数',
+  operator                 VARCHAR(50)     NOT NULL DEFAULT ''     COMMENT '操作人（无登录态固定 admin，对齐 teacher.update_by）',
+  operate_ip               VARCHAR(64)     NOT NULL DEFAULT ''     COMMENT '操作IP（handler 取 c.ClientIP()）',
+  transfer_time            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '转移时间（INSERT 时 NOW()）',
+  remark                   VARCHAR(200)    NOT NULL DEFAULT ''     COMMENT '备注',
+  created_at               DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at               DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  KEY idx_original_dept (original_teacher_dept_id),
+  KEY idx_original_teacher (original_teacher_id),
+  KEY idx_replace_teacher (replace_teacher_id),
+  KEY idx_transfer_time (transfer_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='老师离职转移记录';
