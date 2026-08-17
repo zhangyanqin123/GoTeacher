@@ -20,6 +20,7 @@ func New(db *sql.DB) *gin.Engine {
 	h := handler.NewHouseUpDown(svc)
 	th := handler.NewTeacher(svc)
 	rh := handler.NewResign(svc)
+	dh := handler.NewDiagnose(svc)
 
 	v1 := r.Group("/handicap/v1")
 	v1.GET("/index-points/houses_up_or_down", h.Get)
@@ -35,5 +36,12 @@ func New(db *sql.DB) *gin.Engine {
 	// 离职转移（路径与前端 resign.js 注释里的 URL 完全一致）
 	chat.GET("/resign/list", rh.List)
 	chat.POST("/resign/add", rh.Add)
+
+	// 诊股记录（路径与前端 diagnose.js 注释里的 URL 完全一致）
+	diag := r.Group("/api/v1/dxsf/diagnose")
+	diag.GET("/list", dh.List)
+	diag.GET("/detail", dh.Detail)
+	diag.POST("/submitReport", dh.SubmitReport)
+	diag.POST("/audit", dh.Audit)
 	return r
 }

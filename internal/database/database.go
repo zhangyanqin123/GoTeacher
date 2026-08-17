@@ -30,6 +30,10 @@ var teacherSeedSQL string
 //go:embed resign_seed.sql
 var resignSeedSQL string
 
+//
+//go:embed diagnose_seed.sql
+var diagnoseSeedSQL string
+
 // Connect 建立 MySQL 连接池并探活
 func Connect(cfg *config.Config) (*sql.DB, error) {
 	db, err := sql.Open("mysql", cfg.DSN)
@@ -66,7 +70,10 @@ func Seed(db *sql.DB) error {
 	if err := seedTeacher(db); err != nil {
 		return err
 	}
-	return seedResign(db)
+	if err := seedResign(db); err != nil {
+		return err
+	}
+	return seedDiagnose(db)
 }
 
 // seedHouseUpDown house_up_down_stats 空表种子
@@ -94,6 +101,15 @@ func seedResign(db *sql.DB) error {
 		return fmt.Errorf("seed resign count: %w", err)
 	}
 	return seedIfEmpty(db, count, resignSeedSQL)
+}
+
+// seedDiagnose diagnose 空表种子（照抄前端 diagnose.js mock，主表+日志一次事务写入）
+func seedDiagnose(db *sql.DB) error {
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM diagnose").Scan(&count); err != nil {
+		return fmt.Errorf("seed diagnose count: %w", err)
+	}
+	return seedIfEmpty(db, count, diagnoseSeedSQL)
 }
 
 // seedIfEmpty count 为 0 时在事务里逐条执行 seedSQL
