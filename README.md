@@ -115,6 +115,10 @@ curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/boundUserId
 | `sales_user` | 业务员桩表（真实系统为 admin 的 sys_user），种子 = mock 的 salesPool 25 人 |
 | `teacher_sales` | 绑定关系；`uk_teacher_user` 唯一约束；`bind_sales_count` 不落库，由子查询统计（单一事实来源） |
 
+> 绑定弹窗人员树走 admin 真实接口（`/api/v1/dept` + `/api/v1/sys-user`），userId 为 admin 系 sys_user 的真实 id，
+> 与种子的 mock id（1-25）不是一套 ID 空间。绑定后详情列表 INNER JOIN `sales_user`，ID 对不上时列表为空（count 正常）。
+> 需先执行 `TOKEN=<admin登录token> ./scripts/sync_sales_user.sh` 从 admin 测试服同步市场部人员（与前端人员树同范围），脚本会 UPSERT 并校验孤儿绑定数。
+
 种子数据照抄 mock（12 老师 / 25 业务员 / 143 条绑定），仅在表为空时写入，重灌方式：`TRUNCATE TABLE teacher; TRUNCATE TABLE sales_user; TRUNCATE TABLE teacher_sales;` 后重启。
 
 设计决策与实施记录见 [PLAN-teacher.md](PLAN-teacher.md)。
