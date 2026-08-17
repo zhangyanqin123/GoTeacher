@@ -133,7 +133,7 @@ func (h *TeacherHandler) SalesList(c *gin.Context) {
 
 // Bind POST /api/v1/dxsf/chatSys/teacher/bindSales
 //
-// 错误映射：body 绑定失败 → 400；老师不存在 → 404；userIds 含不存在的 → 400；其他 → 500
+// 错误映射：body 绑定失败 → 400；老师不存在 → 404；其他 → 500
 func (h *TeacherHandler) Bind(c *gin.Context) {
 	var req model.TeacherBindReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -146,8 +146,6 @@ func (h *TeacherHandler) Bind(c *gin.Context) {
 		response.OKMsg(c, "绑定成功", nil)
 	case errors.Is(err, service.ErrTeacherNotFound):
 		response.Fail(c, 404, 404, "teacher not found")
-	case errors.Is(err, service.ErrSalesNotFound):
-		response.Fail(c, 400, 400, "some userIds do not exist")
 	default:
 		slog.Error("bind teacher sales failed", "teacherId", req.TeacherID, "err", err)
 		response.Fail(c, 500, 500, "internal server error")

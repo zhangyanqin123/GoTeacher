@@ -228,23 +228,3 @@ func (r *Repository) ReplaceTeacherSales(ctx context.Context, teacherID int64, u
 	}
 	return nil
 }
-
-// CountSalesUsers 统计给定 id 中真实存在的业务员数（用于绑定前校验全部存在）
-func (r *Repository) CountSalesUsers(ctx context.Context, ids []int64) (int, error) {
-	if len(ids) == 0 {
-		return 0, nil
-	}
-	placeholders := strings.TrimRight(strings.Repeat("?,", len(ids)), ",")
-	args := make([]any, len(ids))
-	for i, id := range ids {
-		args[i] = id
-	}
-
-	var count int
-	if err := r.db.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM sales_user WHERE id IN ("+placeholders+")", args...,
-	).Scan(&count); err != nil {
-		return 0, fmt.Errorf("count sales_user: %w", err)
-	}
-	return count, nil
-}

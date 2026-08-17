@@ -13,7 +13,6 @@ import (
 var (
 	ErrTeacherNotFound  = errors.New("teacher not found")
 	ErrInvalidRating    = errors.New("rating must be 0/1/2")
-	ErrSalesNotFound    = errors.New("some userIds do not exist")
 	ErrSignatureTooLong = errors.New("signature must be at most 200 characters")
 )
 
@@ -92,15 +91,6 @@ func (s *Service) BindTeacherSales(ctx context.Context, req model.TeacherBindReq
 	}
 
 	userIDs := slices.Compact(slices.Clone(req.UserIDs)) // 去重（前端已按 userId 去重，双保险）
-	if len(userIDs) > 0 {
-		n, err := s.repo.CountSalesUsers(ctx, userIDs)
-		if err != nil {
-			return err
-		}
-		if n != len(userIDs) {
-			return ErrSalesNotFound
-		}
-	}
 	return s.repo.ReplaceTeacherSales(ctx, req.TeacherID, userIDs)
 }
 
