@@ -1,6 +1,6 @@
 # handicap-service
 
-Go 学习项目：涨跌家数分布统计接口 + 老师管理（chatSys）接口 + 老师离职转移接口。数据从 MySQL 查询返回（非硬编码），首次启动自动建表并写入种子数据。
+Go 学习项目：涨跌家数分布统计接口 + 老师管理（chatSys）接口 + 老师离职转移接口 + 诊股记录接口。数据从 MySQL 查询返回（非硬编码），首次启动自动建表并写入种子数据。
 
 ## 技术栈
 
@@ -102,6 +102,18 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales' \
   -d '{"teacherId":1,"userIds":[1,2,3]}'
 ```
 
+### 表设计
+
+| 表 | 说明 |
+| --- | --- |
+| `teacher` | 老师；`qualification` 存中文、`status` TINYINT（接口输出字符串）、`rating` 存原值 |
+| `sales_user` | 业务员桩表（真实系统为 admin 的 sys_user），种子 = mock 的 salesPool 25 人 |
+| `teacher_sales` | 绑定关系；`uk_teacher_user` 唯一约束；`bind_sales_count` 不落库，由子查询统计（单一事实来源） |
+
+种子数据照抄 mock（12 老师 / 25 业务员 / 143 条绑定），仅在表为空时写入，重灌方式：`TRUNCATE TABLE teacher; TRUNCATE TABLE sales_user; TRUNCATE TABLE teacher_sales;` 后重启。
+
+设计决策与实施记录见 [PLAN-teacher.md](PLAN-teacher.md)。
+
 ## 老师离职转移接口（chatSys）
 
 对应前端 `gyz-admin/src/api/dxData/chatSys/resign.js`（同上，原为前端 mock）。姓名/部门为冗余快照，后端从 `teacher` 表回查（前端传的冗余字段忽略）；业务员快照取原老师全部绑定业务员（多个逗号分隔）。
@@ -153,17 +165,88 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/resign/add' \
 
 设计决策与实施记录见 [PLAN-resign.md](PLAN-resign.md)。
 
+## 诊股记录接口（diagnoseSys）
+
+对应前端 `gyz-admin/src/api/dxData/diagnoseSys/diagnose.js`（同上，原为前端 mock），调用处 `diagnoseQuery.vue` 零改动。昵称/姓名/股票名/老师为冗余快照；审核流程日志落库（`diagnose_audit_log`），驳回后重新提审保留完整审核历史（mock 为读取时推导，会丢首次驳回记录）。
+
+| # | 方法 | 路径 | 说明 |
+| --- | --- | --- | --- |
+| 1 | GET | `/api/v1/dxsf/diagnose/list` | 诊股记录列表（分页 + 12 条件筛选） |
+| 2 | GET | `/api/v1/dxsf/diagnose/detail` | 诊股详情（主表全字段 + 审核流程记录） |
+| 3 | POST | `/api/v1/dxsf/diagnose/submitReport` | 提交诊股报告（首次编写 / 重新提审 → 状态 2） |
+| 4 | POST | `/api/v1/dxsf/diagnose/audit` | 审核诊股报告（通过 / 驳回） |
+
+### 状态机
+
+```
+[1 待诊股] ──submitReport──► [2 待专业审核] ──professional pass──► [4 待合规审核] ──compliance pass──► [6 终态]
+                                │ professional reject                          │ compliance reject
+                                ▼                                             ▼
+                             [3 专业审核不通过] ──submitReport──► 2         [5 合规审核不通过] ──submitReport──► 2
+```
+
+- submitReport 仅允许状态 1/3/5（在途重提使审核对象错位、审计链断裂，2/4/6 严格拒绝；6 为终态）
+- professional 审核仅允许状态 2；compliance 审核仅允许状态 4（顺序错位拒绝）
+
+### 列表筛选参数
+
+| 参数 | 匹配 | 说明 |
+| --- | --- | --- |
+| id / buyPrice / buyNum / status | 精确 | 数值格式错误 400；status 白名单 1-6；传 `0` 亦为有效过滤值（指针区分未传） |
+| userNickName / userName / stockCode / stockName / teacherName | 模糊 | LIKE %val% |
+| submitBeginTime + submitEndTime | 范围 | yyyy-MM-dd，按 submitTime 闭区间，成对生效 |
+| reportBeginTime + reportEndTime | 范围 | yyyy-MM-dd，按 reportSubmitTime 闭区间（未提审的天然排除） |
+| pageIndex / pageSize | 分页 | 默认 1 / 10，pageSize 上限 100，id 倒序（最新在前） |
+
+### 请求体
+
+```json
+// POST /diagnose/submitReport：reportContent 为富文本 HTML，去标签全空白视为未填写（400）
+{ "id": 1, "reportContent": "<p>诊股结论：持股待涨</p>" }
+
+// POST /diagnose/audit：auditType 白名单 professional / compliance，result 白名单 pass / reject；
+// reject 时 rejectReason 必填（富文本，同样判空）
+{ "id": 1, "auditType": "professional", "result": "reject", "rejectReason": "<p>结论依据不足</p>" }
+```
+
+### 响应约定
+
+- 成功 msg：`success` / `提交成功` / `审核通过` / `已驳回`（mock 约定）
+- `buyPrice` DECIMAL 扫 float64 输出 `1680.5`；时间字段 `YYYY-MM-DD HH:mm:ss`，`reportSubmitTime` 未提审输出空串
+- detail = 主表全字段 + `auditLogs` 数组（按 id 正序 = 时间序）；记录不存在 404（较 mock 的 `data:null` 收紧）
+- 并发守卫：写前查询区分 404/400，事务内条件 UPDATE（`WHERE status IN (1,3,5)` / `WHERE status = ?`），`RowsAffected == 0` 回滚返回 400（纯 SELECT-then-UPDATE 有 TOCTOU）
+- 审核 operator 无登录态固定 `专业审核员` / `合规审核员`；`log_time` 库端 NOW()
+
+### curl 示例
+
+```bash
+# 列表（状态 + 股票名模糊）
+curl -s 'http://localhost:8080/api/v1/dxsf/diagnose/list?status=2&stockName=%E4%BA%94%E7%B2%AE&pageIndex=1&pageSize=10'
+
+# 详情（含审核流程日志，按时间正序）
+curl -s 'http://localhost:8080/api/v1/dxsf/diagnose/detail?id=5'
+
+# 提交诊股报告（状态 1/3/5 → 2）
+curl -s -X POST 'http://localhost:8080/api/v1/dxsf/diagnose/submitReport' \
+  -H 'Content-Type: application/json' \
+  -d '{"id":1,"reportContent":"<p>诊股结论：持股待涨</p>"}'
+
+# 专业审核通过（2 → 4）；驳回把 result 换成 reject 并带 rejectReason
+curl -s -X POST 'http://localhost:8080/api/v1/dxsf/diagnose/audit' \
+  -H 'Content-Type: application/json' \
+  -d '{"id":1,"auditType":"professional","result":"pass"}'
+```
+
 ### 表设计
 
 | 表 | 说明 |
 | --- | --- |
-| `teacher` | 老师；`qualification` 存中文、`status` TINYINT（接口输出字符串）、`rating` 存原值 |
-| `sales_user` | 业务员桩表（真实系统为 admin 的 sys_user），种子 = mock 的 salesPool 25 人 |
-| `teacher_sales` | 绑定关系；`uk_teacher_user` 唯一约束；`bind_sales_count` 不落库，由子查询统计（单一事实来源） |
+| `diagnose` | 诊股记录主表；`buy_price DECIMAL(10,2)`、`report_content` TEXT NOT NULL（避免 NULL 扫 string）、`report_submit_time` NULL=未提交；只建 status / submit_time / report_submit_time 索引（模糊列前导通配 LIKE 打不进 B-tree） |
+| `diagnose_audit_log` | 审核流程日志（落库为准）；`log_type` / `result` 存中文展示串（对齐 `teacher.qualification` 先例）；`remark` 存驳回原因（HTML）；`diagnose_id` 索引 |
 
-种子数据照抄 mock（12 老师 / 25 业务员 / 143 条绑定），仅在表为空时写入，重灌方式：`TRUNCATE TABLE teacher; TRUNCATE TABLE sales_user; TRUNCATE TABLE teacher_sales;` 后重启。
+种子数据照抄 mock 的 6 条主表（状态 1-6 各一）+ 17 条日志，仅在表为空时写入，重灌方式：`TRUNCATE TABLE diagnose; TRUNCATE TABLE diagnose_audit_log;` 后重启。
 
-设计决策与实施记录见 [PLAN-teacher.md](PLAN-teacher.md)。
+设计决策与实施记录见 [PLAN-diagnose.md](PLAN-diagnose.md)。
 
 ## 目录结构（对应 Spring Boot 分层）
 
@@ -172,10 +255,10 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/resign/add' \
 ├── cmd/server/main.go        # 入口：加载配置 → 连库 → 建表/种子 → 路由 → 启动
 └── internal/
     ├── config/               # 配置：环境变量 + 默认值，组装 MySQL DSN
-    ├── database/             # 连接池 + 迁移（schema.sql）+ 种子（seed.sql / teacher_seed.sql / resign_seed.sql）
-    ├── model/                # Entity/DTO：HouseUpDown、Teacher、Resign、DateTimeString、StringSlice
-    ├── repository/           # DAO/Mapper：按 secuMarket + range 查询 / teacher CRUD
-    ├── service/              # Service：参数校验、默认值、白名单
+    ├── database/             # 连接池 + 迁移（schema.sql）+ 种子（seed.sql / teacher_seed.sql / resign_seed.sql / diagnose_seed.sql）
+    ├── model/                # Entity/DTO：HouseUpDown、Teacher、Resign、Diagnose、DateTimeString、StringSlice
+    ├── repository/           # DAO/Mapper：按 secuMarket + range 查询 / teacher・resign・diagnose CRUD
+    ├── service/              # Service：参数校验、默认值、白名单、诊股状态机
     ├── handler/              # Controller：参数绑定、错误 → HTTP 状态码
     ├── response/             # 统一响应 {code, msg, data}
     └── router/               # 路由与依赖组装
