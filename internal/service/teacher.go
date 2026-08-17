@@ -41,6 +41,11 @@ func (s *Service) ListTeacherOptions(ctx context.Context) ([]model.TeacherOption
 	return s.repo.ListTeacherOptions(ctx)
 }
 
+// ListAllTeacherSales 全量绑定关系对（绑定弹窗人员树过滤 + 提交合并用）
+func (s *Service) ListAllTeacherSales(ctx context.Context) ([]model.TeacherSalesBoundItem, error) {
+	return s.repo.ListAllTeacherSales(ctx)
+}
+
 // UpdateTeacher 编辑老师：校验评级白名单与签名长度，老师必须存在
 func (s *Service) UpdateTeacher(ctx context.Context, req model.TeacherUpdateReq) error {
 	if req.ID <= 0 {

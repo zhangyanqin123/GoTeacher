@@ -87,6 +87,20 @@ func (h *TeacherHandler) Options(c *gin.Context) {
 	}
 }
 
+// BoundUserIds GET /api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds
+//
+// 全量已绑定业务员关系对（前端人员树过滤 + 全量替换语义下的提交合并）
+func (h *TeacherHandler) BoundUserIds(c *gin.Context) {
+	list, err := h.svc.ListAllTeacherSales(c.Request.Context())
+	switch {
+	case err != nil:
+		slog.Error("list bound user ids failed", "err", err)
+		response.Fail(c, 500, 500, "internal server error")
+	default:
+		response.OKMsg(c, "success", list)
+	}
+}
+
 // Update PUT /api/v1/dxsf/chatSys/teacher/update
 //
 // 错误映射：body 绑定失败/非法 rating/签名超长 → 400；老师不存在 → 404；其他 → 500

@@ -196,6 +196,31 @@ func (r *Repository) ListTeacherSalesByTeacher(ctx context.Context, teacherID in
 	return list, count, nil
 }
 
+// ListAllTeacherSales 全量绑定关系对（绑定弹窗人员树过滤 + 提交合并用）。
+// 数据量与业务员数同量级，不分页；无需 JOIN sales_user（只要 ID 对）。
+func (r *Repository) ListAllTeacherSales(ctx context.Context) ([]model.TeacherSalesBoundItem, error) {
+	const query = `SELECT ts.teacher_id, ts.user_id FROM teacher_sales ts ORDER BY ts.id`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query all teacher_sales: %w", err)
+	}
+	defer rows.Close()
+
+	list := make([]model.TeacherSalesBoundItem, 0, 16)
+	for rows.Next() {
+		var i model.TeacherSalesBoundItem
+		if err := rows.Scan(&i.TeacherID, &i.UserID); err != nil {
+			return nil, fmt.Errorf("scan teacher_sales bound item: %w", err)
+		}
+		list = append(list, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate teacher_sales bound items: %w", err)
+	}
+	return list, nil
+}
+
 // ReplaceTeacherSales 全量替换老师的绑定业务员：事务内先删后插，空数组即清空绑定。
 func (r *Repository) ReplaceTeacherSales(ctx context.Context, teacherID int64, userIDs []int64) error {
 	tx, err := r.db.BeginTx(ctx, nil)

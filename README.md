@@ -58,8 +58,9 @@ GET /handicap/v1/index-points/houses_up_or_down?secuMarket=000001&range=today
 | 3 | PUT | `/api/v1/dxsf/chatSys/teacher/update` | 编辑老师（title / rating / avatar / signature） |
 | 4 | GET | `/api/v1/dxsf/chatSys/teacher/bindSales/list` | 老师绑定业务员列表（详情弹窗） |
 | 5 | POST | `/api/v1/dxsf/chatSys/teacher/bindSales` | 绑定业务员（全量替换，空数组 = 解绑全部） |
-| 6 | GET | `/api/v1/dxsf/chatSys/resign/list` | 离职转移记录列表（分页 + 多条件筛选） |
-| 7 | POST | `/api/v1/dxsf/chatSys/resign/add` | 新增离职转移 |
+| 6 | GET | `/api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds` | 全量已绑定业务员关系对（绑定弹窗人员树过滤用） |
+| 7 | GET | `/api/v1/dxsf/chatSys/resign/list` | 离职转移记录列表（分页 + 多条件筛选） |
+| 8 | POST | `/api/v1/dxsf/chatSys/resign/add` | 新增离职转移 |
 
 ### 列表筛选参数
 
@@ -100,6 +101,10 @@ curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/list?teache
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales' \
   -H 'Content-Type: application/json' \
   -d '{"teacherId":1,"userIds":[1,2,3]}'
+
+# 全量已绑定业务员关系对（人员树过滤 + 提交合并，不分页）
+curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds'
+# → {"code":200,"msg":"success","data":[{"teacherId":1,"userId":2},...]}
 ```
 
 ### 表设计

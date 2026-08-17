@@ -43,6 +43,12 @@ type TeacherSalesRow struct {
 	BindTime DateTimeString `json:"bindTime"  db:"bind_time"`
 }
 
+// TeacherSalesBoundItem 已绑定业务员关系对（人员树过滤 + 提交合并用）
+type TeacherSalesBoundItem struct {
+	TeacherID int64 `json:"teacherId" db:"teacher_id"`
+	UserID    int64 `json:"userId"    db:"user_id"`
+}
+
 // TeacherUpdateReq 编辑老师请求体（PUT /teacher/update）
 type TeacherUpdateReq struct {
 	ID        int64  `json:"id"`

@@ -31,6 +31,7 @@ func New(db *sql.DB) *gin.Engine {
 	chat.GET("/teacher/options", th.Options)
 	chat.PUT("/teacher/update", th.Update)
 	chat.GET("/teacher/bindSales/list", th.SalesList)
+	chat.GET("/teacher/bindSales/boundUserIds", th.BoundUserIds)
 	chat.POST("/teacher/bindSales", th.Bind)
 
 	// 离职转移（路径与前端 resign.js 注释里的 URL 完全一致）
