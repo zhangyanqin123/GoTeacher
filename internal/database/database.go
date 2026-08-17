@@ -54,10 +54,39 @@ func Connect(cfg *config.Config) (*sql.DB, error) {
 	return db, nil
 }
 
-// Migrate 执行建表 DDL（CREATE TABLE IF NOT EXISTS，幂等）
+// Migrate 执行建表 DDL（CREATE TABLE IF NOT EXISTS，幂等）+ 存量库列型升级
 func Migrate(db *sql.DB) error {
 	if err := execStatements(db, schemaSQL); err != nil {
 		return fmt.Errorf("migrate: %w", err)
+	}
+	if err := migrateDiagnoseRemark(db); err != nil {
+		return fmt.Errorf("migrate diagnose remark: %w", err)
+	}
+	return nil
+}
+
+// migrateDiagnoseRemark diagnose.remark VARCHAR(200) → TEXT（富文本化二期）。
+// CREATE TABLE IF NOT EXISTS 不会改已建表，存量库靠此处幂等升级：
+// INFORMATION_SCHEMA 查列类型，已是 text 直接跳过；列不存在（表未建）也跳过。
+// VARCHAR→TEXT 是放宽转换，MODIFY 保留数据；8.0.11 不支持 TEXT 表达式默认值，故不带 DEFAULT。
+func migrateDiagnoseRemark(db *sql.DB) error {
+	var dataType string
+	err := db.QueryRow(
+		"SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'diagnose' AND COLUMN_NAME = 'remark'",
+	).Scan(&dataType)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("check diagnose.remark type: %w", err)
+	}
+	if dataType == "text" {
+		return nil // 已升级，幂等出口
+	}
+	// 与 schema.sql 中的列定义逐字一致，防两处漂移
+	const alter = "ALTER TABLE diagnose MODIFY COLUMN remark TEXT NOT NULL COMMENT '用户备注（富文本 HTML，净化后存储）'"
+	if _, err := db.Exec(alter); err != nil {
+		return fmt.Errorf("alter diagnose.remark: %w", err)
 	}
 	return nil
 }

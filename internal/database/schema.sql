@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS diagnose (
   report_content     TEXT            NOT NULL                 COMMENT '诊股报告（富文本 HTML，未编写为空串）',
   report_submit_time DATETIME                 DEFAULT NULL    COMMENT '诊股提审时间（NULL=未提交）',
   status             TINYINT         NOT NULL DEFAULT 1       COMMENT '状态：1待诊股 2待专业审核 3专业审核不通过 4待合规审核 5合规审核不通过 6合规审核通过',
-  remark             VARCHAR(200)    NOT NULL DEFAULT ''      COMMENT '用户备注',
+  remark             TEXT            NOT NULL                COMMENT '用户备注（富文本 HTML，净化后存储）',
   created_at         DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at         DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),

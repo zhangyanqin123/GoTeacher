@@ -112,6 +112,8 @@ mock 原为 200 + data:null；收紧为 404 对齐 teacher/resign 先例。前�
 
 ## 文件清单
 
+### 第一期（接口落地）
+
 | 文件 | 类型 | 说明 |
 | --- | --- | --- |
 | `internal/database/schema.sql` | 修改 | 追加 diagnose / diagnose_audit_log 两表 DDL |
@@ -123,3 +125,76 @@ mock 原为 200 + data:null；收紧为 404 对齐 teacher/resign 先例。前�
 | `internal/handler/diagnose.go` | 新增 | 4 个入口，query 解析 + errors.Is 映射 |
 | `internal/router/router.go` | 修改 | 注册 `/api/v1/dxsf/diagnose` 路由组 |
 | gyz-admin `src/api/dxData/diagnoseSys/diagnose.js` | 修改 | 删 mock，启用 LOCAL baseURL 真实调用 |
+
+### 第二期（XSS 加固 + remark 富文本化）
+
+| 文件 | 类型 | 说明 |
+| --- | --- | --- |
+| `internal/sanitize/sanitize.go` | 新增 | bluemonday 白名单策略，入口 `RichText()` |
+| `internal/sanitize/sanitize_test.go` | 新增 | 注入用例 golden 断言 + 幂等性 |
+| `internal/service/diagnose.go` | 修改 | 写路径 2 处 + 读路径 2 处净化接入 |
+| `internal/database/schema.sql` | 修改 | diagnose.remark 改 TEXT |
+| `internal/database/database.go` | 修改 | migrateDiagnoseRemark 幂等 ALTER |
+| `go.mod` / `go.sum` | 修改 | + bluemonday v1.0.27 |
+| gyz-admin `package.json` / lockfile | 修改 | + dompurify ^2.4.7 |
+| gyz-admin `src/utils/sanitize.js` | 新增 | DOMPurify 封装 sanitizeHtml/htmlToText |
+| gyz-admin `src/views/dxData/diagnoseSys/diagnoseQuery.vue` | 修改 | 7 处模板 + methods + 样式 |
+
+## 富文本 XSS 加固 + remark 富文本化（第二期）
+
+> 背景：C 端提交的 remark 为富文本（`<p>test</p>`），原 VARCHAR(200) + 前端 `{{ }}` 插值导致
+> 显示原始标签；同时 reportContent/rejectReason 前端 v-html 直渲、后端零净化，构成存储型 XSS 链路。
+> 方案：**后端 bluemonday 白名单为主 + 前端 DOMPurify 兜底**（纵深防御），范围仅诊股模块。
+
+### 净化矩阵
+
+| 字段 | 写入方 | 后端处理 | 前端处理 |
+| --- | --- | --- | --- |
+| reportContent | 本服务 submitReport | **写路径**净化（先于判空） | v-html 前包 sanitize() |
+| rejectReason | 本服务 audit reject | **写路径**净化（先于判空） | E 表格 slot + line-clamp + el-tooltip(纯文本) |
+| diagnose.remark | C 端（外部，本服务无写入口） | **读路径**净化（list/detail 返回前） | `{{ }}` → v-html + sanitize |
+| audit_log.remark | 本服务/种子/C端 | detail 读路径统一净化（幂等） | 同 rejectReason |
+| 列表 reportContent | 本服务 | 不二次净化（写路径已净化，避免每页大 HTML 逐行扫描） | 弹窗 B 渲染前 sanitize 兜底 |
+
+### 关键决策
+
+1. **bluemonday v1.0.27**：UGCPolicy 基线 + 补 div/span/table 系/hr/sub/sup/del/ins +
+   td/th 的 colspan/rowspan(Integer)。style **受限保留**（`AllowStyles(...).OnElements(...)`，
+   v1.0.27 API 是全局属性集×元素列表）：只放行 color/background-color/font-size/font-weight/
+   font-style/text-align/text-decoration × p/span/div/li/td/th/h1-h6——TinyMCE 颜色/字号工具栏依赖；
+   CSS 解析器剥 url()/expression()/函数值，无脚本执行面。不放行 script/iframe/object/embed/form/
+   style 标签、link/meta/base、所有 on* 事件属性。
+2. **净化先于判空**：纯恶意标签内容（如全 `<script>`）净化后为空 → 400 `reportContent must not be empty`
+   （有意收紧，非落库空串——联调期勿误判为回归）。
+3. **独立包 internal/sanitize**：不挂 service 下，为将来 C 端写路径复用同一白名单预留。
+   入口唯一 `RichText(s)`，sync.Once 懒加载，对自身输出幂等（单测固化；读路径二次净化无畸变）。
+4. **remark 列迁移**：schema.sql 改 `TEXT NOT NULL` + database.go `migrateDiagnoseRemark` 幂等
+   ALTER（INFORMATION_SCHEMA 查 DATA_TYPE，已是 text 跳过；CREATE TABLE IF NOT EXISTS 不改存量表，
+   必须靠此函数升级）。8.0.11 不支持 TEXT 表达式默认值 → 不带 DEFAULT，对齐 report_content 惯例。
+   VARCHAR→TEXT 放宽转换保留数据。
+5. **前端 dompurify ^2.4.7**（v3 不兼容 node 14）：FORBID_TAGS 黑名单与后端白名单互补，
+   style 不禁（后端已限属性集）。封装 `src/utils/sanitize.js` 导出 `sanitizeHtml`/`htmlToText`。
+6. **E 表格 tooltip**：show-overflow-tooltip 对自定义 slot 富文本不生效 → el-tooltip
+   （content 传 `htmlToText` 纯文本，天然无 XSS 面，open-delay 300）+ `.log-remark-cell` 两行截断。
+
+### 验证记录（第二期）
+
+- 单测：`go test ./internal/sanitize/` 全绿（script 剥离 / onerror 剥离 / javascript: href 连 <a> 一并剥 /
+  style 只留安全属性 / iframe 剥离 / 幂等性；注意实际输出格式为 `color: red` 无尾分号，
+  `<a href="javascript:...">` 整个标签剥掉只剩文本——比预期更严格）
+- 写路径 curl：submitReport 注入 `<script>+onerror` → 落库/返回均为 `<p>ok<img src="x"></p>`；
+  audit reject 注入 iframe/javascript: → 日志 remark 为 `<p>依据不足</p>link`（查库断言）；
+  全 `<script>` 内容 → 400
+- 读路径 curl：库中手工注入脏 remark（script + background:url(javascript:)）→ list/detail 返回
+  `<p>t<span style="color: red">ext</span></p>`
+- 列迁移：重启后 `SHOW COLUMNS` remark 为 text、数据不变；二次重启不重复 ALTER（幂等）
+- 前端静态：无残留 `{{ ...remark }}` 插值、9 处 sanitize 调用、dompurify 2.4.7 安装成功（node 14）；
+  浏览器渲染由用户手动验证（项目禁跑 dev/lint）
+- dev 库注入的测试数据已还原为种子状态
+
+### 范围外（后续任务）
+
+- 全项目其余约 30 处 v-html 直渲数据库内容（protocol、info/examine 等）未处理
+- C 端写 remark 的接口（不在本仓库）建议复用 internal/sanitize 白名单入库净化
+
+

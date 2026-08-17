@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"handicap-service/internal/model"
+	"handicap-service/internal/sanitize"
 )
 
 // diagnose 业务错误定义，handler 用 errors.Is 判断并映射 HTTP 状态码
@@ -62,7 +63,9 @@ const (
 	logResultRejected  = "不通过"
 )
 
-// ListDiagnoses 诊股列表（分页 + 多条件筛选，默认 pageSize=10 对齐 mock）
+// ListDiagnoses 诊股列表（分页 + 多条件筛选，默认 pageSize=10 对齐 mock）。
+// remark 由 C 端写入（本服务无写入口），读路径净化兜底；reportContent 本服务写入
+// 已在写路径净化，列表不做二次扫描（每页 10 行大 HTML 逐行词法分析收益趋零）。
 func (s *Service) ListDiagnoses(ctx context.Context, f model.DiagnoseListFilter) (*model.PageResult, error) {
 	if f.Status != nil && (*f.Status < 1 || *f.Status > 6) {
 		return nil, ErrInvalidStatusFilter
@@ -72,10 +75,15 @@ func (s *Service) ListDiagnoses(ctx context.Context, f model.DiagnoseListFilter)
 	if err != nil {
 		return nil, err
 	}
+	for i := range list {
+		list[i].Remark = sanitize.RichText(list[i].Remark)
+	}
 	return &model.PageResult{List: list, Count: count}, nil
 }
 
-// GetDiagnoseDetail 诊股详情 = 主表全字段 + 审核流程日志（按 id 正序）
+// GetDiagnoseDetail 诊股详情 = 主表全字段 + 审核流程日志（按 id 正序）。
+// remark / 日志 remark 统一读路径净化：'用户提交'类日志与主表 remark 来自 C 端
+// （未经本服务写路径净化）；其余日志已净化，bluemonday 幂等，二次净化无畸变。
 func (s *Service) GetDiagnoseDetail(ctx context.Context, id int64) (*model.DiagnoseDetail, error) {
 	it, err := s.repo.GetDiagnose(ctx, id)
 	if err != nil {
@@ -88,13 +96,19 @@ func (s *Service) GetDiagnoseDetail(ctx context.Context, id int64) (*model.Diagn
 	if err != nil {
 		return nil, err
 	}
+	it.Remark = sanitize.RichText(it.Remark)
+	for i := range logs {
+		logs[i].Remark = sanitize.RichText(logs[i].Remark)
+	}
 	return &model.DiagnoseDetail{Diagnose: *it, AuditLogs: logs}, nil
 }
 
 // SubmitDiagnoseReport 提交诊股报告（首次编写 / 重新提审共用，统一回落状态 2）。
 // 状态 2/4/6 严格拒绝：在途重提使审核对象错位、审计链断裂；6 为终态。
 func (s *Service) SubmitDiagnoseReport(ctx context.Context, req model.DiagnoseSubmitReportReq) error {
-	// 1. 富文本判空：去标签后全空白视为未填写（前端 isRichEmpty 同构，后端兜底）
+	// 1. 白名单净化（先于判空：纯恶意标签内容净化后为空，收紧为 400 而非落库空串）
+	req.ReportContent = sanitize.RichText(req.ReportContent)
+	// 2. 富文本判空：去标签后全空白视为未填写（前端 isRichEmpty 同构，后端兜底）
 	if strings.TrimSpace(stripHTML(req.ReportContent)) == "" {
 		return ErrReportContentRequired
 	}
@@ -139,8 +153,12 @@ func (s *Service) AuditDiagnose(ctx context.Context, req model.DiagnoseAuditReq)
 		return ErrInvalidAuditResult
 	}
 	reject := req.Result == "reject"
-	if reject && strings.TrimSpace(stripHTML(req.RejectReason)) == "" {
-		return ErrRejectReasonRequired
+	if reject {
+		// 驳回原因是富文本，落库前白名单净化（先于判空，同 submitReport）
+		req.RejectReason = sanitize.RichText(req.RejectReason)
+		if strings.TrimSpace(stripHTML(req.RejectReason)) == "" {
+			return ErrRejectReasonRequired
+		}
 	}
 
 	// 2. 写前查询：判 404；顺带校验当前状态与审核类型匹配（终判仍由条件 UPDATE 保证）
