@@ -64,7 +64,7 @@ func (h *ResignHandler) List(c *gin.Context) {
 
 // Add POST /api/v1/dxsf/chatSys/resign/add
 //
-// 错误映射：body 绑定失败/同人/内容白名单/remark 超长/计数非法 → 400；
+// 错误映射：body 绑定失败/同人/内容白名单/remark 超长 → 400；
 // 老师不存在 → 404；其他 → 500
 func (h *ResignHandler) Add(c *gin.Context) {
 	var req model.ResignAddReq
@@ -81,11 +81,9 @@ func (h *ResignHandler) Add(c *gin.Context) {
 	case errors.Is(err, service.ErrSameTeacher):
 		response.Fail(c, 400, 400, "original teacher and replace teacher must differ")
 	case errors.Is(err, service.ErrInvalidTransferContent):
-		response.Fail(c, 400, 400, "transferContent must be a non-empty subset of [group, friend]")
+		response.Fail(c, 400, 400, "transferContent must be a non-empty subset of [group]")
 	case errors.Is(err, service.ErrRemarkTooLong):
 		response.Fail(c, 400, 400, "remark must be at most 200 characters")
-	case errors.Is(err, service.ErrInvalidCount):
-		response.Fail(c, 400, 400, "groupCount/friendCount must be non-negative")
 	default:
 		slog.Error("add resign failed", "originalTeacherId", req.OriginalTeacherID, "replaceTeacherId", req.ReplaceTeacherID, "err", err)
 		response.Fail(c, 500, 500, "internal server error")

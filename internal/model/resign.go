@@ -4,7 +4,7 @@ package model
 //
 // 兼容约定（前端 teacherQuery.vue 直接展示，勿改）：
 //   - 姓名/部门为冗余快照（离职后老师可能被改/删，记录保留转移当时值）
-//   - TransferContent 用 StringSlice：库存逗号串 'group,friend'，接口输出 ["group","friend"]
+//   - TransferContent 用 StringSlice：库存逗号串 'group'，接口输出 ["group"]
 //   - SalesmanName/SalesmanDept 为原老师全部绑定业务员，多个逗号分隔
 //   - TransferTime 等用 DateTimeString：扫描点格式化为 "2006-01-02 15:04:05"
 type Resign struct {
@@ -19,8 +19,7 @@ type Resign struct {
 	SalesmanName          string         `json:"salesmanName"            db:"salesman_name"`
 	SalesmanDept          string         `json:"salesmanDept"            db:"salesman_dept"`
 	TransferContent       StringSlice    `json:"transferContent"         db:"transfer_content"`
-	GroupCount            int            `json:"groupCount"              db:"group_count"`
-	FriendCount           int            `json:"friendCount"             db:"friend_count"`
+	GroupCount            int            `json:"groupCount"              db:"group_count"` // 原老师绑定业务员数（一业务员一群，后端计算）
 	Operator              string         `json:"operator"                db:"operator"`
 	OperateIP             string         `json:"operateIp"               db:"operate_ip"`
 	TransferTime          DateTimeString `json:"transferTime"            db:"transfer_time"`
@@ -42,7 +41,6 @@ type ResignInsert struct {
 	SalesmanDept          string
 	TransferContent       StringSlice
 	GroupCount            int
-	FriendCount           int
 	Operator              string
 	OperateIP             string
 	Remark                string
@@ -50,14 +48,12 @@ type ResignInsert struct {
 
 // ResignAddReq 新增离职转移请求体（POST /resign/add）。
 // 前端还会传 originalTeacherName 等 4 个冗余字段，后端不声明（gin 忽略未知键），
-// 一律从 teacher 表回查（单一事实来源）；groupCount/friendCount 可选（缺省 0）。
+// 一律从 teacher 表回查（单一事实来源）；groupCount 由后端按原老师绑定业务员数计算，不接收前端传值。
 type ResignAddReq struct {
 	OriginalTeacherID int64    `json:"originalTeacherId"`
 	ReplaceTeacherID  int64    `json:"replaceTeacherId"`
-	TransferContent   []string `json:"transferContent"` // 白名单 group/friend，非空
+	TransferContent   []string `json:"transferContent"` // 白名单 group，非空（传 friend 400）
 	Remark            string   `json:"remark"`
-	GroupCount        int      `json:"groupCount"`  // 可选，缺省 0
-	FriendCount       int      `json:"friendCount"` // 可选，缺省 0
 }
 
 // ResignListFilter 离职转移列表查询条件（零值字段不参与过滤）

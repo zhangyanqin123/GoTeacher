@@ -54,13 +54,16 @@ func Connect(cfg *config.Config) (*sql.DB, error) {
 	return db, nil
 }
 
-// Migrate 执行建表 DDL（CREATE TABLE IF NOT EXISTS，幂等）+ 存量库列型升级
+// Migrate 执行建表 DDL（CREATE TABLE IF NOT EXISTS，幂等）+ 存量库列型升级 + 存量库列清理（teacher_resign 移除 friend_count）
 func Migrate(db *sql.DB) error {
 	if err := execStatements(db, schemaSQL); err != nil {
 		return fmt.Errorf("migrate: %w", err)
 	}
 	if err := migrateDiagnoseRemark(db); err != nil {
 		return fmt.Errorf("migrate diagnose remark: %w", err)
+	}
+	if err := migrateTeacherResign(db); err != nil {
+		return fmt.Errorf("migrate teacher_resign columns: %w", err)
 	}
 	return nil
 }
@@ -87,6 +90,49 @@ func migrateDiagnoseRemark(db *sql.DB) error {
 	const alter = "ALTER TABLE diagnose MODIFY COLUMN remark TEXT NOT NULL COMMENT '用户备注（富文本 HTML，净化后存储）'"
 	if _, err := db.Exec(alter); err != nil {
 		return fmt.Errorf("alter diagnose.remark: %w", err)
+	}
+	return nil
+}
+
+// migrateTeacherResign teacher_resign 列清理（移除好友概念，2026-08）。
+// CREATE TABLE IF NOT EXISTS 不改已建表，存量库靠此处幂等升级：
+// 1) DROP COLUMN friend_count（新库无此列，COUNT=0 跳过；DROP 不可逆，该列已废弃）
+// 2) MODIFY group_count 注释为新语义（纯元数据变更，与 schema.sql 逐字一致防漂移）
+// 3) 清洗 transfer_content 残留 'friend'（首跑后 WHERE 永不命中，不触发 updated_at）
+func migrateTeacherResign(db *sql.DB) error {
+	var cnt int
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'teacher_resign' AND COLUMN_NAME = 'friend_count'",
+	).Scan(&cnt); err != nil {
+		return fmt.Errorf("check teacher_resign.friend_count: %w", err)
+	}
+	if cnt > 0 {
+		if _, err := db.Exec("ALTER TABLE teacher_resign DROP COLUMN friend_count"); err != nil {
+			return fmt.Errorf("drop teacher_resign.friend_count: %w", err)
+		}
+	}
+
+	var comment string
+	err := db.QueryRow(
+		"SELECT COLUMN_COMMENT FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'teacher_resign' AND COLUMN_NAME = 'group_count'",
+	).Scan(&comment)
+	if err == sql.ErrNoRows {
+		return nil // 表未建（防御出口，正常不会走到）
+	}
+	if err != nil {
+		return fmt.Errorf("check teacher_resign.group_count comment: %w", err)
+	}
+	// 与 schema.sql 中的列定义逐字一致，防两处漂移
+	const want = "转移客户群数（=原老师绑定业务员数，后端计算入库）"
+	if comment != want {
+		const alter = "ALTER TABLE teacher_resign MODIFY COLUMN group_count INT NOT NULL DEFAULT 0 COMMENT '" + want + "'"
+		if _, err := db.Exec(alter); err != nil {
+			return fmt.Errorf("alter teacher_resign.group_count comment: %w", err)
+		}
+	}
+
+	if _, err := db.Exec("UPDATE teacher_resign SET transfer_content = 'group' WHERE FIND_IN_SET('friend', transfer_content)"); err != nil {
+		return fmt.Errorf("normalize teacher_resign.transfer_content: %w", err)
 	}
 	return nil
 }

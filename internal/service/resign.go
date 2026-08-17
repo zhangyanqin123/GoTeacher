@@ -14,13 +14,12 @@ import (
 // （ErrTeacherNotFound 复用 teacher.go 的，同包共享，勿重复声明）
 var (
 	ErrSameTeacher            = errors.New("original teacher and replace teacher must differ")
-	ErrInvalidTransferContent = errors.New("transferContent must be a non-empty subset of [group, friend]")
+	ErrInvalidTransferContent = errors.New("transferContent must be a non-empty subset of [group]")
 	ErrRemarkTooLong          = errors.New("remark must be at most 200 characters")
-	ErrInvalidCount           = errors.New("groupCount/friendCount must be non-negative")
 )
 
-// 转移内容枚举（前端 resign.js / teacherQuery.vue 转移弹窗勾选一致）
-var validTransferContents = []string{"group", "friend"}
+// 转移内容枚举（前端 resign.js / teacherQuery.vue 转移弹窗勾选一致；好友概念已移除）
+var validTransferContents = []string{"group"}
 
 const maxResignRemarkUTF8 = 200 // 对齐 remark 列宽与前端 maxlength
 
@@ -52,9 +51,6 @@ func (s *Service) AddResign(ctx context.Context, req model.ResignAddReq, operate
 	if utf8.RuneCountInString(req.Remark) > maxResignRemarkUTF8 {
 		return ErrRemarkTooLong
 	}
-	if req.GroupCount < 0 || req.FriendCount < 0 {
-		return ErrInvalidCount
-	}
 
 	// 2. 回查老师（一次 IN 查询拿两个），id/姓名/部门以库为准
 	teachers, err := s.repo.GetTeachersByIDs(ctx, []int64{req.OriginalTeacherID, req.ReplaceTeacherID})
@@ -83,7 +79,7 @@ func (s *Service) AddResign(ctx context.Context, req model.ResignAddReq, operate
 		depts = append(depts, sm.DeptName)
 	}
 
-	// 4. 落库（transfer_time 库端 NOW()）
+	// 4. 落库（transfer_time 库端 NOW()）；groupCount = 原老师绑定业务员数（一业务员一群）
 	return s.repo.InsertResign(ctx, model.ResignInsert{
 		OriginalTeacherID:     original.ID,
 		OriginalTeacherName:   original.Name,
@@ -95,8 +91,7 @@ func (s *Service) AddResign(ctx context.Context, req model.ResignAddReq, operate
 		SalesmanName:          strings.Join(names, ","),
 		SalesmanDept:          strings.Join(depts, ","),
 		TransferContent:       model.StringSlice(content),
-		GroupCount:            req.GroupCount,
-		FriendCount:           req.FriendCount,
+		GroupCount:            len(salesmen),
 		Operator:              "admin",
 		OperateIP:             operateIP,
 		Remark:                req.Remark,

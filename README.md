@@ -139,12 +139,12 @@ curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/boundUserId
 ### 新增请求体
 
 ```json
-{ "originalTeacherId": 4, "replaceTeacherId": 1, "transferContent": ["group", "friend"], "remark": "离职交接" }
+{ "originalTeacherId": 4, "replaceTeacherId": 1, "transferContent": ["group"], "remark": "离职交接" }
 ```
 
-- `transferContent` 白名单 `group`（转移客户群）/ `friend`（转移好友），非空、非法值 400
+- `transferContent` 白名单 `group`（转移客户群），非空；`friend` 及其他值 400
 - 原/接替老师不能相同（400），老师不存在 404
-- `groupCount` / `friendCount` 可选携带（缺省 0，负数 400）：系统暂无群/好友业务表，前端不传即存 0
+- `groupCount` 由后端计算（=原老师绑定业务员数，一个绑定业务员对应一个客户群），请求体不接收该字段；旧客户端多传的 `groupCount`/`friendCount` 会被 gin 静默忽略
 - `operator` 无登录态固定 `admin`；`operateIp` 取 `c.ClientIP()`；`transferTime` 库端 NOW()
 
 ### 响应约定
@@ -161,14 +161,14 @@ curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/resign/list?deptId=3&transfer
 # 新增离职转移
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/resign/add' \
   -H 'Content-Type: application/json' \
-  -d '{"originalTeacherId":4,"replaceTeacherId":1,"transferContent":["group","friend"],"remark":"离职交接"}'
+  -d '{"originalTeacherId":4,"replaceTeacherId":1,"transferContent":["group"],"remark":"离职交接"}'
 ```
 
 ### 表设计
 
 | 表 | 说明 |
 | --- | --- |
-| `teacher_resign` | 离职转移记录；`transfer_content` 存逗号串（接口输出数组，`model.StringSlice`）；`salesman_name/dept` 存原老师全部绑定业务员逗号串；`original_teacher_dept_id` 供 deptId 筛选 |
+| `teacher_resign` | 离职转移记录；`transfer_content` 存逗号串（接口输出数组，`model.StringSlice`）；`salesman_name/dept` 存原老师全部绑定业务员逗号串；`original_teacher_dept_id` 供 deptId 筛选；`group_count` = 原老师绑定业务员数（后端计算入库）；`friend_count` 列已移除（存量库由启动迁移幂等 DROP） |
 
 种子数据照抄 mock 的 6 条（id 101-106），仅在表为空时写入，重灌方式：`TRUNCATE TABLE teacher_resign;` 后重启。
 

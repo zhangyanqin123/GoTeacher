@@ -14,9 +14,9 @@
 
 ### 1. transfer_content 存逗号分隔 VARCHAR
 
-库存 `'group,friend'`，接口输出 `["group","friend"]`。用 `model.StringSlice`（sql.Scanner + driver.Valuer）
+库存 `'group'`，接口输出 `["group"]`。用 `model.StringSlice`（sql.Scanner + driver.Valuer）
 在扫描点/写库点转换，风格对齐已有的 `model.DateTimeString`。不引入 JSON 列：与项目"原生 SQL、无 ORM"的
-简单风格一致，且白名单只有两个值，无需 JSON 的表达能力。
+简单风格一致，且白名单只有单个值，无需 JSON 的表达能力。
 
 ### 2. 姓名/部门为冗余快照，后端回查
 
@@ -30,10 +30,12 @@ mock 里 salesman 是随机池；真实语义定为：`teacher_sales JOIN sales_
 姓名/部门各自逗号拼接（一一对应），未绑定存空串。列宽 VARCHAR(500) 兜底（25 业务员全绑也放得下），
 salesmanName 模糊查询 LIKE 天然兼容逗号串。
 
-### 4. groupCount/friendCount 可选携带、缺省 0
+### 4. groupCount 后端计算（原「可选携带、缺省 0」方案已废弃）
 
-系统暂无客户群/好友业务表，后端无法算出真实数量，不造假随机数（mock 的做法不进真实库）。接口接受非负
-可选值（负数 400），前端当前不传即存 0；将来 IM 侧回调出真实数量时表结构不用动。
+2026-08 变更：移除好友概念，业务确认**一个绑定的业务员对应一个客户群（诊股群）**，因此 groupCount 的真实
+语义 = 原老师绑定的业务员数量。AddResign 内 `len(salesmen)` 直接得出（业务员快照本来就要查，零额外查询），
+不接收前端传值。friendCount 字段与 `friend_count` 列整体删除，存量库由 `migrateTeacherResign` 幂等
+DROP + 注释同步 + transfer_content 残留清洗；transferContent 白名单同步收敛为 `["group"]`（传 friend 400）。
 
 ### 5. ORDER BY id DESC
 
@@ -63,8 +65,9 @@ mock 的 add 是 `unshift` 到队首（最新在上），DESC 与之同构；审
   replaceTeacherId=1 → 1 条 / salesmanName 模糊 → 1 条 / 时间 07-31~08-01（DATE_ADD 闭区间边界）→ 仅 101 /
   deptId=abc → HTTP 400 —— 全部通过
 - add 分支：成功（业务员全量逗号串、忽略前端冗余值、operateIp=127.0.0.1、transferTime=NOW）/
-  同老师 400 / 空内容 400 / 白名单外 400 / remark>200 字 400 / 老师 999 → 404 / 负数计数 400 /
-  可选携带 friendCount=66 入库 —— 全部通过；错误用例不入库（行数核对 8 = 6 种子 + 2 成功）
+  同老师 400 / 空内容 400 / 白名单外 400 / remark>200 字 400 / 老师 999 → 404 /
+  ~~负数计数 400 / 可选携带 friendCount=66 入库~~（2026-08 起计数用例已废弃，见变更记录）—— 全部通过；
+  错误用例不入库（行数核对 8 = 6 种子 + 2 成功）
 - 浏览器端到端：列表加载/筛选（原老师=赵丽 → 1 条）/ 新增弹窗提交 → msgSuccess + 弹窗关闭 + 列表刷新，
   新记录 id=109 落库正确（陈芳 → 王强，业务员 6 人逗号串，operate_ip=::1），Console 0 errors
 
@@ -82,3 +85,12 @@ mock 的 add 是 `unshift` 到队首（最新在上），DESC 与之同构；审
 | `internal/handler/resign.go` | 新 | List / Add（错误映射 400/404/500） |
 | `internal/router/router.go` | 改 | chat 组注册 2 行 |
 | `gyz-admin/src/api/dxData/chatSys/resign.js` | 改 | 删 mock，启用 request 调用（baseURL=VUE_APP_LOCAL_API） |
+
+## 变更记录
+
+- **2026-08 移除好友概念**：业务确认好友维度取消，groupCount 语义 = 原老师绑定业务员数（一业务员一群），
+  由后端计算入库。变更：`transferContent` 白名单收敛为 `["group"]`（传 friend 400）；`friend_count` 列
+  删除（存量库 `database.migrateTeacherResign` 幂等 DROP + group_count 注释同步 + transfer_content
+  残留清洗）；种子 group_count 改为与实际绑定数一致（0/0/0/6/14/10）；前端删「转移好友」勾选项与
+  「好友数」列。涉及：model/service/repository/handler 的 resign 文件、schema.sql、database.go、
+  resign_seed.sql、gyz-admin teacherQuery.vue 与 resign.js。

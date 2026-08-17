@@ -25,7 +25,7 @@ func (r *Repository) ListResigns(ctx context.Context, f model.ResignListFilter) 
 	// 2. 当前页（LIMIT/OFFSET 只能拼常量，参数放最后）
 	const query = `SELECT r.id, r.original_teacher_id, r.original_teacher_name, r.original_teacher_dept_id, r.original_teacher_dept,
 	                      r.replace_teacher_id, r.replace_teacher_name, r.replace_teacher_dept,
-	                      r.salesman_name, r.salesman_dept, r.transfer_content, r.group_count, r.friend_count,
+	                      r.salesman_name, r.salesman_dept, r.transfer_content, r.group_count,
 	                      r.operator, r.operate_ip, r.transfer_time, r.remark, r.created_at, r.updated_at
 	               FROM teacher_resign r
 	               WHERE %s
@@ -46,7 +46,7 @@ func (r *Repository) ListResigns(ctx context.Context, f model.ResignListFilter) 
 		if err := rows.Scan(
 			&it.ID, &it.OriginalTeacherID, &it.OriginalTeacherName, &it.OriginalTeacherDeptID, &it.OriginalTeacherDept,
 			&it.ReplaceTeacherID, &it.ReplaceTeacherName, &it.ReplaceTeacherDept,
-			&it.SalesmanName, &it.SalesmanDept, &it.TransferContent, &it.GroupCount, &it.FriendCount,
+			&it.SalesmanName, &it.SalesmanDept, &it.TransferContent, &it.GroupCount,
 			&it.Operator, &it.OperateIP, &it.TransferTime, &it.Remark, &it.CreatedAt, &it.UpdatedAt,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan teacher_resign row: %w", err)
@@ -160,9 +160,9 @@ func (r *Repository) InsertResign(ctx context.Context, rec model.ResignInsert) e
 	const query = `INSERT INTO teacher_resign
 	               (original_teacher_id, original_teacher_name, original_teacher_dept_id, original_teacher_dept,
 	                replace_teacher_id, replace_teacher_name, replace_teacher_dept,
-	                salesman_name, salesman_dept, transfer_content, group_count, friend_count,
+	                salesman_name, salesman_dept, transfer_content, group_count,
 	                operator, operate_ip, transfer_time, remark)
-	               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)`
+	               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)`
 	content, err := rec.TransferContent.Value()
 	if err != nil {
 		return fmt.Errorf("insert teacher_resign value: %w", err)
@@ -170,7 +170,7 @@ func (r *Repository) InsertResign(ctx context.Context, rec model.ResignInsert) e
 	if _, err := r.db.ExecContext(ctx, query,
 		rec.OriginalTeacherID, rec.OriginalTeacherName, rec.OriginalTeacherDeptID, rec.OriginalTeacherDept,
 		rec.ReplaceTeacherID, rec.ReplaceTeacherName, rec.ReplaceTeacherDept,
-		rec.SalesmanName, rec.SalesmanDept, content, rec.GroupCount, rec.FriendCount,
+		rec.SalesmanName, rec.SalesmanDept, content, rec.GroupCount,
 		rec.Operator, rec.OperateIP, rec.Remark,
 	); err != nil {
 		return fmt.Errorf("insert teacher_resign: %w", err)
