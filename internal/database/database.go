@@ -160,7 +160,7 @@ func seedHouseUpDown(db *sql.DB) error {
 	return seedIfEmpty(db, count, seedSQL)
 }
 
-// seedTeacher teacher 空表种子（teacher/sales_user/teacher_sales 一次事务写入）
+// seedTeacher teacher 空表种子（teacher/sales_user 一次事务写入）
 func seedTeacher(db *sql.DB) error {
 	var count int
 	if err := db.QueryRow("SELECT COUNT(*) FROM teacher").Scan(&count); err != nil {
