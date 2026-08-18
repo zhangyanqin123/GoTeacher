@@ -1,3 +1,9 @@
+//	@title			handicap-service API
+//	@version		1.0
+//	@description	chatSys（老师管理/绑定业务员/离职转移）+ 诊股记录接口。
+//	@description	统一响应结构 {code, msg, data}；写操作 msg 为约定中文，查询类为 "success"。
+//	@schemes		http
+//	@BasePath		/api/v1/dxsf
 package main
 
 import (
@@ -7,6 +13,8 @@ import (
 	"handicap-service/internal/config"
 	"handicap-service/internal/database"
 	"handicap-service/internal/router"
+
+	_ "handicap-service/docs" // swag 生成物（swag init -g cmd/server/main.go -o docs）
 )
 
 func main() {

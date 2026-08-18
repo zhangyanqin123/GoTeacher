@@ -1,0 +1,896 @@
+basePath: /api/v1/dxsf
+definitions:
+  model.ActionResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        description: 恒为 null
+      msg:
+        example: 编辑成功
+        type: string
+    type: object
+  model.Diagnose:
+    properties:
+      buyNum:
+        type: integer
+      buyPrice:
+        type: number
+      id:
+        type: integer
+      remark:
+        type: string
+      reportContent:
+        type: string
+      reportSubmitTime:
+        description: NULL→""
+        type: string
+      status:
+        type: integer
+      stockCode:
+        type: string
+      stockName:
+        type: string
+      submitTime:
+        type: string
+      teacherName:
+        type: string
+      userName:
+        type: string
+      userNickName:
+        type: string
+    type: object
+  model.DiagnoseAuditLog:
+    properties:
+      operator:
+        type: string
+      remark:
+        type: string
+      result:
+        type: string
+      time:
+        type: string
+      type:
+        type: string
+    type: object
+  model.DiagnoseAuditReq:
+    properties:
+      auditType:
+        type: string
+      id:
+        type: integer
+      rejectReason:
+        type: string
+      result:
+        description: pass / reject
+        type: string
+    type: object
+  model.DiagnoseDetail:
+    properties:
+      auditLogs:
+        items:
+          $ref: '#/definitions/model.DiagnoseAuditLog'
+        type: array
+      buyNum:
+        type: integer
+      buyPrice:
+        type: number
+      id:
+        type: integer
+      remark:
+        type: string
+      reportContent:
+        type: string
+      reportSubmitTime:
+        description: NULL→""
+        type: string
+      status:
+        type: integer
+      stockCode:
+        type: string
+      stockName:
+        type: string
+      submitTime:
+        type: string
+      teacherName:
+        type: string
+      userName:
+        type: string
+      userNickName:
+        type: string
+    type: object
+  model.DiagnoseDetailResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        $ref: '#/definitions/model.DiagnoseDetail'
+      msg:
+        example: success
+        type: string
+    type: object
+  model.DiagnoseListResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        properties:
+          count:
+            example: 15
+            type: integer
+          list:
+            items:
+              $ref: '#/definitions/model.Diagnose'
+            type: array
+        type: object
+      msg:
+        example: success
+        type: string
+    type: object
+  model.DiagnoseSubmitReportReq:
+    properties:
+      id:
+        type: integer
+      reportContent:
+        description: 富文本 HTML
+        type: string
+    type: object
+  model.Resign:
+    properties:
+      createdAt:
+        type: string
+      groupCount:
+        description: 原老师绑定业务员数（一业务员一群，后端计算）
+        type: integer
+      id:
+        type: integer
+      operateIp:
+        type: string
+      operator:
+        type: string
+      originalTeacherDept:
+        type: string
+      originalTeacherDeptId:
+        type: integer
+      originalTeacherId:
+        type: integer
+      originalTeacherName:
+        type: string
+      remark:
+        type: string
+      replaceTeacherDept:
+        type: string
+      replaceTeacherId:
+        type: integer
+      replaceTeacherName:
+        type: string
+      salesmanDept:
+        type: string
+      salesmanName:
+        type: string
+      transferContent:
+        items:
+          type: string
+        type: array
+      transferTime:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  model.ResignAddReq:
+    properties:
+      originalTeacherId:
+        type: integer
+      remark:
+        type: string
+      replaceTeacherId:
+        type: integer
+      transferContent:
+        description: 白名单 group，非空（传 friend 400）
+        items:
+          type: string
+        type: array
+    type: object
+  model.ResignListResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        properties:
+          count:
+            example: 7
+            type: integer
+          list:
+            items:
+              $ref: '#/definitions/model.Resign'
+            type: array
+        type: object
+      msg:
+        example: success
+        type: string
+    type: object
+  model.Teacher:
+    properties:
+      account:
+        type: string
+      avatar:
+        type: string
+      bindSalesCount:
+        description: 相关子查询带出，不落列
+        type: integer
+      createdAt:
+        type: string
+      deptId:
+        type: integer
+      deptName:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      nickname:
+        type: string
+      phone:
+        type: string
+      qualification:
+        type: string
+      rating:
+        description: 种子 1-5，编辑后 0/1/2
+        type: integer
+      signature:
+        type: string
+      status:
+        description: 输出 "1"/"0"
+        type: string
+      title:
+        type: string
+      updateBy:
+        type: string
+      updatedAt:
+        type: string
+      workNo:
+        type: string
+    type: object
+  model.TeacherBindReq:
+    properties:
+      teacherId:
+        type: integer
+      userIds:
+        description: 全量替换语义，空数组 = 解绑全部
+        items:
+          type: integer
+        type: array
+    type: object
+  model.TeacherBoundResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/model.TeacherSalesBoundItem'
+        type: array
+      msg:
+        example: success
+        type: string
+    type: object
+  model.TeacherListResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        properties:
+          count:
+            example: 42
+            type: integer
+          list:
+            items:
+              $ref: '#/definitions/model.Teacher'
+            type: array
+        type: object
+      msg:
+        example: success
+        type: string
+    type: object
+  model.TeacherOption:
+    properties:
+      deptName:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  model.TeacherOptionsResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/model.TeacherOption'
+        type: array
+      msg:
+        example: success
+        type: string
+    type: object
+  model.TeacherSalesBoundItem:
+    properties:
+      teacherId:
+        type: integer
+      userId:
+        type: integer
+    type: object
+  model.TeacherSalesListResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        properties:
+          count:
+            example: 3
+            type: integer
+          list:
+            items:
+              $ref: '#/definitions/model.TeacherSalesRow'
+            type: array
+        type: object
+      msg:
+        example: success
+        type: string
+    type: object
+  model.TeacherSalesRow:
+    properties:
+      bindTime:
+        type: string
+      deptName:
+        type: string
+      nickname:
+        type: string
+      phone:
+        type: string
+    type: object
+  model.TeacherUpdateReq:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: integer
+      rating:
+        description: 0 无 / 1 初级 / 2 高级
+        type: integer
+      signature:
+        type: string
+      title:
+        type: string
+    type: object
+  response.Response:
+    properties:
+      code:
+        type: integer
+      data: {}
+      msg:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: |-
+    chatSys（老师管理/绑定业务员/离职转移）+ 诊股记录接口。
+    统一响应结构 {code, msg, data}；写操作 msg 为约定中文，查询类为 "success"。
+  title: handicap-service API
+  version: "1.0"
+paths:
+  /chatSys/resign/add:
+    post:
+      consumes:
+      - application/json
+      description: 原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，groupCount 按原老师绑定数计算
+      parameters:
+      - description: 新增离职转移请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ResignAddReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「转移成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / 原老师与接替老师相同 / transferContent 白名单校验失败 / remark 超过 200
+            字符
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 老师不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 新增离职转移
+      tags:
+      - 离职转移
+  /chatSys/resign/list:
+    get:
+      consumes:
+      - application/json
+      description: 分页查询离职转移记录，零值筛选字段不参与过滤；deptId 匹配原老师部门
+      parameters:
+      - description: 原老师部门 ID
+        in: query
+        name: deptId
+        type: integer
+      - description: 原老师 ID（精确）
+        in: query
+        name: originalTeacherId
+        type: integer
+      - description: 接替老师 ID（精确）
+        in: query
+        name: replaceTeacherId
+        type: integer
+      - description: 业务员姓名（模糊）
+        in: query
+        name: salesmanName
+        type: string
+      - description: 转移时间起（yyyy-MM-dd，与 transferEndTime 成对生效）
+        in: query
+        name: transferBeginTime
+        type: string
+      - description: 转移时间止（yyyy-MM-dd）
+        in: query
+        name: transferEndTime
+        type: string
+      - description: 页码（默认 1）
+        in: query
+        name: pageIndex
+        type: integer
+      - description: 页大小（默认 10，上限 100）
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.ResignListResp'
+        "400":
+          description: 数字参数格式错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 离职转移列表
+      tags:
+      - 离职转移
+  /chatSys/teacher/bindSales:
+    post:
+      consumes:
+      - application/json
+      description: 全量替换语义：userIds 为该老师的最终完整绑定集合，空数组即解绑全部
+      parameters:
+      - description: 绑定业务员请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.TeacherBindReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「绑定成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 老师不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 绑定业务员
+      tags:
+      - 绑定业务员
+  /chatSys/teacher/bindSales/boundUserIds:
+    get:
+      description: 返回全部 {teacherId, userId} 关系对，供人员树过滤及绑定提交时合并已有关系
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.TeacherBoundResp'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 全量已绑定业务员关系
+      tags:
+      - 绑定业务员
+  /chatSys/teacher/bindSales/list:
+    get:
+      description: 分页查询指定老师已绑定的业务员（手机号/昵称/部门/绑定时间）
+      parameters:
+      - description: 老师 ID
+        in: query
+        name: teacherId
+        required: true
+        type: integer
+      - description: 页码（默认 1）
+        in: query
+        name: pageIndex
+        type: integer
+      - description: 页大小（默认 5，上限 100）
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.TeacherSalesListResp'
+        "400":
+          description: teacherId 缺失或非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 老师绑定业务员列表
+      tags:
+      - 绑定业务员
+  /chatSys/teacher/list:
+    get:
+      consumes:
+      - application/json
+      description: 分页查询老师，零值筛选字段不参与过滤；姓名/账号/昵称/头衔/操作人模糊匹配，部门/ID/认证/状态精确匹配
+      parameters:
+      - description: 部门 ID
+        in: query
+        name: deptId
+        type: integer
+      - description: 老师 ID
+        in: query
+        name: id
+        type: integer
+      - description: 账号（模糊）
+        in: query
+        name: account
+        type: string
+      - description: 昵称（模糊）
+        in: query
+        name: nickname
+        type: string
+      - description: 姓名（模糊）
+        in: query
+        name: name
+        type: string
+      - description: 头衔（模糊）
+        in: query
+        name: title
+        type: string
+      - description: 认证状态（精确：已认证/未认证）
+        enum:
+        - 已认证
+        - 未认证
+        in: query
+        name: qualification
+        type: string
+      - description: 绑定业务员数（精确；传 0 是有效过滤值）
+        in: query
+        name: bindSalesCount
+        type: integer
+      - description: 状态（精确：1 启用 / 0 停用）
+        enum:
+        - "1"
+        - "0"
+        in: query
+        name: status
+        type: string
+      - description: 操作人（模糊）
+        in: query
+        name: updateBy
+        type: string
+      - description: 更新时间起（yyyy-MM-dd，与 updateEndTime 成对生效）
+        in: query
+        name: updateBeginTime
+        type: string
+      - description: 更新时间止（yyyy-MM-dd）
+        in: query
+        name: updateEndTime
+        type: string
+      - description: 页码（默认 1）
+        in: query
+        name: pageIndex
+        type: integer
+      - description: 页大小（默认 10，上限 100）
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.TeacherListResp'
+        "400":
+          description: 数字参数格式错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 老师列表
+      tags:
+      - 老师管理
+  /chatSys/teacher/options:
+    get:
+      description: 全量老师选项（含停用，离职转移弹窗用）
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.TeacherOptionsResp'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 老师下拉选项
+      tags:
+      - 老师管理
+  /chatSys/teacher/update:
+    put:
+      consumes:
+      - application/json
+      description: 编辑头衔/评级/头像/签名（仅这 4 个字段可改，冗余快照字段一律忽略）
+      parameters:
+      - description: 编辑老师请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.TeacherUpdateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「编辑成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / rating 非 0/1/2 / 签名超过 200 字符
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 老师不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 编辑老师
+      tags:
+      - 老师管理
+  /diagnose/audit:
+    post:
+      consumes:
+      - application/json
+      description: professional 专业审核（状态 2）/ compliance 合规审核（状态 4）；通过 → 3/6，驳回 → 5/4（驳回时
+        rejectReason 必填，富文本 HTML）
+      parameters:
+      - description: 审核请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.DiagnoseAuditReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 为「审核通过」或「已驳回」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / auditType 或 result 非法 / 驳回时原因必填 / 当前状态不允许审核
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 诊股记录不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 审核诊股报告
+      tags:
+      - 诊股记录
+  /diagnose/detail:
+    get:
+      description: 诊股记录全字段 + 审核流程日志（auditLogs）
+      parameters:
+      - description: 诊股记录 ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.DiagnoseDetailResp'
+        "400":
+          description: id 缺失或非整数
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 诊股记录不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 诊股记录详情
+      tags:
+      - 诊股记录
+  /diagnose/list:
+    get:
+      consumes:
+      - application/json
+      description: 分页查询诊股记录，零值/未传筛选字段不参与过滤；昵称/姓名/股票代码/股票名/老师模糊匹配，ID/买入价/持仓数/状态精确匹配
+      parameters:
+      - description: 诊股记录 ID（精确）
+        in: query
+        name: id
+        type: integer
+      - description: 用户昵称（模糊）
+        in: query
+        name: userNickName
+        type: string
+      - description: 用户姓名（模糊）
+        in: query
+        name: userName
+        type: string
+      - description: 股票代码（模糊）
+        in: query
+        name: stockCode
+        type: string
+      - description: 股票名称（模糊）
+        in: query
+        name: stockName
+        type: string
+      - description: 买入价（精确，DECIMAL 等值匹配）
+        in: query
+        name: buyPrice
+        type: number
+      - description: 持仓数（精确）
+        in: query
+        name: buyNum
+        type: integer
+      - description: 老师姓名（模糊）
+        in: query
+        name: teacherName
+        type: string
+      - description: 状态（精确 1-6：1 待提交 2 待审核 3 已驳回 4 待合规 5 合规驳回 6 已通过）
+        enum:
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        - 6
+        in: query
+        name: status
+        type: integer
+      - description: 提交时间起（yyyy-MM-dd，与 submitEndTime 成对生效，闭合区间）
+        in: query
+        name: submitBeginTime
+        type: string
+      - description: 提交时间止（yyyy-MM-dd）
+        in: query
+        name: submitEndTime
+        type: string
+      - description: 报告提交时间起（yyyy-MM-dd，与 reportEndTime 成对生效）
+        in: query
+        name: reportBeginTime
+        type: string
+      - description: 报告提交时间止（yyyy-MM-dd）
+        in: query
+        name: reportEndTime
+        type: string
+      - description: 页码（默认 1）
+        in: query
+        name: pageIndex
+        type: integer
+      - description: 页大小（默认 10，上限 100）
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.DiagnoseListResp'
+        "400":
+          description: 数值参数格式错误 / status 越界（非 1-6）
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 诊股记录列表
+      tags:
+      - 诊股记录
+  /diagnose/submitReport:
+    post:
+      consumes:
+      - application/json
+      description: 状态 1/3/5 可提交（首次编写 / 重新提审），提交后状态统一回落 2；reportContent 为富文本 HTML
+      parameters:
+      - description: 提交报告请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.DiagnoseSubmitReportReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「提交成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / 报告内容为空 / 当前状态不允许提交
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 诊股记录不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 提交诊股报告
+      tags:
+      - 诊股记录
+schemes:
+- http
+swagger: "2.0"

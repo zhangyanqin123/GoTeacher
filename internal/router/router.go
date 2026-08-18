@@ -4,6 +4,8 @@ import (
 	"database/sql"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"handicap-service/internal/handler"
 	"handicap-service/internal/repository"
@@ -14,6 +16,9 @@ import (
 func New(db *sql.DB) *gin.Engine {
 	r := gin.Default()
 	r.Use(CORS())
+
+	// Swagger 文档（docs 包由 swag init 生成，见 cmd/server/main.go 头注释）
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	repo := repository.New(db)
 	svc := service.New(repo)

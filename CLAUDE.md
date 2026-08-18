@@ -14,12 +14,14 @@ go build ./...
 go test ./...                # 跑全部测试
 go test ./internal/sanitize -run TestRichText -v   # 单个测试
 go vet ./...
+swag init -g cmd/server/main.go -o docs   # 接口注释改动后重新生成 Swagger 文档
 ```
 
 - 依赖 MySQL 8：`brew services start mysql`，库需先建：`CREATE DATABASE handicap_db ...utf8mb4_0900_ai_ci`
 - 配置走 `.env`（模板 `.env.example`），Homebrew root 初始无密码
 - 重灌种子：`TRUNCATE TABLE <表>;` 后重启（种子仅在表空时写入，schema/seed SQL 均 go:embed 随二进制发布）
 - 无 lint 工具链，无 Makefile
+- Swagger：handler 注释即文档源（@Summary/@Param/@Success 等），启动后 `/swagger/index.html` 可视化；`docs/` 生成物需随代码提交（`cmd/server/main.go` blank import 依赖）；文档专用响应类型（弥补 `PageResult.List` 为 any 无法展开 schema）集中在 `internal/model/swagger.go`，运行时不使用
 
 ## 架构
 
