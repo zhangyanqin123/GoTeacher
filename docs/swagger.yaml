@@ -378,7 +378,7 @@ info:
   description: |-
     chatSys（老师管理/绑定业务员/离职转移）+ 诊股记录接口。
     统一响应结构 {code, msg, data}；写操作 msg 为约定中文，查询类为 "success"。
-  title: handicap-service API
+  title: im系统诊股 API
   version: "1.0"
 paths:
   /chatSys/resign/add:

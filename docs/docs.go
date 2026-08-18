@@ -1343,7 +1343,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "",
 	BasePath:         "/api/v1/dxsf",
 	Schemes:          []string{"http"},
-	Title:            "handicap-service API",
+	Title:            "im系统诊股 API",
 	Description:      "chatSys（老师管理/绑定业务员/离职转移）+ 诊股记录接口。\n统一响应结构 {code, msg, data}；写操作 msg 为约定中文，查询类为 \"success\"。",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
