@@ -41,7 +41,24 @@ DROP + 注释同步 + transfer_content 残留清洗；transferContent 白名单�
 
 mock 的 add 是 `unshift` 到队首（最新在上），DESC 与之同构；审计日志类列表惯例也是最新在前。
 
-### 6. 复用既有代码
+### 6. 确认转移真实移动绑定（去重合并）
+
+add 从「只写快照」升级为事务内真实转移 `teacher_sales`（老师列表 `bind_sales_count` 是子查询统计，
+移动数据后计数自动生效：原老师归 0、接替老师增加，列表接口零改动）。三步同一事务，原子：
+
+1. **删重叠**：`DELETE ts FROM teacher_sales ts JOIN teacher_sales ts2 ON ts2.teacher_id = ? AND ts2.user_id = ts.user_id WHERE ts.teacher_id = ?`——
+   uk_teacher_user 允许不同老师绑同一业务员，去重合并 = 重叠者保留接替老师现有行（bind_time 不变）。
+   MySQL 多表 DELETE 自连接合法（1093 只限单表 UPDATE/DELETE 的同表子查询）。
+2. **移剩余**：`UPDATE teacher_sales SET teacher_id = ? WHERE teacher_id = ?`——整批迁移，
+   行 id 与原 bind_time 保留（非重叠绑定的"原绑定时间"需求由 UPDATE 天然满足，展示顺序稳定）。
+3. **落快照**：原 INSERT 搬入事务。
+
+不设 `RowsAffected==0` 守卫：原老师空绑定是合法转移（groupCount=0，种子 101/102/103 即如此），
+0 行是幂等正常结果而非 400；并发给接替老师绑定重叠业务员由 uk_teacher_user 1062 兜底（整体回滚 500，重试即成功），
+不加 `SELECT ... FOR UPDATE`（项目无先例）。前置依赖：service 的 ErrSameTeacher 校验承重（同 ID 时语句 1 会清空全部绑定）。
+groupCount/salesman 快照取自转移前的查询，快照语义不变（可能大于实际移动数）。
+
+### 7. 复用既有代码
 
 - `ErrTeacherNotFound` 复用 service/teacher.go（同包共享，勿重复声明）
 - `normalizePage` / `defaultListPageSize` / `PageResult` / `DateTimeString` / `queryPage` 全部复用
@@ -80,7 +97,7 @@ mock 的 add 是 `unshift` 到队首（最新在上），DESC 与之同构；审
 | `internal/database/database.go` | 改 | embed resign_seed.sql + seedResign |
 | `internal/model/resign.go` | 新 | Resign / ResignInsert / ResignAddReq / ResignListFilter / TeacherBrief / TeacherSalesmanBrief |
 | `internal/model/stringslice.go` | 新 | StringSlice（Scanner + Valuer） |
-| `internal/repository/resign.go` | 新 | ListResigns / resignWhere / GetTeachersByIDs / ListTeacherSalesmen / InsertResign |
+| `internal/repository/resign.go` | 新 | ListResigns / resignWhere / GetTeachersByIDs / ListTeacherSalesmen / TransferResign（三步事务：删重叠/移剩余/落快照 + 2 个 tx helper） |
 | `internal/service/resign.go` | 新 | ListResigns / AddResign / normalizeTransferContent + 4 个业务错误 |
 | `internal/handler/resign.go` | 新 | List / Add（错误映射 400/404/500） |
 | `internal/router/router.go` | 改 | chat 组注册 2 行 |
@@ -94,3 +111,7 @@ mock 的 add 是 `unshift` 到队首（最新在上），DESC 与之同构；审
   残留清洗）；种子 group_count 改为与实际绑定数一致（0/0/0/6/14/10）；前端删「转移好友」勾选项与
   「好友数」列。涉及：model/service/repository/handler 的 resign 文件、schema.sql、database.go、
   resign_seed.sql、gyz-admin teacherQuery.vue 与 resign.js。
+- **2026-08 确认转移真实移动绑定**：add 原只写 teacher_resign 快照、不碰 teacher_sales，
+  导致确认转移后老师列表关联业务人员数不变。`InsertResign` 改名 `TransferResign` 扩为三步事务
+  （删重叠/移剩余/落快照，见设计决策 6），重叠绑定去重合并（保留接替老师现有 bind_time）；
+  service 调用点同步换名。无 schema 变更、无新增错误类型（1062 冲突走既有 500 分支）。

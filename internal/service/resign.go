@@ -79,8 +79,10 @@ func (s *Service) AddResign(ctx context.Context, req model.ResignAddReq, operate
 		depts = append(depts, sm.DeptName)
 	}
 
-	// 4. 落库（transfer_time 库端 NOW()）；groupCount = 原老师绑定业务员数（一业务员一群）
-	return s.repo.InsertResign(ctx, model.ResignInsert{
+	// 4. 同事务落快照并真实转移绑定（原老师绑定移给接替老师，计数子查询随之生效）：
+	//    重叠绑定由 repository 去重合并（保留接替老师现有行的 bind_time）；
+	//    groupCount/salesman 快照取自上方转移前的查询，快照语义不变（可能大于实际移动数）
+	return s.repo.TransferResign(ctx, model.ResignInsert{
 		OriginalTeacherID:     original.ID,
 		OriginalTeacherName:   original.Name,
 		OriginalTeacherDeptID: original.DeptID,

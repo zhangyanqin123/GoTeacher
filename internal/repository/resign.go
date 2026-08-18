@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -154,9 +155,56 @@ func (r *Repository) ListTeacherSalesmen(ctx context.Context, teacherID int64) (
 	return list, nil
 }
 
-// InsertResign 写入一条离职转移记录（transfer_time 库端 NOW()）。
-// 单条 INSERT 无需事务（对齐 UpdateTeacher；事务仅多语句场景用）。
-func (r *Repository) InsertResign(ctx context.Context, rec model.ResignInsert) error {
+// TransferResign 落一条离职转移记录并真实转移绑定关系（同一事务，二者原子）：
+//  1. 删重叠：删原老师绑定中、业务员已被接替老师绑定的行——去重合并语义，
+//     重叠者保留接替老师现有行（bind_time 不变；uk_teacher_user 允许不同老师绑同一业务员）
+//  2. 移剩余：原老师剩余绑定整批改 teacher_id 为接替老师（行 id 与原 bind_time 保留）
+//  3. 落快照：写 teacher_resign（groupCount = service 在转移前查好的原老师绑定数）
+//
+// 前置依赖：service 已校验两老师不同（ErrSameTeacher）——同 ID 时语句 1 的 JOIN
+// 会清空该老师全部绑定，此守卫是承重的。
+// 并发守卫：不设 RowsAffected==0 判断——原老师空绑定是合法转移（groupCount=0），
+// 0 行是幂等正常结果而非 400；转移期间并发给接替老师绑定重叠业务员由 uk_teacher_user
+// 唯一键兜底（1062 → 整体回滚 500，重试即成功），不加 SELECT ... FOR UPDATE（项目无先例）。
+func (r *Repository) TransferResign(ctx context.Context, rec model.ResignInsert) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("transfer resign begin: %w", err)
+	}
+	defer tx.Rollback() // 已提交时为 no-op
+
+	if err := transferTeacherSales(ctx, tx, rec.OriginalTeacherID, rec.ReplaceTeacherID); err != nil {
+		return err
+	}
+	if err := insertResignRecord(ctx, tx, rec); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("transfer resign commit: %w", err)
+	}
+	return nil
+}
+
+// transferTeacherSales 去重合并移动绑定（仅 TransferResign 事务内调用）。
+// 两条均为纯集合操作：MySQL 多表 DELETE 自连接合法（1093 只限单表 UPDATE/DELETE
+// 的同表子查询），UPDATE 无子查询不受限。
+func transferTeacherSales(ctx context.Context, tx *sql.Tx, originalID, replaceID int64) error {
+	const deleteOverlap = `DELETE ts FROM teacher_sales ts
+	                       JOIN teacher_sales ts2 ON ts2.teacher_id = ? AND ts2.user_id = ts.user_id
+	                       WHERE ts.teacher_id = ?`
+	if _, err := tx.ExecContext(ctx, deleteOverlap, replaceID, originalID); err != nil {
+		return fmt.Errorf("delete overlap teacher_sales %d->%d: %w", originalID, replaceID, err)
+	}
+
+	const moveRest = `UPDATE teacher_sales SET teacher_id = ? WHERE teacher_id = ?`
+	if _, err := tx.ExecContext(ctx, moveRest, replaceID, originalID); err != nil {
+		return fmt.Errorf("move teacher_sales %d->%d: %w", originalID, replaceID, err)
+	}
+	return nil
+}
+
+// insertResignRecord 写入转移记录（transfer_time 库端 NOW()，仅事务内调用）
+func insertResignRecord(ctx context.Context, tx *sql.Tx, rec model.ResignInsert) error {
 	const query = `INSERT INTO teacher_resign
 	               (original_teacher_id, original_teacher_name, original_teacher_dept_id, original_teacher_dept,
 	                replace_teacher_id, replace_teacher_name, replace_teacher_dept,
@@ -167,7 +215,7 @@ func (r *Repository) InsertResign(ctx context.Context, rec model.ResignInsert) e
 	if err != nil {
 		return fmt.Errorf("insert teacher_resign value: %w", err)
 	}
-	if _, err := r.db.ExecContext(ctx, query,
+	if _, err := tx.ExecContext(ctx, query,
 		rec.OriginalTeacherID, rec.OriginalTeacherName, rec.OriginalTeacherDeptID, rec.OriginalTeacherDept,
 		rec.ReplaceTeacherID, rec.ReplaceTeacherName, rec.ReplaceTeacherDept,
 		rec.SalesmanName, rec.SalesmanDept, content, rec.GroupCount,
