@@ -97,7 +97,7 @@ curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/list'
 1. **默认 pageSize=5**：与老师列表接口的默认 10 不同，勿「统一」成同一个常量
 2. **`bindTime` 字符串格式**：`model.DateTimeString` 在 SQL 扫描点格式化为 `2006-01-02 15:04:05`，避免 `time.Time` 序列化成 RFC3339（带 T）破坏前端直接展示
 3. **`list` 无数据时输出 `[]` 而非 `null`**：repository 用 `make([]..., 0, limit)` 初始化
-4. **不返回 `userId`**：弹窗仅展示快照字段；人员树过滤 / 提交合并请用配套接口 `GET /teacher/bindSales/boundUserIds`（返回 `{teacherId, userId}` 对）
+4. **不返回 `userId`**：弹窗仅展示快照字段；人员树过滤请用配套接口 `GET /teacher/bindSales/boundUserIds`（返回去重 userId 平铺数组）
 
 ## 6. 设计说明
 
@@ -112,6 +112,6 @@ curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/list'
 
 | 接口 | 关系 |
 | --- | --- |
-| `GET /api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds` | 全量绑定关系对（绑定弹窗人员树过滤 + 提交合并用），详见 [api-bindSales-boundUserIds.md](./api-bindSales-boundUserIds.md) |
-| `POST /api/v1/dxsf/chatSys/teacher/bindSales` | 绑定提交（全量替换语义），`userIds: []` = 解绑全部；本接口数据变化即由其产生 |
+| `GET /api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds` | 全量已绑定业务员 userId（绑定弹窗人员树过滤用），详见 [api-bindSales-boundUserIds.md](./api-bindSales-boundUserIds.md) |
+| `POST /api/v1/dxsf/chatSys/teacher/bindSales` | 绑定提交（追加语义，重复绑定幂等）；本接口数据变化即由其产生 |
 | `GET /api/v1/dxsf/chatSys/teacher/list` | 老师列表，`bindSalesCount` 子查询统计的即本接口的 `count` |

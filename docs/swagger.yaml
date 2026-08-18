@@ -260,7 +260,7 @@ definitions:
       teacherId:
         type: integer
       userIds:
-        description: 全量替换语义，空数组 = 解绑全部
+        description: 追加语义，仅新增绑定
         items:
           type: integer
         type: array
@@ -271,8 +271,10 @@ definitions:
         example: 200
         type: integer
       data:
+        example:
+        - 1
         items:
-          $ref: '#/definitions/model.TeacherSalesBoundItem'
+          type: integer
         type: array
       msg:
         example: success
@@ -318,13 +320,6 @@ definitions:
       msg:
         example: success
         type: string
-    type: object
-  model.TeacherSalesBoundItem:
-    properties:
-      teacherId:
-        type: integer
-      userId:
-        type: integer
     type: object
   model.TeacherSalesListResp:
     properties:
@@ -481,7 +476,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 全量替换语义：userIds 为该老师的最终完整绑定集合，空数组即解绑全部
+      description: 追加语义：仅新增绑定，已存在的绑定保持不变；重复绑定幂等
       parameters:
       - description: 绑定业务员请求体
         in: body
@@ -513,7 +508,7 @@ paths:
       - 绑定业务员
   /chatSys/teacher/bindSales/boundUserIds:
     get:
-      description: 返回全部 {teacherId, userId} 关系对，供人员树过滤及绑定提交时合并已有关系
+      description: 返回全部已绑定业务员 userId（去重平铺数组），供人员树过滤已绑定人员
       produces:
       - application/json
       responses:
@@ -525,7 +520,7 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
-      summary: 全量已绑定业务员关系
+      summary: 全量已绑定业务员
       tags:
       - 绑定业务员
   /chatSys/teacher/bindSales/list:

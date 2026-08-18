@@ -41,8 +41,8 @@ func (s *Service) ListTeacherOptions(ctx context.Context) ([]model.TeacherOption
 	return s.repo.ListTeacherOptions(ctx)
 }
 
-// ListAllTeacherSales 全量绑定关系对（绑定弹窗人员树过滤 + 提交合并用）
-func (s *Service) ListAllTeacherSales(ctx context.Context) ([]model.TeacherSalesBoundItem, error) {
+// ListAllTeacherSales 全量已绑定业务员 userId（绑定弹窗人员树过滤用）
+func (s *Service) ListAllTeacherSales(ctx context.Context) ([]int64, error) {
 	return s.repo.ListAllTeacherSales(ctx)
 }
 
@@ -81,7 +81,7 @@ func (s *Service) ListTeacherSales(ctx context.Context, teacherID int64, pageInd
 	return &model.PageResult{List: list, Count: count}, nil
 }
 
-// BindTeacherSales 全量替换绑定业务员：userIds 为空 = 解绑全部
+// BindTeacherSales 追加绑定业务员：仅新增绑定，已存在的不动（INSERT IGNORE 幂等）
 func (s *Service) BindTeacherSales(ctx context.Context, req model.TeacherBindReq) error {
 	if req.TeacherID <= 0 {
 		return ErrTeacherNotFound
@@ -96,7 +96,7 @@ func (s *Service) BindTeacherSales(ctx context.Context, req model.TeacherBindReq
 	}
 
 	userIDs := slices.Compact(slices.Clone(req.UserIDs)) // 去重（前端已按 userId 去重，双保险）
-	return s.repo.ReplaceTeacherSales(ctx, req.TeacherID, userIDs)
+	return s.repo.AddTeacherSales(ctx, req.TeacherID, userIDs)
 }
 
 // normalizePage 分页默认值与上限：pageSize 未传（<1）用 defaultPageSize，显式传入则钳制到 maxPageSize

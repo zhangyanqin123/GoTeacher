@@ -12,7 +12,7 @@
 | 2 | GET | `/api/v1/dxsf/chatSys/teacher/options` | 全量下拉（含停用）：`[{id, name, deptName}]` |
 | 3 | PUT | `/api/v1/dxsf/chatSys/teacher/update` | 编辑 title / rating(0-2) / avatar / signature |
 | 4 | GET | `/api/v1/dxsf/chatSys/teacher/bindSales/list` | 老师绑定业务员分页（默认 pageSize=5） |
-| 5 | POST | `/api/v1/dxsf/chatSys/teacher/bindSales` | 全量替换绑定；`userIds: []` = 解绑全部 |
+| 5 | POST | `/api/v1/dxsf/chatSys/teacher/bindSales` | ~~全量替换绑定；`userIds: []` = 解绑全部~~ → 2026-08-18 起改为**追加语义**（INSERT IGNORE 幂等，仅新增绑定；空数组 no-op，无解统能力） |
 
 ## 与前端 mock 对齐的兼容约定（勿改）
 

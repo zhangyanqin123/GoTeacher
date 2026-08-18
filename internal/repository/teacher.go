@@ -196,10 +196,11 @@ func (r *Repository) ListTeacherSalesByTeacher(ctx context.Context, teacherID in
 	return list, count, nil
 }
 
-// ListAllTeacherSales 全量绑定关系对（绑定弹窗人员树过滤 + 提交合并用）。
-// 数据量与业务员数同量级，不分页；无需 JOIN sales_user（只要 ID 对）。
-func (r *Repository) ListAllTeacherSales(ctx context.Context) ([]model.TeacherSalesBoundItem, error) {
-	const query = `SELECT ts.teacher_id, ts.user_id FROM teacher_sales ts ORDER BY ts.id`
+// ListAllTeacherSales 全量已绑定业务员 userId（绑定弹窗人员树过滤用）。
+// DISTINCT：同一 userId 可被多个老师绑定，平铺数组语义是集合；
+// 数据量与业务员数同量级，不分页；无需 JOIN sales_user（只要 ID）。
+func (r *Repository) ListAllTeacherSales(ctx context.Context) ([]int64, error) {
+	const query = `SELECT DISTINCT ts.user_id FROM teacher_sales ts ORDER BY ts.user_id`
 
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
@@ -207,49 +208,35 @@ func (r *Repository) ListAllTeacherSales(ctx context.Context) ([]model.TeacherSa
 	}
 	defer rows.Close()
 
-	list := make([]model.TeacherSalesBoundItem, 0, 16)
+	list := make([]int64, 0, 16)
 	for rows.Next() {
-		var i model.TeacherSalesBoundItem
-		if err := rows.Scan(&i.TeacherID, &i.UserID); err != nil {
-			return nil, fmt.Errorf("scan teacher_sales bound item: %w", err)
+		var uid int64
+		if err := rows.Scan(&uid); err != nil {
+			return nil, fmt.Errorf("scan teacher_sales user_id: %w", err)
 		}
-		list = append(list, i)
+		list = append(list, uid)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate teacher_sales bound items: %w", err)
+		return nil, fmt.Errorf("iterate teacher_sales user_ids: %w", err)
 	}
 	return list, nil
 }
 
-// ReplaceTeacherSales 全量替换老师的绑定业务员：事务内先删后插，空数组即清空绑定。
-func (r *Repository) ReplaceTeacherSales(ctx context.Context, teacherID int64, userIDs []int64) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("replace teacher_sales begin: %w", err)
-	}
-	defer tx.Rollback() // 已提交时为 no-op
-
-	if _, err := tx.ExecContext(ctx,
-		"DELETE FROM teacher_sales WHERE teacher_id = ?", teacherID,
-	); err != nil {
-		return fmt.Errorf("delete teacher_sales %d: %w", teacherID, err)
+// AddTeacherSales 追加绑定业务员：INSERT IGNORE 命中唯一键 uk_teacher_user 即跳过，天然幂等。
+func (r *Repository) AddTeacherSales(ctx context.Context, teacherID int64, userIDs []int64) error {
+	if len(userIDs) == 0 {
+		return nil
 	}
 
-	if len(userIDs) > 0 {
-		values := make([]string, len(userIDs))
-		args := make([]any, 0, len(userIDs)*2)
-		for i, uid := range userIDs {
-			values[i] = "(?, ?, NOW())"
-			args = append(args, teacherID, uid)
-		}
-		query := "INSERT INTO teacher_sales (teacher_id, user_id, bind_time) VALUES " + strings.Join(values, ", ")
-		if _, err := tx.ExecContext(ctx, query, args...); err != nil {
-			return fmt.Errorf("insert teacher_sales %d: %w", teacherID, err)
-		}
+	values := make([]string, len(userIDs))
+	args := make([]any, 0, len(userIDs)*2)
+	for i, uid := range userIDs {
+		values[i] = "(?, ?, NOW())"
+		args = append(args, teacherID, uid)
 	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("replace teacher_sales commit: %w", err)
+	query := "INSERT IGNORE INTO teacher_sales (teacher_id, user_id, bind_time) VALUES " + strings.Join(values, ", ")
+	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("insert teacher_sales %d: %w", teacherID, err)
 	}
 	return nil
 }

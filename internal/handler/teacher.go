@@ -121,10 +121,10 @@ func (h *TeacherHandler) Options(c *gin.Context) {
 
 // BoundUserIds GET /api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds
 //
-// 全量已绑定业务员关系对（前端人员树过滤 + 全量替换语义下的提交合并）
+// 全量已绑定业务员 userId（前端人员树过滤用）
 //
-//	@Summary		全量已绑定业务员关系
-//	@Description	返回全部 {teacherId, userId} 关系对，供人员树过滤及绑定提交时合并已有关系
+//	@Summary		全量已绑定业务员
+//	@Description	返回全部已绑定业务员 userId（去重平铺数组），供人员树过滤已绑定人员
 //	@Tags			绑定业务员
 //	@Produce		json
 //	@Success		200 {object} model.TeacherBoundResp
@@ -214,7 +214,7 @@ func (h *TeacherHandler) SalesList(c *gin.Context) {
 // 错误映射：body 绑定失败 → 400；老师不存在 → 404；其他 → 500
 //
 //	@Summary		绑定业务员
-//	@Description	全量替换语义：userIds 为该老师的最终完整绑定集合，空数组即解绑全部
+//	@Description	追加语义：仅新增绑定，已存在的绑定保持不变；重复绑定幂等
 //	@Tags			绑定业务员
 //	@Accept			json
 //	@Produce		json

@@ -22,8 +22,8 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 | 2 | GET | `/api/v1/dxsf/chatSys/teacher/options` | 老师下拉选项（含停用，带部门名） |
 | 3 | PUT | `/api/v1/dxsf/chatSys/teacher/update` | 编辑老师（title / rating / avatar / signature） |
 | 4 | GET | `/api/v1/dxsf/chatSys/teacher/bindSales/list` | 老师绑定业务员列表（详情弹窗） |
-| 5 | POST | `/api/v1/dxsf/chatSys/teacher/bindSales` | 绑定业务员（全量替换，空数组 = 解绑全部） |
-| 6 | GET | `/api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds` | 全量已绑定业务员关系对（绑定弹窗人员树过滤用） |
+| 5 | POST | `/api/v1/dxsf/chatSys/teacher/bindSales` | 绑定业务员（追加语义，重复绑定幂等） |
+| 6 | GET | `/api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds` | 全量已绑定业务员 userId（绑定弹窗人员树过滤用） |
 | 7 | GET | `/api/v1/dxsf/chatSys/resign/list` | 离职转移记录列表（分页 + 多条件筛选） |
 | 8 | POST | `/api/v1/dxsf/chatSys/resign/add` | 新增离职转移 |
 
@@ -62,14 +62,14 @@ curl -s -X PUT 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/update' \
 # 老师绑定业务员列表
 curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/list?teacherId=1&pageIndex=1&pageSize=5'
 
-# 绑定业务员（全量替换；userIds 为业务员表 id）
+# 绑定业务员（追加语义；userIds 为业务员表 id）
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales' \
   -H 'Content-Type: application/json' \
   -d '{"teacherId":1,"userIds":[1,2,3]}'
 
-# 全量已绑定业务员关系对（人员树过滤 + 提交合并，不分页）
+# 全量已绑定业务员 userId（人员树过滤，不分页）
 curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds'
-# → {"code":200,"msg":"success","data":[{"teacherId":1,"userId":2},...]}
+# → {"code":200,"msg":"success","data":[1,2,3,...]}
 ```
 
 ### 表设计

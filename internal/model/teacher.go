@@ -43,12 +43,6 @@ type TeacherSalesRow struct {
 	BindTime DateTimeString `json:"bindTime"  db:"bind_time"`
 }
 
-// TeacherSalesBoundItem 已绑定业务员关系对（人员树过滤 + 提交合并用）
-type TeacherSalesBoundItem struct {
-	TeacherID int64 `json:"teacherId" db:"teacher_id"`
-	UserID    int64 `json:"userId"    db:"user_id"`
-}
-
 // TeacherUpdateReq 编辑老师请求体（PUT /teacher/update）
 type TeacherUpdateReq struct {
 	ID        int64  `json:"id"`
@@ -61,7 +55,7 @@ type TeacherUpdateReq struct {
 // TeacherBindReq 绑定业务员请求体（POST /teacher/bindSales）
 type TeacherBindReq struct {
 	TeacherID int64   `json:"teacherId"`
-	UserIDs   []int64 `json:"userIds"` // 全量替换语义，空数组 = 解绑全部
+	UserIDs   []int64 `json:"userIds"` // 追加语义，仅新增绑定
 }
 
 // TeacherListFilter 老师列表查询条件（零值字段不参与过滤）

@@ -40,11 +40,11 @@ type TeacherSalesListResp struct {
 	} `json:"data"`
 }
 
-// TeacherBoundResp 全量已绑定业务员关系对响应（GET /chatSys/teacher/bindSales/boundUserIds）
+// TeacherBoundResp 全量已绑定业务员响应（GET /chatSys/teacher/bindSales/boundUserIds）
 type TeacherBoundResp struct {
-	Code int                     `json:"code" example:"200"`
-	Msg  string                  `json:"msg"  example:"success"`
-	Data []TeacherSalesBoundItem `json:"data"`
+	Code int     `json:"code" example:"200"`
+	Msg  string  `json:"msg"  example:"success"`
+	Data []int64 `json:"data" example:"1"`
 }
 
 // ResignListResp 离职转移列表响应（GET /chatSys/resign/list）

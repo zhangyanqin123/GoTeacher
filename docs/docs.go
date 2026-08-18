@@ -154,7 +154,7 @@ const docTemplate = `{
         },
         "/chatSys/teacher/bindSales": {
             "post": {
-                "description": "全量替换语义：userIds 为该老师的最终完整绑定集合，空数组即解绑全部",
+                "description": "追加语义：仅新增绑定，已存在的绑定保持不变；重复绑定幂等",
                 "consumes": [
                     "application/json"
                 ],
@@ -206,14 +206,14 @@ const docTemplate = `{
         },
         "/chatSys/teacher/bindSales/boundUserIds": {
             "get": {
-                "description": "返回全部 {teacherId, userId} 关系对，供人员树过滤及绑定提交时合并已有关系",
+                "description": "返回全部已绑定业务员 userId（去重平铺数组），供人员树过滤已绑定人员",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "绑定业务员"
                 ],
-                "summary": "全量已绑定业务员关系",
+                "summary": "全量已绑定业务员",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1165,7 +1165,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "userIds": {
-                    "description": "全量替换语义，空数组 = 解绑全部",
+                    "description": "追加语义，仅新增绑定",
                     "type": "array",
                     "items": {
                         "type": "integer"
@@ -1183,8 +1183,11 @@ const docTemplate = `{
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.TeacherSalesBoundItem"
-                    }
+                        "type": "integer"
+                    },
+                    "example": [
+                        1
+                    ]
                 },
                 "msg": {
                     "type": "string",
@@ -1250,17 +1253,6 @@ const docTemplate = `{
                 "msg": {
                     "type": "string",
                     "example": "success"
-                }
-            }
-        },
-        "model.TeacherSalesBoundItem": {
-            "type": "object",
-            "properties": {
-                "teacherId": {
-                    "type": "integer"
-                },
-                "userId": {
-                    "type": "integer"
                 }
             }
         },
