@@ -27,17 +27,17 @@ func New(db *sql.DB) *gin.Engine {
 	dh := handler.NewDiagnose(svc)
 
 	// 老师管理（路径与前端 teacher.js 注释里的 URL 完全一致）
-	chat := r.Group("/api/v1/dxsf/chatSys")
-	chat.GET("/teacher/list", th.List)
-	chat.GET("/teacher/options", th.Options)
-	chat.PUT("/teacher/update", th.Update)
-	chat.GET("/teacher/bindSales/list", th.SalesList)
-	chat.GET("/teacher/bindSales/boundUserIds", th.BoundUserIds)
-	chat.POST("/teacher/bindSales", th.Bind)
+	dxsf := r.Group("/api/v1/dxsf")
+	dxsf.POST("/teacher/list", th.List)
+	dxsf.GET("/teacher/options", th.Options)
+	dxsf.POST("/teacher/edit", th.Update)
+	dxsf.GET("/teacher/bind/salesman/list", th.SalesList)
+	dxsf.GET("/teacher/bind/salesman/users", th.BoundUserIds)
+	dxsf.POST("/teacher/bind/salesman", th.Bind)
 
 	// 离职转移（路径与前端 resign.js 注释里的 URL 完全一致）
-	chat.GET("/resign/list", rh.List)
-	chat.POST("/resign/add", rh.Add)
+	dxsf.GET("/resign/list", rh.List)
+	dxsf.POST("/resign/add", rh.Add)
 
 	// 诊股记录（路径与前端 diagnose.js 注释里的 URL 完全一致）
 	diag := r.Group("/api/v1/dxsf/diagnose")

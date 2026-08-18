@@ -4,7 +4,7 @@
 
 | 项目 | 说明 |
 | --- | --- |
-| 路径 | `/api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds` |
+| 路径 | `/api/v1/dxsf/teacher/bind/salesman/users` |
 | 方法 | `GET` |
 | 用途 | 返回 `teacher_sales` 表的**全量已绑定业务员 userId**（去重平铺数组），供前端「绑定业务员」弹窗的人员树过滤已绑定人员 |
 | 鉴权 | 无（当前项目仅全局 CORS 中间件，无鉴权） |
@@ -55,7 +55,7 @@
 ## 4. curl 示例
 
 ```bash
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds'
+curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/users'
 ```
 
 ## 5. 前端使用场景
@@ -75,7 +75,7 @@ boundUserIdSet() {
 
 ### 5.2 提交（追加语义）
 
-`POST /teacher/bindSales` 为**追加语义**（`INSERT IGNORE` 命中唯一键即跳过，幂等），前端提交时只需传**新勾选**的 userId，无需合并原绑定：
+`POST /teacher/bind/salesman` 为**追加语义**（`INSERT IGNORE` 命中唯一键即跳过，幂等），前端提交时只需传**新勾选**的 userId，无需合并原绑定：
 
 ```js
 // 兜底剔除已绑定（防接口失败降级时误选），直接提交新勾选
@@ -101,5 +101,5 @@ bindTeacherSales({ teacherId, userIds })
 
 | 接口 | 关系 |
 | --- | --- |
-| `GET /api/v1/dxsf/chatSys/teacher/bindSales/list` | 单个老师的绑定业务员分页列表（详情弹窗用），不含 `userId`，无法用于树过滤 |
-| `POST /api/v1/dxsf/chatSys/teacher/bindSales` | 绑定提交（**追加语义**，重复绑定幂等）；本接口数据由其产生 |
+| `GET /api/v1/dxsf/teacher/bind/salesman/list` | 单个老师的绑定业务员分页列表（详情弹窗用），不含 `userId`，无法用于树过滤 |
+| `POST /api/v1/dxsf/teacher/bind/salesman` | 绑定提交（**追加语义**，重复绑定幂等）；本接口数据由其产生 |

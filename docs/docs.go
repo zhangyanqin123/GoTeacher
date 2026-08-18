@@ -15,481 +15,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/chatSys/resign/add": {
-            "post": {
-                "description": "原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "离职转移"
-                ],
-                "summary": "新增离职转移",
-                "parameters": [
-                    {
-                        "description": "新增离职转移请求体",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.ResignAddReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "msg 固定「转移成功」，data 恒为 null",
-                        "schema": {
-                            "$ref": "#/definitions/model.ActionResp"
-                        }
-                    },
-                    "400": {
-                        "description": "请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200 字符",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "老师不存在",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/chatSys/resign/list": {
-            "get": {
-                "description": "分页查询离职转移记录，零值筛选字段不参与过滤；dept_id 匹配原老师部门",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "离职转移"
-                ],
-                "summary": "离职转移列表",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "原老师部门 ID",
-                        "name": "dept_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "原老师 ID（精确）",
-                        "name": "original_teacher_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "接替老师 ID（精确）",
-                        "name": "replace_teacher_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "业务员姓名（模糊）",
-                        "name": "salesman_name",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "转移时间起（yyyy-MM-dd，与 transfer_end_time 成对生效）",
-                        "name": "transfer_begin_time",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "转移时间止（yyyy-MM-dd）",
-                        "name": "transfer_end_time",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "页码（默认 1）",
-                        "name": "page_index",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "页大小（默认 10，上限 100）",
-                        "name": "page_size",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.ResignListResp"
-                        }
-                    },
-                    "400": {
-                        "description": "数字参数格式错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/chatSys/teacher/bindSales": {
-            "post": {
-                "description": "追加语义：仅新增绑定，已存在的绑定保持不变；重复绑定幂等",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "绑定业务员"
-                ],
-                "summary": "绑定业务员",
-                "parameters": [
-                    {
-                        "description": "绑定业务员请求体",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.TeacherBindReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "msg 固定「绑定成功」，data 恒为 null",
-                        "schema": {
-                            "$ref": "#/definitions/model.ActionResp"
-                        }
-                    },
-                    "400": {
-                        "description": "请求体非法",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "老师不存在",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/chatSys/teacher/bindSales/boundUserIds": {
-            "get": {
-                "description": "返回全部已绑定业务员 userId（去重平铺数组），供人员树过滤已绑定人员",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "绑定业务员"
-                ],
-                "summary": "全量已绑定业务员",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.TeacherBoundResp"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/chatSys/teacher/bindSales/list": {
-            "get": {
-                "description": "分页查询指定老师已绑定的业务员（手机号/昵称/部门/绑定时间）",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "绑定业务员"
-                ],
-                "summary": "老师绑定业务员列表",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "老师 ID",
-                        "name": "teacher_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "页码（默认 1）",
-                        "name": "page_index",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "页大小（默认 5，上限 100）",
-                        "name": "page_size",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.TeacherSalesListResp"
-                        }
-                    },
-                    "400": {
-                        "description": "teacher_id 缺失或非法",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/chatSys/teacher/list": {
-            "get": {
-                "description": "分页查询老师，零值筛选字段不参与过滤；姓名/账号/昵称/头衔/操作人模糊匹配，部门/ID/认证/状态精确匹配",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "老师管理"
-                ],
-                "summary": "老师列表",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "部门 ID",
-                        "name": "dept_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "老师 ID",
-                        "name": "id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "账号（模糊）",
-                        "name": "account",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "昵称（模糊）",
-                        "name": "nickname",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "姓名（模糊）",
-                        "name": "name",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "头衔（模糊）",
-                        "name": "title",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "已认证",
-                            "未认证"
-                        ],
-                        "type": "string",
-                        "description": "认证状态（精确：已认证/未认证）",
-                        "name": "qualification",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "绑定业务员数（精确；传 0 是有效过滤值）",
-                        "name": "bind_sales_count",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "1",
-                            "0"
-                        ],
-                        "type": "string",
-                        "description": "状态（精确：1 启用 / 0 停用）",
-                        "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "操作人（模糊）",
-                        "name": "update_by",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "更新时间起（yyyy-MM-dd，与 update_end_time 成对生效）",
-                        "name": "update_begin_time",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "更新时间止（yyyy-MM-dd）",
-                        "name": "update_end_time",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "页码（默认 1）",
-                        "name": "page_index",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "页大小（默认 10，上限 100）",
-                        "name": "page_size",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.TeacherListResp"
-                        }
-                    },
-                    "400": {
-                        "description": "数字参数格式错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/chatSys/teacher/options": {
-            "get": {
-                "description": "全量老师选项（含停用，离职转移弹窗用）",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "老师管理"
-                ],
-                "summary": "老师下拉选项",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.TeacherOptionsResp"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/chatSys/teacher/update": {
-            "put": {
-                "description": "编辑头衔/评级/头像/签名（仅这 4 个字段可改，冗余快照字段一律忽略）",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "老师管理"
-                ],
-                "summary": "编辑老师",
-                "parameters": [
-                    {
-                        "description": "编辑老师请求体",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.TeacherUpdateReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "msg 固定「编辑成功」，data 恒为 null",
-                        "schema": {
-                            "$ref": "#/definitions/model.ActionResp"
-                        }
-                    },
-                    "400": {
-                        "description": "请求体非法 / rating 非 0/1/2 / 签名超过 200 字符",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "老师不存在",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
         "/diagnose/audit": {
             "post": {
                 "description": "professional 专业审核（状态 2）/ compliance 合规审核（状态 4）；通过 → 3/6，驳回 → 5/4（驳回时 reject_reason 必填，富文本 HTML）",
@@ -765,6 +290,398 @@ const docTemplate = `{
                         "description": "诊股记录不存在",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/resign/add": {
+            "post": {
+                "description": "原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "离职转移"
+                ],
+                "summary": "新增离职转移",
+                "parameters": [
+                    {
+                        "description": "新增离职转移请求体",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ResignAddReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "msg 固定「转移成功」，data 恒为 null",
+                        "schema": {
+                            "$ref": "#/definitions/model.ActionResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200 字符",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "老师不存在",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/resign/list": {
+            "get": {
+                "description": "分页查询离职转移记录，零值筛选字段不参与过滤；dept_id 匹配原老师部门",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "离职转移"
+                ],
+                "summary": "离职转移列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "原老师部门 ID",
+                        "name": "dept_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "原老师 ID（精确）",
+                        "name": "original_teacher_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "接替老师 ID（精确）",
+                        "name": "replace_teacher_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "业务员姓名（模糊）",
+                        "name": "salesman_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "转移时间起（yyyy-MM-dd，与 transfer_end_time 成对生效）",
+                        "name": "transfer_begin_time",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "转移时间止（yyyy-MM-dd）",
+                        "name": "transfer_end_time",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码（默认 1）",
+                        "name": "page_index",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页大小（默认 10，上限 100）",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.ResignListResp"
+                        }
+                    },
+                    "400": {
+                        "description": "数字参数格式错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/teacher/bind/salesman": {
+            "post": {
+                "description": "追加语义：仅新增绑定，已存在的绑定保持不变；重复绑定幂等",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "绑定业务员"
+                ],
+                "summary": "绑定业务员",
+                "parameters": [
+                    {
+                        "description": "绑定业务员请求体",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.TeacherBindReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "msg 固定「绑定成功」，data 恒为 null",
+                        "schema": {
+                            "$ref": "#/definitions/model.ActionResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "老师不存在",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/teacher/bind/salesman/list": {
+            "get": {
+                "description": "分页查询指定老师已绑定的业务员（手机号/昵称/部门/绑定时间）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "绑定业务员"
+                ],
+                "summary": "老师绑定业务员列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "老师 ID",
+                        "name": "teacher_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码（默认 1）",
+                        "name": "page_index",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页大小（默认 5，上限 100）",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.TeacherSalesListResp"
+                        }
+                    },
+                    "400": {
+                        "description": "teacher_id 缺失或非法",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/teacher/bind/salesman/users": {
+            "get": {
+                "description": "返回全部已绑定业务员 userId（去重平铺数组），供人员树过滤已绑定人员",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "绑定业务员"
+                ],
+                "summary": "全量已绑定业务员",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.TeacherBoundResp"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/teacher/edit": {
+            "post": {
+                "description": "编辑头衔/评级/头像/签名（仅这 4 个字段可改，冗余快照字段一律忽略）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "老师管理"
+                ],
+                "summary": "编辑老师",
+                "parameters": [
+                    {
+                        "description": "编辑老师请求体",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.TeacherUpdateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "msg 固定「编辑成功」，data 恒为 null",
+                        "schema": {
+                            "$ref": "#/definitions/model.ActionResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法 / rating 非 0/1/2 / 签名超过 200 字符",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "老师不存在",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/teacher/list": {
+            "post": {
+                "description": "分页查询老师（筛选条件走 JSON body），零值筛选字段不参与过滤；姓名/账号/昵称/头衔/操作人模糊匹配，部门/ID/认证/状态精确匹配",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "老师管理"
+                ],
+                "summary": "老师列表",
+                "parameters": [
+                    {
+                        "description": "查询条件（数值字段传空串表示未填）",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.TeacherListReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.TeacherListResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法 / 数字参数格式错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/teacher/options": {
+            "get": {
+                "description": "全量老师选项（含停用，离职转移弹窗用）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "老师管理"
+                ],
+                "summary": "老师下拉选项",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.TeacherOptionsResp"
                         }
                     },
                     "500": {
@@ -1192,6 +1109,66 @@ const docTemplate = `{
                 "msg": {
                     "type": "string",
                     "example": "success"
+                }
+            }
+        },
+        "model.TeacherListReq": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "description": "模糊",
+                    "type": "string"
+                },
+                "bind_sales_count": {
+                    "description": "精确，空串不参与过滤；\"0\" 是有效过滤值",
+                    "type": "string"
+                },
+                "dept_id": {
+                    "description": "精确，空串不参与过滤",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "精确，空串不参与过滤",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "模糊",
+                    "type": "string"
+                },
+                "nickname": {
+                    "description": "模糊",
+                    "type": "string"
+                },
+                "page_index": {
+                    "description": "默认 1（service 层兜底）",
+                    "type": "integer"
+                },
+                "page_size": {
+                    "description": "默认 10，上限 100",
+                    "type": "integer"
+                },
+                "qualification": {
+                    "description": "精确（中文）",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "精确 \"1\"/\"0\"",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "模糊",
+                    "type": "string"
+                },
+                "update_begin_time": {
+                    "description": "yyyy-MM-dd，与 EndTime 成对生效",
+                    "type": "string"
+                },
+                "update_by": {
+                    "description": "模糊",
+                    "type": "string"
+                },
+                "update_end_time": {
+                    "type": "string"
                 }
             }
         },

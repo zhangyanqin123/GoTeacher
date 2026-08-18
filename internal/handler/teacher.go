@@ -21,73 +21,64 @@ func NewTeacher(svc *service.Service) *TeacherHandler {
 	return &TeacherHandler{svc: svc}
 }
 
-// List GET /api/v1/dxsf/chatSys/teacher/list
+// List POST /api/v1/dxsf/teacher/list
 //
-// 错误映射：数字参数格式错误 → 400；其他 → 500（真实原因只进日志）
+// 错误映射：body 绑定失败/数字参数格式错误 → 400；其他 → 500（真实原因只进日志）
 //
 //	@Summary		老师列表
-//	@Description	分页查询老师，零值筛选字段不参与过滤；姓名/账号/昵称/头衔/操作人模糊匹配，部门/ID/认证/状态精确匹配
+//	@Description	分页查询老师（筛选条件走 JSON body），零值筛选字段不参与过滤；姓名/账号/昵称/头衔/操作人模糊匹配，部门/ID/认证/状态精确匹配
 //	@Tags			老师管理
 //	@Accept			json
 //	@Produce		json
-//	@Param			dept_id query integer false "部门 ID"
-//	@Param			id query integer false "老师 ID"
-//	@Param			account query string false "账号（模糊）"
-//	@Param			nickname query string false "昵称（模糊）"
-//	@Param			name query string false "姓名（模糊）"
-//	@Param			title query string false "头衔（模糊）"
-//	@Param			qualification query string false "认证状态（精确：已认证/未认证）" Enums(已认证,未认证)
-//	@Param			bind_sales_count query integer false "绑定业务员数（精确；传 0 是有效过滤值）"
-//	@Param			status query string false "状态（精确：1 启用 / 0 停用）" Enums(1,0)
-//	@Param			update_by query string false "操作人（模糊）"
-//	@Param			update_begin_time query string false "更新时间起（yyyy-MM-dd，与 update_end_time 成对生效）"
-//	@Param			update_end_time query string false "更新时间止（yyyy-MM-dd）"
-//	@Param			page_index query integer false "页码（默认 1）"
-//	@Param			page_size query integer false "页大小（默认 10，上限 100）"
+//	@Param			body body model.TeacherListReq true "查询条件（数值字段传空串表示未填）"
 //	@Success		200 {object} model.TeacherListResp
-//	@Failure		400 {object} response.Response "数字参数格式错误"
+//	@Failure		400 {object} response.Response "请求体非法 / 数字参数格式错误"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/chatSys/teacher/list [get]
+//	@Router			/teacher/list [post]
 func (h *TeacherHandler) List(c *gin.Context) {
-	var f model.TeacherListFilter
+	var req model.TeacherListReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, 400, "invalid request body: "+err.Error())
+		return
+	}
 
+	var f model.TeacherListFilter
 	for _, num := range []struct {
-		key   string
+		raw   string
 		dst   *int64
 		label string
 	}{
-		{"dept_id", &f.DeptID, "dept_id"},
-		{"id", &f.ID, "id"},
+		{req.DeptID, &f.DeptID, "dept_id"},
+		{req.ID, &f.ID, "id"},
 	} {
-		s := c.Query(num.key)
-		if s == "" {
+		if num.raw == "" {
 			continue
 		}
-		v, err := strconv.ParseInt(s, 10, 64)
+		v, err := strconv.ParseInt(num.raw, 10, 64)
 		if err != nil {
 			response.Fail(c, 400, 400, num.label+" must be an integer")
 			return
 		}
 		*num.dst = v
 	}
-	if s := c.Query("bind_sales_count"); s != "" {
-		v, err := strconv.Atoi(s)
+	if req.BindSalesCount != "" {
+		v, err := strconv.Atoi(req.BindSalesCount)
 		if err != nil {
 			response.Fail(c, 400, 400, "bind_sales_count must be an integer")
 			return
 		}
 		f.BindSalesCount = &v // 指针：区分"未传"与 0
 	}
-	f.Account = c.Query("account")
-	f.Nickname = c.Query("nickname")
-	f.Name = c.Query("name")
-	f.Title = c.Query("title")
-	f.Qualification = c.Query("qualification")
-	f.Status = c.Query("status")
-	f.UpdateBy = c.Query("update_by")
-	f.UpdateBeginTime = c.Query("update_begin_time")
-	f.UpdateEndTime = c.Query("update_end_time")
-	f.PageIndex, f.PageSize = queryPage(c) // 默认在 service 层兜底
+	f.Account = req.Account
+	f.Nickname = req.Nickname
+	f.Name = req.Name
+	f.Title = req.Title
+	f.Qualification = req.Qualification
+	f.Status = req.Status
+	f.UpdateBy = req.UpdateBy
+	f.UpdateBeginTime = req.UpdateBeginTime
+	f.UpdateEndTime = req.UpdateEndTime
+	f.PageIndex, f.PageSize = req.PageIndex, req.PageSize // 默认在 service 层兜底
 
 	result, err := h.svc.ListTeachers(c.Request.Context(), f)
 	switch {
@@ -99,7 +90,7 @@ func (h *TeacherHandler) List(c *gin.Context) {
 	}
 }
 
-// Options GET /api/v1/dxsf/chatSys/teacher/options
+// Options GET /api/v1/dxsf/teacher/options
 //
 //	@Summary		老师下拉选项
 //	@Description	全量老师选项（含停用，离职转移弹窗用）
@@ -107,7 +98,7 @@ func (h *TeacherHandler) List(c *gin.Context) {
 //	@Produce		json
 //	@Success		200 {object} model.TeacherOptionsResp
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/chatSys/teacher/options [get]
+//	@Router			/teacher/options [get]
 func (h *TeacherHandler) Options(c *gin.Context) {
 	list, err := h.svc.ListTeacherOptions(c.Request.Context())
 	switch {
@@ -119,7 +110,7 @@ func (h *TeacherHandler) Options(c *gin.Context) {
 	}
 }
 
-// BoundUserIds GET /api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds
+// BoundUserIds GET /api/v1/dxsf/teacher/bind/salesman/users
 //
 // 全量已绑定业务员 userId（前端人员树过滤用）
 //
@@ -129,7 +120,7 @@ func (h *TeacherHandler) Options(c *gin.Context) {
 //	@Produce		json
 //	@Success		200 {object} model.TeacherBoundResp
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/chatSys/teacher/bindSales/boundUserIds [get]
+//	@Router			/teacher/bind/salesman/users [get]
 func (h *TeacherHandler) BoundUserIds(c *gin.Context) {
 	list, err := h.svc.ListAllTeacherSales(c.Request.Context())
 	switch {
@@ -141,7 +132,7 @@ func (h *TeacherHandler) BoundUserIds(c *gin.Context) {
 	}
 }
 
-// Update PUT /api/v1/dxsf/chatSys/teacher/update
+// Update POST /api/v1/dxsf/teacher/edit
 //
 // 错误映射：body 绑定失败/非法 rating/签名超长 → 400；老师不存在 → 404；其他 → 500
 //
@@ -155,7 +146,7 @@ func (h *TeacherHandler) BoundUserIds(c *gin.Context) {
 //	@Failure		400 {object} response.Response "请求体非法 / rating 非 0/1/2 / 签名超过 200 字符"
 //	@Failure		404 {object} response.Response "老师不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/chatSys/teacher/update [put]
+//	@Router			/teacher/edit [post]
 func (h *TeacherHandler) Update(c *gin.Context) {
 	var req model.TeacherUpdateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -178,7 +169,7 @@ func (h *TeacherHandler) Update(c *gin.Context) {
 	}
 }
 
-// SalesList GET /api/v1/dxsf/chatSys/teacher/bindSales/list
+// SalesList GET /api/v1/dxsf/teacher/bind/salesman/list
 //
 //	@Summary		老师绑定业务员列表
 //	@Description	分页查询指定老师已绑定的业务员（手机号/昵称/部门/绑定时间）
@@ -190,7 +181,7 @@ func (h *TeacherHandler) Update(c *gin.Context) {
 //	@Success		200 {object} model.TeacherSalesListResp
 //	@Failure		400 {object} response.Response "teacher_id 缺失或非法"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/chatSys/teacher/bindSales/list [get]
+//	@Router			/teacher/bind/salesman/list [get]
 func (h *TeacherHandler) SalesList(c *gin.Context) {
 	teacherID, err := strconv.ParseInt(c.Query("teacher_id"), 10, 64)
 	if err != nil || teacherID <= 0 {
@@ -209,7 +200,7 @@ func (h *TeacherHandler) SalesList(c *gin.Context) {
 	}
 }
 
-// Bind POST /api/v1/dxsf/chatSys/teacher/bindSales
+// Bind POST /api/v1/dxsf/teacher/bind/salesman
 //
 // 错误映射：body 绑定失败 → 400；老师不存在 → 404；其他 → 500
 //
@@ -223,7 +214,7 @@ func (h *TeacherHandler) SalesList(c *gin.Context) {
 //	@Failure		400 {object} response.Response "请求体非法"
 //	@Failure		404 {object} response.Response "老师不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/chatSys/teacher/bindSales [post]
+//	@Router			/teacher/bind/salesman [post]
 func (h *TeacherHandler) Bind(c *gin.Context) {
 	var req model.TeacherBindReq
 	if err := c.ShouldBindJSON(&req); err != nil {

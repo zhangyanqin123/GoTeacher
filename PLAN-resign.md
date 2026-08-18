@@ -7,8 +7,8 @@
 
 | # | 方法 | 路径 | 说明 |
 | --- | --- | --- | --- |
-| 1 | GET | `/api/v1/dxsf/chatSys/resign/list` | 离职转移记录列表（分页 + 多条件筛选） |
-| 2 | POST | `/api/v1/dxsf/chatSys/resign/add` | 新增离职转移 |
+| 1 | GET | `/api/v1/dxsf/resign/list` | 离职转移记录列表（分页 + 多条件筛选） |
+| 2 | POST | `/api/v1/dxsf/resign/add` | 新增离职转移 |
 
 ## 设计决策
 

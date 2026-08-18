@@ -43,7 +43,7 @@ type TeacherSalesRow struct {
 	BindTime DateTimeString `json:"bind_time"  db:"bind_time"`
 }
 
-// TeacherUpdateReq 编辑老师请求体（PUT /teacher/update）
+// TeacherUpdateReq 编辑老师请求体（POST /teacher/edit）
 type TeacherUpdateReq struct {
 	ID        int64  `json:"id"`
 	Title     string `json:"title"`
@@ -56,6 +56,26 @@ type TeacherUpdateReq struct {
 type TeacherBindReq struct {
 	TeacherID int64   `json:"teacher_id"`
 	UserIDs   []int64 `json:"user_ids"` // 追加语义，仅新增绑定
+}
+
+// TeacherListReq 老师列表查询请求体（POST /teacher/list）。
+// 数值字段用 string：前端筛选框（el-input/el-select-number）传空串表示未填，
+// 非空才由 handler 解析为整数（空 = 不过滤），避免空串反序列化 int 报错。
+type TeacherListReq struct {
+	DeptID          string `json:"dept_id"`          // 精确，空串不参与过滤
+	ID              string `json:"id"`               // 精确，空串不参与过滤
+	Account         string `json:"account"`          // 模糊
+	Nickname        string `json:"nickname"`         // 模糊
+	Name            string `json:"name"`             // 模糊
+	Title           string `json:"title"`            // 模糊
+	Qualification   string `json:"qualification"`    // 精确（中文）
+	BindSalesCount  string `json:"bind_sales_count"` // 精确，空串不参与过滤；"0" 是有效过滤值
+	Status          string `json:"status"`           // 精确 "1"/"0"
+	UpdateBy        string `json:"update_by"`        // 模糊
+	UpdateBeginTime string `json:"update_begin_time"` // yyyy-MM-dd，与 EndTime 成对生效
+	UpdateEndTime   string `json:"update_end_time"`
+	PageIndex       int    `json:"page_index"`       // 默认 1（service 层兜底）
+	PageSize        int    `json:"page_size"`        // 默认 10，上限 100
 }
 
 // TeacherListFilter 老师列表查询条件（零值字段不参与过滤）

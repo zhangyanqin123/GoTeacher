@@ -21,7 +21,7 @@ func NewResign(svc *service.Service) *ResignHandler {
 	return &ResignHandler{svc: svc}
 }
 
-// List GET /api/v1/dxsf/chatSys/resign/list
+// List GET /api/v1/dxsf/resign/list
 //
 // 错误映射：数字参数格式错误 → 400；其他 → 500（真实原因只进日志）
 //
@@ -41,7 +41,7 @@ func NewResign(svc *service.Service) *ResignHandler {
 //	@Success		200 {object} model.ResignListResp
 //	@Failure		400 {object} response.Response "数字参数格式错误"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/chatSys/resign/list [get]
+//	@Router			/resign/list [get]
 func (h *ResignHandler) List(c *gin.Context) {
 	var f model.ResignListFilter
 
@@ -80,7 +80,7 @@ func (h *ResignHandler) List(c *gin.Context) {
 	}
 }
 
-// Add POST /api/v1/dxsf/chatSys/resign/add
+// Add POST /api/v1/dxsf/resign/add
 //
 // 错误映射：body 绑定失败/同人/内容白名单/remark 超长 → 400；
 // 老师不存在 → 404；其他 → 500
@@ -95,7 +95,7 @@ func (h *ResignHandler) List(c *gin.Context) {
 //	@Failure		400 {object} response.Response "请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200 字符"
 //	@Failure		404 {object} response.Response "老师不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/chatSys/resign/add [post]
+//	@Router			/resign/add [post]
 func (h *ResignHandler) Add(c *gin.Context) {
 	var req model.ResignAddReq
 	if err := c.ShouldBindJSON(&req); err != nil {

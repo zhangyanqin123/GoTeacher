@@ -280,6 +280,50 @@ definitions:
         example: success
         type: string
     type: object
+  model.TeacherListReq:
+    properties:
+      account:
+        description: 模糊
+        type: string
+      bind_sales_count:
+        description: 精确，空串不参与过滤；"0" 是有效过滤值
+        type: string
+      dept_id:
+        description: 精确，空串不参与过滤
+        type: string
+      id:
+        description: 精确，空串不参与过滤
+        type: string
+      name:
+        description: 模糊
+        type: string
+      nickname:
+        description: 模糊
+        type: string
+      page_index:
+        description: 默认 1（service 层兜底）
+        type: integer
+      page_size:
+        description: 默认 10，上限 100
+        type: integer
+      qualification:
+        description: 精确（中文）
+        type: string
+      status:
+        description: 精确 "1"/"0"
+        type: string
+      title:
+        description: 模糊
+        type: string
+      update_begin_time:
+        description: yyyy-MM-dd，与 EndTime 成对生效
+        type: string
+      update_by:
+        description: 模糊
+        type: string
+      update_end_time:
+        type: string
+    type: object
   model.TeacherListResp:
     properties:
       code:
@@ -381,320 +425,6 @@ info:
   title: im系统诊股 API
   version: "1.0"
 paths:
-  /chatSys/resign/add:
-    post:
-      consumes:
-      - application/json
-      description: 原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算
-      parameters:
-      - description: 新增离职转移请求体
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/model.ResignAddReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: msg 固定「转移成功」，data 恒为 null
-          schema:
-            $ref: '#/definitions/model.ActionResp'
-        "400":
-          description: 请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200
-            字符
-          schema:
-            $ref: '#/definitions/response.Response'
-        "404":
-          description: 老师不存在
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 新增离职转移
-      tags:
-      - 离职转移
-  /chatSys/resign/list:
-    get:
-      consumes:
-      - application/json
-      description: 分页查询离职转移记录，零值筛选字段不参与过滤；dept_id 匹配原老师部门
-      parameters:
-      - description: 原老师部门 ID
-        in: query
-        name: dept_id
-        type: integer
-      - description: 原老师 ID（精确）
-        in: query
-        name: original_teacher_id
-        type: integer
-      - description: 接替老师 ID（精确）
-        in: query
-        name: replace_teacher_id
-        type: integer
-      - description: 业务员姓名（模糊）
-        in: query
-        name: salesman_name
-        type: string
-      - description: 转移时间起（yyyy-MM-dd，与 transfer_end_time 成对生效）
-        in: query
-        name: transfer_begin_time
-        type: string
-      - description: 转移时间止（yyyy-MM-dd）
-        in: query
-        name: transfer_end_time
-        type: string
-      - description: 页码（默认 1）
-        in: query
-        name: page_index
-        type: integer
-      - description: 页大小（默认 10，上限 100）
-        in: query
-        name: page_size
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.ResignListResp'
-        "400":
-          description: 数字参数格式错误
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 离职转移列表
-      tags:
-      - 离职转移
-  /chatSys/teacher/bindSales:
-    post:
-      consumes:
-      - application/json
-      description: 追加语义：仅新增绑定，已存在的绑定保持不变；重复绑定幂等
-      parameters:
-      - description: 绑定业务员请求体
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/model.TeacherBindReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: msg 固定「绑定成功」，data 恒为 null
-          schema:
-            $ref: '#/definitions/model.ActionResp'
-        "400":
-          description: 请求体非法
-          schema:
-            $ref: '#/definitions/response.Response'
-        "404":
-          description: 老师不存在
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 绑定业务员
-      tags:
-      - 绑定业务员
-  /chatSys/teacher/bindSales/boundUserIds:
-    get:
-      description: 返回全部已绑定业务员 userId（去重平铺数组），供人员树过滤已绑定人员
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.TeacherBoundResp'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 全量已绑定业务员
-      tags:
-      - 绑定业务员
-  /chatSys/teacher/bindSales/list:
-    get:
-      description: 分页查询指定老师已绑定的业务员（手机号/昵称/部门/绑定时间）
-      parameters:
-      - description: 老师 ID
-        in: query
-        name: teacher_id
-        required: true
-        type: integer
-      - description: 页码（默认 1）
-        in: query
-        name: page_index
-        type: integer
-      - description: 页大小（默认 5，上限 100）
-        in: query
-        name: page_size
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.TeacherSalesListResp'
-        "400":
-          description: teacher_id 缺失或非法
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 老师绑定业务员列表
-      tags:
-      - 绑定业务员
-  /chatSys/teacher/list:
-    get:
-      consumes:
-      - application/json
-      description: 分页查询老师，零值筛选字段不参与过滤；姓名/账号/昵称/头衔/操作人模糊匹配，部门/ID/认证/状态精确匹配
-      parameters:
-      - description: 部门 ID
-        in: query
-        name: dept_id
-        type: integer
-      - description: 老师 ID
-        in: query
-        name: id
-        type: integer
-      - description: 账号（模糊）
-        in: query
-        name: account
-        type: string
-      - description: 昵称（模糊）
-        in: query
-        name: nickname
-        type: string
-      - description: 姓名（模糊）
-        in: query
-        name: name
-        type: string
-      - description: 头衔（模糊）
-        in: query
-        name: title
-        type: string
-      - description: 认证状态（精确：已认证/未认证）
-        enum:
-        - 已认证
-        - 未认证
-        in: query
-        name: qualification
-        type: string
-      - description: 绑定业务员数（精确；传 0 是有效过滤值）
-        in: query
-        name: bind_sales_count
-        type: integer
-      - description: 状态（精确：1 启用 / 0 停用）
-        enum:
-        - "1"
-        - "0"
-        in: query
-        name: status
-        type: string
-      - description: 操作人（模糊）
-        in: query
-        name: update_by
-        type: string
-      - description: 更新时间起（yyyy-MM-dd，与 update_end_time 成对生效）
-        in: query
-        name: update_begin_time
-        type: string
-      - description: 更新时间止（yyyy-MM-dd）
-        in: query
-        name: update_end_time
-        type: string
-      - description: 页码（默认 1）
-        in: query
-        name: page_index
-        type: integer
-      - description: 页大小（默认 10，上限 100）
-        in: query
-        name: page_size
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.TeacherListResp'
-        "400":
-          description: 数字参数格式错误
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 老师列表
-      tags:
-      - 老师管理
-  /chatSys/teacher/options:
-    get:
-      description: 全量老师选项（含停用，离职转移弹窗用）
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.TeacherOptionsResp'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 老师下拉选项
-      tags:
-      - 老师管理
-  /chatSys/teacher/update:
-    put:
-      consumes:
-      - application/json
-      description: 编辑头衔/评级/头像/签名（仅这 4 个字段可改，冗余快照字段一律忽略）
-      parameters:
-      - description: 编辑老师请求体
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/model.TeacherUpdateReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: msg 固定「编辑成功」，data 恒为 null
-          schema:
-            $ref: '#/definitions/model.ActionResp'
-        "400":
-          description: 请求体非法 / rating 非 0/1/2 / 签名超过 200 字符
-          schema:
-            $ref: '#/definitions/response.Response'
-        "404":
-          description: 老师不存在
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 编辑老师
-      tags:
-      - 老师管理
   /diagnose/audit:
     post:
       consumes:
@@ -886,6 +616,264 @@ paths:
       summary: 提交诊股报告
       tags:
       - 诊股记录
+  /resign/add:
+    post:
+      consumes:
+      - application/json
+      description: 原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算
+      parameters:
+      - description: 新增离职转移请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ResignAddReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「转移成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200
+            字符
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 老师不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 新增离职转移
+      tags:
+      - 离职转移
+  /resign/list:
+    get:
+      consumes:
+      - application/json
+      description: 分页查询离职转移记录，零值筛选字段不参与过滤；dept_id 匹配原老师部门
+      parameters:
+      - description: 原老师部门 ID
+        in: query
+        name: dept_id
+        type: integer
+      - description: 原老师 ID（精确）
+        in: query
+        name: original_teacher_id
+        type: integer
+      - description: 接替老师 ID（精确）
+        in: query
+        name: replace_teacher_id
+        type: integer
+      - description: 业务员姓名（模糊）
+        in: query
+        name: salesman_name
+        type: string
+      - description: 转移时间起（yyyy-MM-dd，与 transfer_end_time 成对生效）
+        in: query
+        name: transfer_begin_time
+        type: string
+      - description: 转移时间止（yyyy-MM-dd）
+        in: query
+        name: transfer_end_time
+        type: string
+      - description: 页码（默认 1）
+        in: query
+        name: page_index
+        type: integer
+      - description: 页大小（默认 10，上限 100）
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.ResignListResp'
+        "400":
+          description: 数字参数格式错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 离职转移列表
+      tags:
+      - 离职转移
+  /teacher/bind/salesman:
+    post:
+      consumes:
+      - application/json
+      description: 追加语义：仅新增绑定，已存在的绑定保持不变；重复绑定幂等
+      parameters:
+      - description: 绑定业务员请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.TeacherBindReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「绑定成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 老师不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 绑定业务员
+      tags:
+      - 绑定业务员
+  /teacher/bind/salesman/list:
+    get:
+      description: 分页查询指定老师已绑定的业务员（手机号/昵称/部门/绑定时间）
+      parameters:
+      - description: 老师 ID
+        in: query
+        name: teacher_id
+        required: true
+        type: integer
+      - description: 页码（默认 1）
+        in: query
+        name: page_index
+        type: integer
+      - description: 页大小（默认 5，上限 100）
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.TeacherSalesListResp'
+        "400":
+          description: teacher_id 缺失或非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 老师绑定业务员列表
+      tags:
+      - 绑定业务员
+  /teacher/bind/salesman/users:
+    get:
+      description: 返回全部已绑定业务员 userId（去重平铺数组），供人员树过滤已绑定人员
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.TeacherBoundResp'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 全量已绑定业务员
+      tags:
+      - 绑定业务员
+  /teacher/edit:
+    post:
+      consumes:
+      - application/json
+      description: 编辑头衔/评级/头像/签名（仅这 4 个字段可改，冗余快照字段一律忽略）
+      parameters:
+      - description: 编辑老师请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.TeacherUpdateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「编辑成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / rating 非 0/1/2 / 签名超过 200 字符
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 老师不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 编辑老师
+      tags:
+      - 老师管理
+  /teacher/list:
+    post:
+      consumes:
+      - application/json
+      description: 分页查询老师（筛选条件走 JSON body），零值筛选字段不参与过滤；姓名/账号/昵称/头衔/操作人模糊匹配，部门/ID/认证/状态精确匹配
+      parameters:
+      - description: 查询条件（数值字段传空串表示未填）
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.TeacherListReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.TeacherListResp'
+        "400":
+          description: 请求体非法 / 数字参数格式错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 老师列表
+      tags:
+      - 老师管理
+  /teacher/options:
+    get:
+      description: 全量老师选项（含停用，离职转移弹窗用）
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.TeacherOptionsResp'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 老师下拉选项
+      tags:
+      - 老师管理
 schemes:
 - http
 swagger: "2.0"

@@ -4,7 +4,7 @@
 
 | 项目 | 说明 |
 | --- | --- |
-| 路径 | `/api/v1/dxsf/chatSys/teacher/bindSales/list` |
+| 路径 | `/api/v1/dxsf/teacher/bind/salesman/list` |
 | 方法 | `GET` |
 | 用途 | 分页查询某老师已绑定的业务员列表（老师管理页「绑定业务员」详情弹窗用） |
 | 鉴权 | 无（当前项目仅全局 CORS 中间件，无鉴权） |
@@ -24,7 +24,7 @@
 ### 2.2 请求示例
 
 ```
-GET /api/v1/dxsf/chatSys/teacher/bindSales/list?teacherId=1&pageIndex=1&pageSize=5
+GET /api/v1/dxsf/teacher/bind/salesman/list?teacherId=1&pageIndex=1&pageSize=5
 ```
 
 ## 3. 响应
@@ -83,13 +83,13 @@ GET /api/v1/dxsf/chatSys/teacher/bindSales/list?teacherId=1&pageIndex=1&pageSize
 
 ```bash
 # 默认分页（pageSize=5）
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/list?teacherId=1'
+curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/list?teacherId=1'
 
 # 显式指定分页
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/list?teacherId=1&pageIndex=2&pageSize=10'
+curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/list?teacherId=1&pageIndex=2&pageSize=10'
 
 # 缺少 teacherId → 400
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/list'
+curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/list'
 ```
 
 ## 5. 兼容约定（与前端 mock 严格对齐，改动勿破坏）
@@ -97,7 +97,7 @@ curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/list'
 1. **默认 pageSize=5**：与老师列表接口的默认 10 不同，勿「统一」成同一个常量
 2. **`bindTime` 字符串格式**：`model.DateTimeString` 在 SQL 扫描点格式化为 `2006-01-02 15:04:05`，避免 `time.Time` 序列化成 RFC3339（带 T）破坏前端直接展示
 3. **`list` 无数据时输出 `[]` 而非 `null`**：repository 用 `make([]..., 0, limit)` 初始化
-4. **不返回 `userId`**：弹窗仅展示快照字段；人员树过滤请用配套接口 `GET /teacher/bindSales/boundUserIds`（返回去重 userId 平铺数组）
+4. **不返回 `userId`**：弹窗仅展示快照字段；人员树过滤请用配套接口 `GET /teacher/bind/salesman/users`（返回去重 userId 平铺数组）
 
 ## 6. 设计说明
 
@@ -112,6 +112,6 @@ curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/list'
 
 | 接口 | 关系 |
 | --- | --- |
-| `GET /api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds` | 全量已绑定业务员 userId（绑定弹窗人员树过滤用），详见 [api-bindSales-boundUserIds.md](./api-bindSales-boundUserIds.md) |
-| `POST /api/v1/dxsf/chatSys/teacher/bindSales` | 绑定提交（追加语义，重复绑定幂等）；本接口数据变化即由其产生 |
-| `GET /api/v1/dxsf/chatSys/teacher/list` | 老师列表，`bindSalesCount` 子查询统计的即本接口的 `count` |
+| `GET /api/v1/dxsf/teacher/bind/salesman/users` | 全量已绑定业务员 userId（绑定弹窗人员树过滤用），详见 [api-bindSales-boundUserIds.md](./api-bindSales-boundUserIds.md) |
+| `POST /api/v1/dxsf/teacher/bind/salesman` | 绑定提交（追加语义，重复绑定幂等）；本接口数据变化即由其产生 |
+| `POST /api/v1/dxsf/teacher/list` | 老师列表，`bindSalesCount` 子查询统计的即本接口的 `count` |

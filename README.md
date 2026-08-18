@@ -18,14 +18,14 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 
 | # | 方法 | 路径 | 说明 |
 | --- | --- | --- | --- |
-| 1 | GET | `/api/v1/dxsf/chatSys/teacher/list` | 老师列表（分页 + 多条件筛选） |
-| 2 | GET | `/api/v1/dxsf/chatSys/teacher/options` | 老师下拉选项（含停用，带部门名） |
-| 3 | PUT | `/api/v1/dxsf/chatSys/teacher/update` | 编辑老师（title / rating / avatar / signature） |
-| 4 | GET | `/api/v1/dxsf/chatSys/teacher/bindSales/list` | 老师绑定业务员列表（详情弹窗） |
-| 5 | POST | `/api/v1/dxsf/chatSys/teacher/bindSales` | 绑定业务员（追加语义，重复绑定幂等） |
-| 6 | GET | `/api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds` | 全量已绑定业务员 userId（绑定弹窗人员树过滤用） |
-| 7 | GET | `/api/v1/dxsf/chatSys/resign/list` | 离职转移记录列表（分页 + 多条件筛选） |
-| 8 | POST | `/api/v1/dxsf/chatSys/resign/add` | 新增离职转移 |
+| 1 | POST | `/api/v1/dxsf/teacher/list` | 老师列表（分页 + 多条件筛选） |
+| 2 | GET | `/api/v1/dxsf/teacher/options` | 老师下拉选项（含停用，带部门名） |
+| 3 | POST | `/api/v1/dxsf/teacher/edit` | 编辑老师（title / rating / avatar / signature） |
+| 4 | GET | `/api/v1/dxsf/teacher/bind/salesman/list` | 老师绑定业务员列表（详情弹窗） |
+| 5 | POST | `/api/v1/dxsf/teacher/bind/salesman` | 绑定业务员（追加语义，重复绑定幂等） |
+| 6 | GET | `/api/v1/dxsf/teacher/bind/salesman/users` | 全量已绑定业务员 userId（绑定弹窗人员树过滤用） |
+| 7 | GET | `/api/v1/dxsf/resign/list` | 离职转移记录列表（分页 + 多条件筛选） |
+| 8 | POST | `/api/v1/dxsf/resign/add` | 新增离职转移 |
 
 ### 列表筛选参数
 
@@ -48,27 +48,29 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 ### curl 示例
 
 ```bash
-# 列表（模糊 + 精确 + 分页）
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/list?status=1&name=%E5%BC%A0&page_index=1&page_size=10'
+# 列表（POST body：模糊 + 精确 + 分页，数值字段传空串表示未填）
+curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/list' \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"1","name":"张","page_index":1,"page_size":10}'
 
 # 下拉选项
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/options'
+curl -s 'http://localhost:8080/api/v1/dxsf/teacher/options'
 
 # 编辑老师（rating: 0 无 / 1 初级 / 2 高级）
-curl -s -X PUT 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/update' \
+curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/edit' \
   -H 'Content-Type: application/json' \
   -d '{"id":1,"title":"首席投顾","rating":2,"avatar":"","signature":"签名"}'
 
 # 老师绑定业务员列表
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/list?teacher_id=1&page_index=1&page_size=5'
+curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/list?teacher_id=1&page_index=1&page_size=5'
 
 # 绑定业务员（追加语义；user_ids 为业务员表 id）
-curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales' \
+curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman' \
   -H 'Content-Type: application/json' \
   -d '{"teacher_id":1,"user_ids":[1,2,3]}'
 
 # 全量已绑定业务员 userId（人员树过滤，不分页）
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds'
+curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/users'
 # → {"code":200,"msg":"success","data":[1,2,3,...]}
 ```
 
@@ -121,10 +123,10 @@ curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/boundUserId
 
 ```bash
 # 列表（部门 + 时间范围）
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/resign/list?dept_id=3&transfer_begin_time=2025-08-01&transfer_end_time=2025-08-31&page_index=1&page_size=10'
+curl -s 'http://localhost:8080/api/v1/dxsf/resign/list?dept_id=3&transfer_begin_time=2025-08-01&transfer_end_time=2025-08-31&page_index=1&page_size=10'
 
 # 新增离职转移
-curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/resign/add' \
+curl -s -X POST 'http://localhost:8080/api/v1/dxsf/resign/add' \
   -H 'Content-Type: application/json' \
   -d '{"original_teacher_id":4,"replace_teacher_id":1,"transfer_content":["group"],"remark":"离职交接"}'
 ```
@@ -271,11 +273,13 @@ go run ./cmd/server
 ### 5. 验证
 
 ```bash
-# 老师列表（分页返回 data.list / data.count）
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/list?page_index=1&page_size=10'
+# 老师列表（POST body，分页返回 data.list / data.count）
+curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/list' \
+  -H 'Content-Type: application/json' \
+  -d '{"page_index":1,"page_size":10}'
 
 # 下拉选项
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/options'
+curl -s 'http://localhost:8080/api/v1/dxsf/teacher/options'
 ```
 
 ## 常见问题
