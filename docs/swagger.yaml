@@ -13,32 +13,32 @@ definitions:
     type: object
   model.Diagnose:
     properties:
-      buyNum:
+      buy_num:
         type: integer
-      buyPrice:
+      buy_price:
         type: number
       id:
         type: integer
       remark:
         type: string
-      reportContent:
+      report_content:
         type: string
-      reportSubmitTime:
+      report_submit_time:
         description: NULL→""
         type: string
       status:
         type: integer
-      stockCode:
+      stock_code:
         type: string
-      stockName:
+      stock_name:
         type: string
-      submitTime:
+      submit_time:
         type: string
-      teacherName:
+      teacher_name:
         type: string
-      userName:
+      user_name:
         type: string
-      userNickName:
+      user_nick_name:
         type: string
     type: object
   model.DiagnoseAuditLog:
@@ -56,11 +56,11 @@ definitions:
     type: object
   model.DiagnoseAuditReq:
     properties:
-      auditType:
+      audit_type:
         type: string
       id:
         type: integer
-      rejectReason:
+      reject_reason:
         type: string
       result:
         description: pass / reject
@@ -68,36 +68,36 @@ definitions:
     type: object
   model.DiagnoseDetail:
     properties:
-      auditLogs:
+      audit_logs:
         items:
           $ref: '#/definitions/model.DiagnoseAuditLog'
         type: array
-      buyNum:
+      buy_num:
         type: integer
-      buyPrice:
+      buy_price:
         type: number
       id:
         type: integer
       remark:
         type: string
-      reportContent:
+      report_content:
         type: string
-      reportSubmitTime:
+      report_submit_time:
         description: NULL→""
         type: string
       status:
         type: integer
-      stockCode:
+      stock_code:
         type: string
-      stockName:
+      stock_name:
         type: string
-      submitTime:
+      submit_time:
         type: string
-      teacherName:
+      teacher_name:
         type: string
-      userName:
+      user_name:
         type: string
-      userNickName:
+      user_nick_name:
         type: string
     type: object
   model.DiagnoseDetailResp:
@@ -134,61 +134,61 @@ definitions:
     properties:
       id:
         type: integer
-      reportContent:
+      report_content:
         description: 富文本 HTML
         type: string
     type: object
   model.Resign:
     properties:
-      createdAt:
+      created_at:
         type: string
-      groupCount:
+      group_count:
         description: 原老师绑定业务员数（一业务员一群，后端计算）
         type: integer
       id:
         type: integer
-      operateIp:
+      operate_ip:
         type: string
       operator:
         type: string
-      originalTeacherDept:
+      original_teacher_dept:
         type: string
-      originalTeacherDeptId:
+      original_teacher_dept_id:
         type: integer
-      originalTeacherId:
+      original_teacher_id:
         type: integer
-      originalTeacherName:
+      original_teacher_name:
         type: string
       remark:
         type: string
-      replaceTeacherDept:
+      replace_teacher_dept:
         type: string
-      replaceTeacherId:
+      replace_teacher_id:
         type: integer
-      replaceTeacherName:
+      replace_teacher_name:
         type: string
-      salesmanDept:
+      salesman_dept:
         type: string
-      salesmanName:
+      salesman_name:
         type: string
-      transferContent:
+      transfer_content:
         items:
           type: string
         type: array
-      transferTime:
+      transfer_time:
         type: string
-      updatedAt:
+      updated_at:
         type: string
     type: object
   model.ResignAddReq:
     properties:
-      originalTeacherId:
+      original_teacher_id:
         type: integer
       remark:
         type: string
-      replaceTeacherId:
+      replace_teacher_id:
         type: integer
-      transferContent:
+      transfer_content:
         description: 白名单 group，非空（传 friend 400）
         items:
           type: string
@@ -219,14 +219,14 @@ definitions:
         type: string
       avatar:
         type: string
-      bindSalesCount:
+      bind_sales_count:
         description: 相关子查询带出，不落列
         type: integer
-      createdAt:
+      created_at:
         type: string
-      deptId:
+      dept_id:
         type: integer
-      deptName:
+      dept_name:
         type: string
       id:
         type: integer
@@ -248,18 +248,18 @@ definitions:
         type: string
       title:
         type: string
-      updateBy:
+      update_by:
         type: string
-      updatedAt:
+      updated_at:
         type: string
-      workNo:
+      work_no:
         type: string
     type: object
   model.TeacherBindReq:
     properties:
-      teacherId:
+      teacher_id:
         type: integer
-      userIds:
+      user_ids:
         description: 追加语义，仅新增绑定
         items:
           type: integer
@@ -301,7 +301,7 @@ definitions:
     type: object
   model.TeacherOption:
     properties:
-      deptName:
+      dept_name:
         type: string
       id:
         type: integer
@@ -342,9 +342,9 @@ definitions:
     type: object
   model.TeacherSalesRow:
     properties:
-      bindTime:
+      bind_time:
         type: string
-      deptName:
+      dept_name:
         type: string
       nickname:
         type: string
@@ -385,7 +385,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，groupCount 按原老师绑定数计算
+      description: 原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算
       parameters:
       - description: 新增离职转移请求体
         in: body
@@ -401,7 +401,7 @@ paths:
           schema:
             $ref: '#/definitions/model.ActionResp'
         "400":
-          description: 请求体非法 / 原老师与接替老师相同 / transferContent 白名单校验失败 / remark 超过 200
+          description: 请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200
             字符
           schema:
             $ref: '#/definitions/response.Response'
@@ -420,39 +420,39 @@ paths:
     get:
       consumes:
       - application/json
-      description: 分页查询离职转移记录，零值筛选字段不参与过滤；deptId 匹配原老师部门
+      description: 分页查询离职转移记录，零值筛选字段不参与过滤；dept_id 匹配原老师部门
       parameters:
       - description: 原老师部门 ID
         in: query
-        name: deptId
+        name: dept_id
         type: integer
       - description: 原老师 ID（精确）
         in: query
-        name: originalTeacherId
+        name: original_teacher_id
         type: integer
       - description: 接替老师 ID（精确）
         in: query
-        name: replaceTeacherId
+        name: replace_teacher_id
         type: integer
       - description: 业务员姓名（模糊）
         in: query
-        name: salesmanName
+        name: salesman_name
         type: string
-      - description: 转移时间起（yyyy-MM-dd，与 transferEndTime 成对生效）
+      - description: 转移时间起（yyyy-MM-dd，与 transfer_end_time 成对生效）
         in: query
-        name: transferBeginTime
+        name: transfer_begin_time
         type: string
       - description: 转移时间止（yyyy-MM-dd）
         in: query
-        name: transferEndTime
+        name: transfer_end_time
         type: string
       - description: 页码（默认 1）
         in: query
-        name: pageIndex
+        name: page_index
         type: integer
       - description: 页大小（默认 10，上限 100）
         in: query
-        name: pageSize
+        name: page_size
         type: integer
       produces:
       - application/json
@@ -529,16 +529,16 @@ paths:
       parameters:
       - description: 老师 ID
         in: query
-        name: teacherId
+        name: teacher_id
         required: true
         type: integer
       - description: 页码（默认 1）
         in: query
-        name: pageIndex
+        name: page_index
         type: integer
       - description: 页大小（默认 5，上限 100）
         in: query
-        name: pageSize
+        name: page_size
         type: integer
       produces:
       - application/json
@@ -548,7 +548,7 @@ paths:
           schema:
             $ref: '#/definitions/model.TeacherSalesListResp'
         "400":
-          description: teacherId 缺失或非法
+          description: teacher_id 缺失或非法
           schema:
             $ref: '#/definitions/response.Response'
         "500":
@@ -566,7 +566,7 @@ paths:
       parameters:
       - description: 部门 ID
         in: query
-        name: deptId
+        name: dept_id
         type: integer
       - description: 老师 ID
         in: query
@@ -597,7 +597,7 @@ paths:
         type: string
       - description: 绑定业务员数（精确；传 0 是有效过滤值）
         in: query
-        name: bindSalesCount
+        name: bind_sales_count
         type: integer
       - description: 状态（精确：1 启用 / 0 停用）
         enum:
@@ -608,23 +608,23 @@ paths:
         type: string
       - description: 操作人（模糊）
         in: query
-        name: updateBy
+        name: update_by
         type: string
-      - description: 更新时间起（yyyy-MM-dd，与 updateEndTime 成对生效）
+      - description: 更新时间起（yyyy-MM-dd，与 update_end_time 成对生效）
         in: query
-        name: updateBeginTime
+        name: update_begin_time
         type: string
       - description: 更新时间止（yyyy-MM-dd）
         in: query
-        name: updateEndTime
+        name: update_end_time
         type: string
       - description: 页码（默认 1）
         in: query
-        name: pageIndex
+        name: page_index
         type: integer
       - description: 页大小（默认 10，上限 100）
         in: query
-        name: pageSize
+        name: page_size
         type: integer
       produces:
       - application/json
@@ -700,7 +700,7 @@ paths:
       consumes:
       - application/json
       description: professional 专业审核（状态 2）/ compliance 合规审核（状态 4）；通过 → 3/6，驳回 → 5/4（驳回时
-        rejectReason 必填，富文本 HTML）
+        reject_reason 必填，富文本 HTML）
       parameters:
       - description: 审核请求体
         in: body
@@ -716,7 +716,7 @@ paths:
           schema:
             $ref: '#/definitions/model.ActionResp'
         "400":
-          description: 请求体非法 / auditType 或 result 非法 / 驳回时原因必填 / 当前状态不允许审核
+          description: 请求体非法 / audit_type 或 result 非法 / 驳回时原因必填 / 当前状态不允许审核
           schema:
             $ref: '#/definitions/response.Response'
         "404":
@@ -732,7 +732,7 @@ paths:
       - 诊股记录
   /diagnose/detail:
     get:
-      description: 诊股记录全字段 + 审核流程日志（auditLogs）
+      description: 诊股记录全字段 + 审核流程日志（audit_logs）
       parameters:
       - description: 诊股记录 ID
         in: query
@@ -773,31 +773,31 @@ paths:
         type: integer
       - description: 用户昵称（模糊）
         in: query
-        name: userNickName
+        name: user_nick_name
         type: string
       - description: 用户姓名（模糊）
         in: query
-        name: userName
+        name: user_name
         type: string
       - description: 股票代码（模糊）
         in: query
-        name: stockCode
+        name: stock_code
         type: string
       - description: 股票名称（模糊）
         in: query
-        name: stockName
+        name: stock_name
         type: string
       - description: 买入价（精确，DECIMAL 等值匹配）
         in: query
-        name: buyPrice
+        name: buy_price
         type: number
       - description: 持仓数（精确）
         in: query
-        name: buyNum
+        name: buy_num
         type: integer
       - description: 老师姓名（模糊）
         in: query
-        name: teacherName
+        name: teacher_name
         type: string
       - description: 状态（精确 1-6：1 待提交 2 待审核 3 已驳回 4 待合规 5 合规驳回 6 已通过）
         enum:
@@ -810,29 +810,29 @@ paths:
         in: query
         name: status
         type: integer
-      - description: 提交时间起（yyyy-MM-dd，与 submitEndTime 成对生效，闭合区间）
+      - description: 提交时间起（yyyy-MM-dd，与 submit_end_time 成对生效，闭合区间）
         in: query
-        name: submitBeginTime
+        name: submit_begin_time
         type: string
       - description: 提交时间止（yyyy-MM-dd）
         in: query
-        name: submitEndTime
+        name: submit_end_time
         type: string
-      - description: 报告提交时间起（yyyy-MM-dd，与 reportEndTime 成对生效）
+      - description: 报告提交时间起（yyyy-MM-dd，与 report_end_time 成对生效）
         in: query
-        name: reportBeginTime
+        name: report_begin_time
         type: string
       - description: 报告提交时间止（yyyy-MM-dd）
         in: query
-        name: reportEndTime
+        name: report_end_time
         type: string
       - description: 页码（默认 1）
         in: query
-        name: pageIndex
+        name: page_index
         type: integer
       - description: 页大小（默认 10，上限 100）
         in: query
-        name: pageSize
+        name: page_size
         type: integer
       produces:
       - application/json
@@ -856,7 +856,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 状态 1/3/5 可提交（首次编写 / 重新提审），提交后状态统一回落 2；reportContent 为富文本 HTML
+      description: 状态 1/3/5 可提交（首次编写 / 重新提审），提交后状态统一回落 2；report_content 为富文本 HTML
       parameters:
       - description: 提交报告请求体
         in: body

@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/chatSys/resign/add": {
             "post": {
-                "description": "原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，groupCount 按原老师绑定数计算",
+                "description": "原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算",
                 "consumes": [
                     "application/json"
                 ],
@@ -47,7 +47,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求体非法 / 原老师与接替老师相同 / transferContent 白名单校验失败 / remark 超过 200 字符",
+                        "description": "请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200 字符",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -69,7 +69,7 @@ const docTemplate = `{
         },
         "/chatSys/resign/list": {
             "get": {
-                "description": "分页查询离职转移记录，零值筛选字段不参与过滤；deptId 匹配原老师部门",
+                "description": "分页查询离职转移记录，零值筛选字段不参与过滤；dept_id 匹配原老师部门",
                 "consumes": [
                     "application/json"
                 ],
@@ -84,49 +84,49 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "原老师部门 ID",
-                        "name": "deptId",
+                        "name": "dept_id",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "description": "原老师 ID（精确）",
-                        "name": "originalTeacherId",
+                        "name": "original_teacher_id",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "description": "接替老师 ID（精确）",
-                        "name": "replaceTeacherId",
+                        "name": "replace_teacher_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "业务员姓名（模糊）",
-                        "name": "salesmanName",
+                        "name": "salesman_name",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "转移时间起（yyyy-MM-dd，与 transferEndTime 成对生效）",
-                        "name": "transferBeginTime",
+                        "description": "转移时间起（yyyy-MM-dd，与 transfer_end_time 成对生效）",
+                        "name": "transfer_begin_time",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "转移时间止（yyyy-MM-dd）",
-                        "name": "transferEndTime",
+                        "name": "transfer_end_time",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "description": "页码（默认 1）",
-                        "name": "pageIndex",
+                        "name": "page_index",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "description": "页大小（默认 10，上限 100）",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "query"
                     }
                 ],
@@ -244,20 +244,20 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "老师 ID",
-                        "name": "teacherId",
+                        "name": "teacher_id",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "integer",
                         "description": "页码（默认 1）",
-                        "name": "pageIndex",
+                        "name": "page_index",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "description": "页大小（默认 5，上限 100）",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "query"
                     }
                 ],
@@ -269,7 +269,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "teacherId 缺失或非法",
+                        "description": "teacher_id 缺失或非法",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -300,7 +300,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "部门 ID",
-                        "name": "deptId",
+                        "name": "dept_id",
                         "in": "query"
                     },
                     {
@@ -346,7 +346,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "绑定业务员数（精确；传 0 是有效过滤值）",
-                        "name": "bindSalesCount",
+                        "name": "bind_sales_count",
                         "in": "query"
                     },
                     {
@@ -362,31 +362,31 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "操作人（模糊）",
-                        "name": "updateBy",
+                        "name": "update_by",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "更新时间起（yyyy-MM-dd，与 updateEndTime 成对生效）",
-                        "name": "updateBeginTime",
+                        "description": "更新时间起（yyyy-MM-dd，与 update_end_time 成对生效）",
+                        "name": "update_begin_time",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "更新时间止（yyyy-MM-dd）",
-                        "name": "updateEndTime",
+                        "name": "update_end_time",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "description": "页码（默认 1）",
-                        "name": "pageIndex",
+                        "name": "page_index",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "description": "页大小（默认 10，上限 100）",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "query"
                     }
                 ],
@@ -492,7 +492,7 @@ const docTemplate = `{
         },
         "/diagnose/audit": {
             "post": {
-                "description": "professional 专业审核（状态 2）/ compliance 合规审核（状态 4）；通过 → 3/6，驳回 → 5/4（驳回时 rejectReason 必填，富文本 HTML）",
+                "description": "professional 专业审核（状态 2）/ compliance 合规审核（状态 4）；通过 → 3/6，驳回 → 5/4（驳回时 reject_reason 必填，富文本 HTML）",
                 "consumes": [
                     "application/json"
                 ],
@@ -522,7 +522,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求体非法 / auditType 或 result 非法 / 驳回时原因必填 / 当前状态不允许审核",
+                        "description": "请求体非法 / audit_type 或 result 非法 / 驳回时原因必填 / 当前状态不允许审核",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -544,7 +544,7 @@ const docTemplate = `{
         },
         "/diagnose/detail": {
             "get": {
-                "description": "诊股记录全字段 + 审核流程日志（auditLogs）",
+                "description": "诊股记录全字段 + 审核流程日志（audit_logs）",
                 "produces": [
                     "application/json"
                 ],
@@ -612,43 +612,43 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "用户昵称（模糊）",
-                        "name": "userNickName",
+                        "name": "user_nick_name",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "用户姓名（模糊）",
-                        "name": "userName",
+                        "name": "user_name",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "股票代码（模糊）",
-                        "name": "stockCode",
+                        "name": "stock_code",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "股票名称（模糊）",
-                        "name": "stockName",
+                        "name": "stock_name",
                         "in": "query"
                     },
                     {
                         "type": "number",
                         "description": "买入价（精确，DECIMAL 等值匹配）",
-                        "name": "buyPrice",
+                        "name": "buy_price",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "description": "持仓数（精确）",
-                        "name": "buyNum",
+                        "name": "buy_num",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "老师姓名（模糊）",
-                        "name": "teacherName",
+                        "name": "teacher_name",
                         "in": "query"
                     },
                     {
@@ -667,38 +667,38 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "提交时间起（yyyy-MM-dd，与 submitEndTime 成对生效，闭合区间）",
-                        "name": "submitBeginTime",
+                        "description": "提交时间起（yyyy-MM-dd，与 submit_end_time 成对生效，闭合区间）",
+                        "name": "submit_begin_time",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "提交时间止（yyyy-MM-dd）",
-                        "name": "submitEndTime",
+                        "name": "submit_end_time",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "报告提交时间起（yyyy-MM-dd，与 reportEndTime 成对生效）",
-                        "name": "reportBeginTime",
+                        "description": "报告提交时间起（yyyy-MM-dd，与 report_end_time 成对生效）",
+                        "name": "report_begin_time",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "报告提交时间止（yyyy-MM-dd）",
-                        "name": "reportEndTime",
+                        "name": "report_end_time",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "description": "页码（默认 1）",
-                        "name": "pageIndex",
+                        "name": "page_index",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "description": "页大小（默认 10，上限 100）",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "query"
                     }
                 ],
@@ -726,7 +726,7 @@ const docTemplate = `{
         },
         "/diagnose/submitReport": {
             "post": {
-                "description": "状态 1/3/5 可提交（首次编写 / 重新提审），提交后状态统一回落 2；reportContent 为富文本 HTML",
+                "description": "状态 1/3/5 可提交（首次编写 / 重新提审），提交后状态统一回落 2；report_content 为富文本 HTML",
                 "consumes": [
                     "application/json"
                 ],
@@ -797,10 +797,10 @@ const docTemplate = `{
         "model.Diagnose": {
             "type": "object",
             "properties": {
-                "buyNum": {
+                "buy_num": {
                     "type": "integer"
                 },
-                "buyPrice": {
+                "buy_price": {
                     "type": "number"
                 },
                 "id": {
@@ -809,32 +809,32 @@ const docTemplate = `{
                 "remark": {
                     "type": "string"
                 },
-                "reportContent": {
+                "report_content": {
                     "type": "string"
                 },
-                "reportSubmitTime": {
+                "report_submit_time": {
                     "description": "NULL→\"\"",
                     "type": "string"
                 },
                 "status": {
                     "type": "integer"
                 },
-                "stockCode": {
+                "stock_code": {
                     "type": "string"
                 },
-                "stockName": {
+                "stock_name": {
                     "type": "string"
                 },
-                "submitTime": {
+                "submit_time": {
                     "type": "string"
                 },
-                "teacherName": {
+                "teacher_name": {
                     "type": "string"
                 },
-                "userName": {
+                "user_name": {
                     "type": "string"
                 },
-                "userNickName": {
+                "user_nick_name": {
                     "type": "string"
                 }
             }
@@ -862,13 +862,13 @@ const docTemplate = `{
         "model.DiagnoseAuditReq": {
             "type": "object",
             "properties": {
-                "auditType": {
+                "audit_type": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "rejectReason": {
+                "reject_reason": {
                     "type": "string"
                 },
                 "result": {
@@ -880,16 +880,16 @@ const docTemplate = `{
         "model.DiagnoseDetail": {
             "type": "object",
             "properties": {
-                "auditLogs": {
+                "audit_logs": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.DiagnoseAuditLog"
                     }
                 },
-                "buyNum": {
+                "buy_num": {
                     "type": "integer"
                 },
-                "buyPrice": {
+                "buy_price": {
                     "type": "number"
                 },
                 "id": {
@@ -898,32 +898,32 @@ const docTemplate = `{
                 "remark": {
                     "type": "string"
                 },
-                "reportContent": {
+                "report_content": {
                     "type": "string"
                 },
-                "reportSubmitTime": {
+                "report_submit_time": {
                     "description": "NULL→\"\"",
                     "type": "string"
                 },
                 "status": {
                     "type": "integer"
                 },
-                "stockCode": {
+                "stock_code": {
                     "type": "string"
                 },
-                "stockName": {
+                "stock_name": {
                     "type": "string"
                 },
-                "submitTime": {
+                "submit_time": {
                     "type": "string"
                 },
-                "teacherName": {
+                "teacher_name": {
                     "type": "string"
                 },
-                "userName": {
+                "user_name": {
                     "type": "string"
                 },
-                "userNickName": {
+                "user_nick_name": {
                     "type": "string"
                 }
             }
@@ -978,7 +978,7 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "reportContent": {
+                "report_content": {
                     "description": "富文本 HTML",
                     "type": "string"
                 }
@@ -987,62 +987,62 @@ const docTemplate = `{
         "model.Resign": {
             "type": "object",
             "properties": {
-                "createdAt": {
+                "created_at": {
                     "type": "string"
                 },
-                "groupCount": {
+                "group_count": {
                     "description": "原老师绑定业务员数（一业务员一群，后端计算）",
                     "type": "integer"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "operateIp": {
+                "operate_ip": {
                     "type": "string"
                 },
                 "operator": {
                     "type": "string"
                 },
-                "originalTeacherDept": {
+                "original_teacher_dept": {
                     "type": "string"
                 },
-                "originalTeacherDeptId": {
+                "original_teacher_dept_id": {
                     "type": "integer"
                 },
-                "originalTeacherId": {
+                "original_teacher_id": {
                     "type": "integer"
                 },
-                "originalTeacherName": {
+                "original_teacher_name": {
                     "type": "string"
                 },
                 "remark": {
                     "type": "string"
                 },
-                "replaceTeacherDept": {
+                "replace_teacher_dept": {
                     "type": "string"
                 },
-                "replaceTeacherId": {
+                "replace_teacher_id": {
                     "type": "integer"
                 },
-                "replaceTeacherName": {
+                "replace_teacher_name": {
                     "type": "string"
                 },
-                "salesmanDept": {
+                "salesman_dept": {
                     "type": "string"
                 },
-                "salesmanName": {
+                "salesman_name": {
                     "type": "string"
                 },
-                "transferContent": {
+                "transfer_content": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
-                "transferTime": {
+                "transfer_time": {
                     "type": "string"
                 },
-                "updatedAt": {
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -1050,16 +1050,16 @@ const docTemplate = `{
         "model.ResignAddReq": {
             "type": "object",
             "properties": {
-                "originalTeacherId": {
+                "original_teacher_id": {
                     "type": "integer"
                 },
                 "remark": {
                     "type": "string"
                 },
-                "replaceTeacherId": {
+                "replace_teacher_id": {
                     "type": "integer"
                 },
-                "transferContent": {
+                "transfer_content": {
                     "description": "白名单 group，非空（传 friend 400）",
                     "type": "array",
                     "items": {
@@ -1105,17 +1105,17 @@ const docTemplate = `{
                 "avatar": {
                     "type": "string"
                 },
-                "bindSalesCount": {
+                "bind_sales_count": {
                     "description": "相关子查询带出，不落列",
                     "type": "integer"
                 },
-                "createdAt": {
+                "created_at": {
                     "type": "string"
                 },
-                "deptId": {
+                "dept_id": {
                     "type": "integer"
                 },
-                "deptName": {
+                "dept_name": {
                     "type": "string"
                 },
                 "id": {
@@ -1147,13 +1147,13 @@ const docTemplate = `{
                 "title": {
                     "type": "string"
                 },
-                "updateBy": {
+                "update_by": {
                     "type": "string"
                 },
-                "updatedAt": {
+                "updated_at": {
                     "type": "string"
                 },
-                "workNo": {
+                "work_no": {
                     "type": "string"
                 }
             }
@@ -1161,10 +1161,10 @@ const docTemplate = `{
         "model.TeacherBindReq": {
             "type": "object",
             "properties": {
-                "teacherId": {
+                "teacher_id": {
                     "type": "integer"
                 },
-                "userIds": {
+                "user_ids": {
                     "description": "追加语义，仅新增绑定",
                     "type": "array",
                     "items": {
@@ -1226,7 +1226,7 @@ const docTemplate = `{
         "model.TeacherOption": {
             "type": "object",
             "properties": {
-                "deptName": {
+                "dept_name": {
                     "type": "string"
                 },
                 "id": {
@@ -1287,10 +1287,10 @@ const docTemplate = `{
         "model.TeacherSalesRow": {
             "type": "object",
             "properties": {
-                "bindTime": {
+                "bind_time": {
                     "type": "string"
                 },
-                "deptName": {
+                "dept_name": {
                     "type": "string"
                 },
                 "nickname": {

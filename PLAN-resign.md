@@ -115,3 +115,5 @@ groupCount/salesman 快照取自转移前的查询，快照语义不变（可能
   导致确认转移后老师列表关联业务人员数不变。`InsertResign` 改名 `TransferResign` 扩为三步事务
   （删重叠/移剩余/落快照，见设计决策 6），重叠绑定去重合并（保留接替老师现有 bind_time）；
   service 调用点同步换名。无 schema 变更、无新增错误类型（1062 冲突走既有 500 分支）。
+
+> **2026-08-18 字段命名整体迁移 snake_case**：本文中的驼峰字段名（originalTeacherId/transferContent 等）已全部改为蛇形（original_teacher_id/transfer_content），以 [PLAN-api-snake-case.md](PLAN-api-snake-case.md) 为准。

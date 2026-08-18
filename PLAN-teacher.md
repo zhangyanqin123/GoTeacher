@@ -59,3 +59,5 @@
 - 编辑：字段落库、rating 白名单 400、不存在 404、updatedAt/updateBy 自动更新
 - 绑定：全量替换、空数组解绑、重复 id 去重、不存在 userId 400、不存在 teacherId 404
 - 重启幂等：种子不重复、编辑/绑定结果保留；原 house 接口无回归（total=2312）
+
+> **2026-08-18 字段命名整体迁移 snake_case**：本文接口清单与验证记录中的驼峰字段名（bindSalesCount/deptId 等）已全部改为蛇形（bind_sales_count/dept_id），以 [PLAN-api-snake-case.md](PLAN-api-snake-case.md) 为准。

@@ -31,10 +31,10 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 
 | 参数 | 匹配 | 说明 |
 | --- | --- | --- |
-| deptId / id / qualification / bindSalesCount / status | 精确 | status 传 `"1"`/`"0"`；qualification 传中文 |
-| account / nickname / name / title / updateBy | 模糊 | LIKE %val% |
-| updateBeginTime + updateEndTime | 范围 | yyyy-MM-dd，按 updatedAt 闭区间，成对生效 |
-| pageIndex / pageSize | 分页 | 默认 1 / 10（绑定列表默认 pageSize=5），pageSize 上限 100 |
+| dept_id / id / qualification / bind_sales_count / status | 精确 | status 传 `"1"`/`"0"`；qualification 传中文 |
+| account / nickname / name / title / update_by | 模糊 | LIKE %val% |
+| update_begin_time + update_end_time | 范围 | yyyy-MM-dd，按 updated_at 闭区间，成对生效 |
+| page_index / page_size | 分页 | 默认 1 / 10（绑定列表默认 page_size=5），page_size 上限 100 |
 
 ### 响应约定（与前端 mock 对齐的兼容点）
 
@@ -49,7 +49,7 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 
 ```bash
 # 列表（模糊 + 精确 + 分页）
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/list?status=1&name=%E5%BC%A0&pageIndex=1&pageSize=10'
+curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/list?status=1&name=%E5%BC%A0&page_index=1&page_size=10'
 
 # 下拉选项
 curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/options'
@@ -60,12 +60,12 @@ curl -s -X PUT 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/update' \
   -d '{"id":1,"title":"首席投顾","rating":2,"avatar":"","signature":"签名"}'
 
 # 老师绑定业务员列表
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/list?teacherId=1&pageIndex=1&pageSize=5'
+curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/list?teacher_id=1&page_index=1&page_size=5'
 
-# 绑定业务员（追加语义；userIds 为业务员表 id）
+# 绑定业务员（追加语义；user_ids 为业务员表 id）
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales' \
   -H 'Content-Type: application/json' \
-  -d '{"teacherId":1,"userIds":[1,2,3]}'
+  -d '{"teacher_id":1,"user_ids":[1,2,3]}'
 
 # 全量已绑定业务员 userId（人员树过滤，不分页）
 curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/boundUserIds'
@@ -96,37 +96,37 @@ curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/bindSales/boundUserId
 
 | 参数 | 匹配 | 说明 |
 | --- | --- | --- |
-| deptId / originalTeacherId / replaceTeacherId | 精确 | deptId 匹配原老师部门 |
-| salesmanName | 模糊 | LIKE %val% |
-| transferBeginTime + transferEndTime | 范围 | yyyy-MM-dd，按 transferTime 闭区间，成对生效 |
-| pageIndex / pageSize | 分页 | 默认 1 / 10，pageSize 上限 100，id 倒序（最新在前） |
+| dept_id / original_teacher_id / replace_teacher_id | 精确 | dept_id 匹配原老师部门 |
+| salesman_name | 模糊 | LIKE %val% |
+| transfer_begin_time + transfer_end_time | 范围 | yyyy-MM-dd，按 transfer_time 闭区间，成对生效 |
+| page_index / page_size | 分页 | 默认 1 / 10，page_size 上限 100，id 倒序（最新在前） |
 
 ### 新增请求体
 
 ```json
-{ "originalTeacherId": 4, "replaceTeacherId": 1, "transferContent": ["group"], "remark": "离职交接" }
+{ "original_teacher_id": 4, "replace_teacher_id": 1, "transfer_content": ["group"], "remark": "离职交接" }
 ```
 
-- `transferContent` 白名单 `group`（转移客户群），非空；`friend` 及其他值 400
+- `transfer_content` 白名单 `group`（转移客户群），非空；`friend` 及其他值 400
 - 原/接替老师不能相同（400），老师不存在 404
-- `groupCount` 由后端计算（=原老师绑定业务员数，一个绑定业务员对应一个客户群），请求体不接收该字段；旧客户端多传的 `groupCount`/`friendCount` 会被 gin 静默忽略
-- `operator` 无登录态固定 `admin`；`operateIp` 取 `c.ClientIP()`；`transferTime` 库端 NOW()
+- `group_count` 由后端计算（=原老师绑定业务员数，一个绑定业务员对应一个客户群），请求体不接收该字段；旧客户端多传的 `group_count`/`friend_count` 会被 gin 静默忽略
+- `operator` 无登录态固定 `admin`；`operate_ip` 取 `c.ClientIP()`；`transfer_time` 库端 NOW()
 
 ### 响应约定
 
-- 列表 `data.list` / `data.count`；`transferContent` 输出数组（库存逗号串）；时间字段 `YYYY-MM-DD HH:mm:ss`
+- 列表 `data.list` / `data.count`；`transfer_content` 输出数组（库存逗号串）；时间字段 `YYYY-MM-DD HH:mm:ss`
 - 新增成功 `{code:200, msg:"转移成功"}`
 
 ### curl 示例
 
 ```bash
 # 列表（部门 + 时间范围）
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/resign/list?deptId=3&transferBeginTime=2025-08-01&transferEndTime=2025-08-31&pageIndex=1&pageSize=10'
+curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/resign/list?dept_id=3&transfer_begin_time=2025-08-01&transfer_end_time=2025-08-31&page_index=1&page_size=10'
 
 # 新增离职转移
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/resign/add' \
   -H 'Content-Type: application/json' \
-  -d '{"originalTeacherId":4,"replaceTeacherId":1,"transferContent":["group"],"remark":"离职交接"}'
+  -d '{"original_teacher_id":4,"replace_teacher_id":1,"transfer_content":["group"],"remark":"离职交接"}'
 ```
 
 ### 表设计
@@ -166,28 +166,28 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/resign/add' \
 
 | 参数 | 匹配 | 说明 |
 | --- | --- | --- |
-| id / buyPrice / buyNum / status | 精确 | 数值格式错误 400；status 白名单 1-6；传 `0` 亦为有效过滤值（指针区分未传） |
-| userNickName / userName / stockCode / stockName / teacherName | 模糊 | LIKE %val% |
-| submitBeginTime + submitEndTime | 范围 | yyyy-MM-dd，按 submitTime 闭区间，成对生效 |
-| reportBeginTime + reportEndTime | 范围 | yyyy-MM-dd，按 reportSubmitTime 闭区间（未提审的天然排除） |
-| pageIndex / pageSize | 分页 | 默认 1 / 10，pageSize 上限 100，id 倒序（最新在前） |
+| id / buy_price / buy_num / status | 精确 | 数值格式错误 400；status 白名单 1-6；传 `0` 亦为有效过滤值（指针区分未传） |
+| user_nick_name / user_name / stock_code / stock_name / teacher_name | 模糊 | LIKE %val% |
+| submit_begin_time + submit_end_time | 范围 | yyyy-MM-dd，按 submit_time 闭区间，成对生效 |
+| report_begin_time + report_end_time | 范围 | yyyy-MM-dd，按 report_submit_time 闭区间（未提审的天然排除） |
+| page_index / page_size | 分页 | 默认 1 / 10，page_size 上限 100，id 倒序（最新在前） |
 
 ### 请求体
 
 ```json
-// POST /diagnose/submitReport：reportContent 为富文本 HTML，去标签全空白视为未填写（400）
-{ "id": 1, "reportContent": "<p>诊股结论：持股待涨</p>" }
+// POST /diagnose/submitReport：report_content 为富文本 HTML，去标签全空白视为未填写（400）
+{ "id": 1, "report_content": "<p>诊股结论：持股待涨</p>" }
 
-// POST /diagnose/audit：auditType 白名单 professional / compliance，result 白名单 pass / reject；
-// reject 时 rejectReason 必填（富文本，同样判空）
-{ "id": 1, "auditType": "professional", "result": "reject", "rejectReason": "<p>结论依据不足</p>" }
+// POST /diagnose/audit：audit_type 白名单 professional / compliance，result 白名单 pass / reject；
+// reject 时 reject_reason 必填（富文本，同样判空）
+{ "id": 1, "audit_type": "professional", "result": "reject", "reject_reason": "<p>结论依据不足</p>" }
 ```
 
 ### 响应约定
 
 - 成功 msg：`success` / `提交成功` / `审核通过` / `已驳回`（mock 约定）
-- `buyPrice` DECIMAL 扫 float64 输出 `1680.5`；时间字段 `YYYY-MM-DD HH:mm:ss`，`reportSubmitTime` 未提审输出空串
-- detail = 主表全字段 + `auditLogs` 数组（按 id 正序 = 时间序）；记录不存在 404（较 mock 的 `data:null` 收紧）
+- `buy_price` DECIMAL 扫 float64 输出 `1680.5`；时间字段 `YYYY-MM-DD HH:mm:ss`，`report_submit_time` 未提审输出空串
+- detail = 主表全字段 + `audit_logs` 数组（按 id 正序 = 时间序）；记录不存在 404（较 mock 的 `data:null` 收紧）
 - 并发守卫：写前查询区分 404/400，事务内条件 UPDATE（`WHERE status IN (1,3,5)` / `WHERE status = ?`），`RowsAffected == 0` 回滚返回 400（纯 SELECT-then-UPDATE 有 TOCTOU）
 - 审核 operator 无登录态固定 `专业审核员` / `合规审核员`；`log_time` 库端 NOW()
 
@@ -195,7 +195,7 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/chatSys/resign/add' \
 
 ```bash
 # 列表（状态 + 股票名模糊）
-curl -s 'http://localhost:8080/api/v1/dxsf/diagnose/list?status=2&stockName=%E4%BA%94%E7%B2%AE&pageIndex=1&pageSize=10'
+curl -s 'http://localhost:8080/api/v1/dxsf/diagnose/list?status=2&stockName=%E4%BA%94%E7%B2%AE&page_index=1&page_size=10'
 
 # 详情（含审核流程日志，按时间正序）
 curl -s 'http://localhost:8080/api/v1/dxsf/diagnose/detail?id=5'
@@ -203,12 +203,12 @@ curl -s 'http://localhost:8080/api/v1/dxsf/diagnose/detail?id=5'
 # 提交诊股报告（状态 1/3/5 → 2）
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/diagnose/submitReport' \
   -H 'Content-Type: application/json' \
-  -d '{"id":1,"reportContent":"<p>诊股结论：持股待涨</p>"}'
+  -d '{"id":1,"report_content":"<p>诊股结论：持股待涨</p>"}'
 
-# 专业审核通过（2 → 4）；驳回把 result 换成 reject 并带 rejectReason
+# 专业审核通过（2 → 4）；驳回把 result 换成 reject 并带 reject_reason
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/diagnose/audit' \
   -H 'Content-Type: application/json' \
-  -d '{"id":1,"auditType":"professional","result":"pass"}'
+  -d '{"id":1,"audit_type":"professional","result":"pass"}'
 ```
 
 ### 表设计
@@ -272,7 +272,7 @@ go run ./cmd/server
 
 ```bash
 # 老师列表（分页返回 data.list / data.count）
-curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/list?pageIndex=1&pageSize=10'
+curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/list?page_index=1&page_size=10'
 
 # 下拉选项
 curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/options'

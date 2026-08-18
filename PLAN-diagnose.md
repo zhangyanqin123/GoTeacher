@@ -198,3 +198,5 @@ mock 原为 200 + data:null；收紧为 404 对齐 teacher/resign 先例。前�
 - C 端写 remark 的接口（不在本仓库）建议复用 internal/sanitize 白名单入库净化
 
 
+
+> **2026-08-18 字段命名整体迁移 snake_case**：本文中的驼峰字段名（userNickName/reportContent/auditLogs 等）已全部改为蛇形（user_nick_name/report_content/audit_logs），以 [PLAN-api-snake-case.md](PLAN-api-snake-case.md) 为准。

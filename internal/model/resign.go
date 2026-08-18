@@ -9,23 +9,23 @@ package model
 //   - TransferTime 等用 DateTimeString：扫描点格式化为 "2006-01-02 15:04:05"
 type Resign struct {
 	ID                    int64          `json:"id"                      db:"id"`
-	OriginalTeacherID     int64          `json:"originalTeacherId"       db:"original_teacher_id"`
-	OriginalTeacherName   string         `json:"originalTeacherName"     db:"original_teacher_name"`
-	OriginalTeacherDeptID int64          `json:"originalTeacherDeptId"   db:"original_teacher_dept_id"`
-	OriginalTeacherDept   string         `json:"originalTeacherDept"     db:"original_teacher_dept"`
-	ReplaceTeacherID      int64          `json:"replaceTeacherId"        db:"replace_teacher_id"`
-	ReplaceTeacherName    string         `json:"replaceTeacherName"      db:"replace_teacher_name"`
-	ReplaceTeacherDept    string         `json:"replaceTeacherDept"      db:"replace_teacher_dept"`
-	SalesmanName          string         `json:"salesmanName"            db:"salesman_name"`
-	SalesmanDept          string         `json:"salesmanDept"            db:"salesman_dept"`
-	TransferContent       StringSlice    `json:"transferContent"         db:"transfer_content"`
-	GroupCount            int            `json:"groupCount"              db:"group_count"` // 原老师绑定业务员数（一业务员一群，后端计算）
-	Operator              string         `json:"operator"                db:"operator"`
-	OperateIP             string         `json:"operateIp"               db:"operate_ip"`
-	TransferTime          DateTimeString `json:"transferTime"            db:"transfer_time"`
-	Remark                string         `json:"remark"                  db:"remark"`
-	CreatedAt             DateTimeString `json:"createdAt"               db:"created_at"`
-	UpdatedAt             DateTimeString `json:"updatedAt"               db:"updated_at"`
+	OriginalTeacherID     int64          `json:"original_teacher_id"      db:"original_teacher_id"`
+	OriginalTeacherName   string         `json:"original_teacher_name"    db:"original_teacher_name"`
+	OriginalTeacherDeptID int64          `json:"original_teacher_dept_id" db:"original_teacher_dept_id"`
+	OriginalTeacherDept   string         `json:"original_teacher_dept"    db:"original_teacher_dept"`
+	ReplaceTeacherID      int64          `json:"replace_teacher_id"       db:"replace_teacher_id"`
+	ReplaceTeacherName    string         `json:"replace_teacher_name"     db:"replace_teacher_name"`
+	ReplaceTeacherDept    string         `json:"replace_teacher_dept"     db:"replace_teacher_dept"`
+	SalesmanName          string         `json:"salesman_name"            db:"salesman_name"`
+	SalesmanDept          string         `json:"salesman_dept"            db:"salesman_dept"`
+	TransferContent       StringSlice    `json:"transfer_content"         db:"transfer_content"`
+	GroupCount            int            `json:"group_count"              db:"group_count"` // 原老师绑定业务员数（一业务员一群，后端计算）
+	Operator              string         `json:"operator"                 db:"operator"`
+	OperateIP             string         `json:"operate_ip"               db:"operate_ip"`
+	TransferTime          DateTimeString `json:"transfer_time"            db:"transfer_time"`
+	Remark                string         `json:"remark"                   db:"remark"`
+	CreatedAt             DateTimeString `json:"created_at"               db:"created_at"`
+	UpdatedAt             DateTimeString `json:"updated_at"               db:"updated_at"`
 }
 
 // ResignInsert 新增离职转移落库参数（service 组装完冗余快照后传给 repository）
@@ -47,12 +47,12 @@ type ResignInsert struct {
 }
 
 // ResignAddReq 新增离职转移请求体（POST /resign/add）。
-// 前端还会传 originalTeacherName 等 4 个冗余字段，后端不声明（gin 忽略未知键），
-// 一律从 teacher 表回查（单一事实来源）；groupCount 由后端按原老师绑定业务员数计算，不接收前端传值。
+// 前端还会传 original_teacher_name 等 4 个冗余字段，后端不声明（gin 忽略未知键），
+// 一律从 teacher 表回查（单一事实来源）；group_count 由后端按原老师绑定业务员数计算，不接收前端传值。
 type ResignAddReq struct {
-	OriginalTeacherID int64    `json:"originalTeacherId"`
-	ReplaceTeacherID  int64    `json:"replaceTeacherId"`
-	TransferContent   []string `json:"transferContent"` // 白名单 group，非空（传 friend 400）
+	OriginalTeacherID int64    `json:"original_teacher_id"`
+	ReplaceTeacherID  int64    `json:"replace_teacher_id"`
+	TransferContent   []string `json:"transfer_content"` // 白名单 group，非空（传 friend 400）
 	Remark            string   `json:"remark"`
 }
 
@@ -70,14 +70,14 @@ type ResignListFilter struct {
 
 // TeacherBrief 老师简要信息（add 回查姓名/部门用，避免污染 teacher.go）
 type TeacherBrief struct {
-	ID       int64  `json:"id"        db:"id"`
-	Name     string `json:"name"      db:"name"`
-	DeptID   int64  `json:"deptId"    db:"dept_id"`
-	DeptName string `json:"deptName"  db:"dept_name"`
+	ID       int64  `json:"id"         db:"id"`
+	Name     string `json:"name"       db:"name"`
+	DeptID   int64  `json:"dept_id"    db:"dept_id"`
+	DeptName string `json:"dept_name"  db:"dept_name"`
 }
 
 // TeacherSalesmanBrief 业务员简要信息（add 回查原老师绑定业务员用）
 type TeacherSalesmanBrief struct {
-	Nickname string `json:"nickname"  db:"nickname"`
-	DeptName string `json:"deptName"  db:"dept_name"`
+	Nickname string `json:"nickname"   db:"nickname"`
+	DeptName string `json:"dept_name"  db:"dept_name"`
 }

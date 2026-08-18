@@ -14,33 +14,33 @@ type Teacher struct {
 	Nickname       string         `json:"nickname"         db:"nickname"`
 	Title          string         `json:"title"            db:"title"`
 	Qualification  string         `json:"qualification"    db:"qualification"`
-	BindSalesCount int            `json:"bindSalesCount"   db:"-"` // 相关子查询带出，不落列
-	DeptID         int64          `json:"deptId"           db:"dept_id"`
-	DeptName       string         `json:"deptName"         db:"dept_name"`
+	BindSalesCount int            `json:"bind_sales_count" db:"-"` // 相关子查询带出，不落列
+	DeptID         int64          `json:"dept_id"          db:"dept_id"`
+	DeptName       string         `json:"dept_name"        db:"dept_name"`
 	Phone          string         `json:"phone"            db:"phone"`
-	WorkNo         string         `json:"workNo"           db:"work_no"`
+	WorkNo         string         `json:"work_no"          db:"work_no"`
 	Status         string         `json:"status"           db:"status"` // 输出 "1"/"0"
 	Rating         int            `json:"rating"           db:"rating"` // 种子 1-5，编辑后 0/1/2
 	Avatar         string         `json:"avatar"           db:"avatar"`
 	Signature      string         `json:"signature"        db:"signature"`
-	CreatedAt      DateTimeString `json:"createdAt"        db:"created_at"`
-	UpdatedAt      DateTimeString `json:"updatedAt"        db:"updated_at"`
-	UpdateBy       string         `json:"updateBy"         db:"update_by"`
+	CreatedAt      DateTimeString `json:"created_at"       db:"created_at"`
+	UpdatedAt      DateTimeString `json:"updated_at"       db:"updated_at"`
+	UpdateBy       string         `json:"update_by"        db:"update_by"`
 }
 
 // TeacherOption 老师下拉选项（含停用，离职转移弹窗用）
 type TeacherOption struct {
 	ID       int64  `json:"id"        db:"id"`
 	Name     string `json:"name"      db:"name"`
-	DeptName string `json:"deptName"  db:"dept_name"`
+	DeptName string `json:"dept_name"  db:"dept_name"`
 }
 
 // TeacherSalesRow 老师绑定业务员行（详情弹窗用）
 type TeacherSalesRow struct {
-	Phone    string         `json:"phone"     db:"phone"`
-	Nickname string         `json:"nickname"  db:"nickname"`
-	DeptName string         `json:"deptName"  db:"dept_name"`
-	BindTime DateTimeString `json:"bindTime"  db:"bind_time"`
+	Phone    string         `json:"phone"      db:"phone"`
+	Nickname string         `json:"nickname"   db:"nickname"`
+	DeptName string         `json:"dept_name"  db:"dept_name"`
+	BindTime DateTimeString `json:"bind_time"  db:"bind_time"`
 }
 
 // TeacherUpdateReq 编辑老师请求体（PUT /teacher/update）
@@ -54,8 +54,8 @@ type TeacherUpdateReq struct {
 
 // TeacherBindReq 绑定业务员请求体（POST /teacher/bindSales）
 type TeacherBindReq struct {
-	TeacherID int64   `json:"teacherId"`
-	UserIDs   []int64 `json:"userIds"` // 追加语义，仅新增绑定
+	TeacherID int64   `json:"teacher_id"`
+	UserIDs   []int64 `json:"user_ids"` // 追加语义，仅新增绑定
 }
 
 // TeacherListFilter 老师列表查询条件（零值字段不参与过滤）
