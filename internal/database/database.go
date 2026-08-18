@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 
 	"handicap-service/internal/config"
 )
@@ -34,12 +34,15 @@ var resignSeedSQL string
 //go:embed diagnose_seed.sql
 var diagnoseSeedSQL string
 
-// Connect 建立 MySQL 连接池并探活
+// Connect 建立 MySQL 连接池并探活。
+// 经 sqllog 包装 connector：所有 SQL（含事务与 Migrate/Seed）打 slog.Debug 日志，LOG_LEVEL=debug 可见。
 func Connect(cfg *config.Config) (*sql.DB, error) {
-	db, err := sql.Open("mysql", cfg.DSN)
+	// MySQLDriver 实现了 driver.DriverContext，OpenConnector 立即解析 DSN 并返回错误
+	c, err := (&mysql.MySQLDriver{}).OpenConnector(cfg.DSN)
 	if err != nil {
-		return nil, fmt.Errorf("open mysql: %w", err)
+		return nil, fmt.Errorf("parse mysql dsn: %w", err)
 	}
+	db := sql.OpenDB(NewConnector(c))
 
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(5)

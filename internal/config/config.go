@@ -16,6 +16,7 @@ type Config struct {
 	DBPassword string
 	DBName     string
 	ServerPort string
+	LogLevel   string // 日志级别：debug/info/warn/error，debug 时输出全部 SQL 执行日志
 	DSN        string // MySQL 连接串，由 mysql.Config 组装
 }
 
@@ -32,6 +33,7 @@ func Load() *Config {
 		DBPassword: getEnv("DB_PASSWORD", ""),
 		DBName:     getEnv("DB_NAME", "handicap_db"),
 		ServerPort: getEnv("SERVER_PORT", "8080"),
+		LogLevel:   getEnv("LOG_LEVEL", "info"),
 	}
 
 	mc := mysql.Config{

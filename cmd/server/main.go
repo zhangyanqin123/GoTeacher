@@ -10,9 +10,11 @@ import (
 )
 
 func main() {
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil)))
-
+	// 先加载配置再初始化日志：级别（LOG_LEVEL，debug 时输出 SQL 日志）来自配置
 	cfg := config.Load()
+
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout,
+		&slog.HandlerOptions{Level: parseLevel(cfg.LogLevel)})))
 
 	// 1. 连接 MySQL
 	db, err := database.Connect(cfg)
@@ -45,4 +47,13 @@ func main() {
 	if err := r.Run(":" + cfg.ServerPort); err != nil {
 		slog.Error("server exit", "err", err)
 	}
+}
+
+// parseLevel 解析日志级别（debug/info/warn/error，亦支持 "debug+2" 形式），非法值回落 info
+func parseLevel(s string) slog.Level {
+	var lv slog.Level
+	if err := lv.UnmarshalText([]byte(s)); err != nil {
+		return slog.LevelInfo
+	}
+	return lv
 }
