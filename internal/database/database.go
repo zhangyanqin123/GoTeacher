@@ -19,10 +19,6 @@ import (
 var schemaSQL string
 
 //
-//go:embed seed.sql
-var seedSQL string
-
-//
 //go:embed teacher_seed.sql
 var teacherSeedSQL string
 
@@ -67,6 +63,9 @@ func Migrate(db *sql.DB) error {
 	}
 	if err := migrateTeacherResign(db); err != nil {
 		return fmt.Errorf("migrate teacher_resign columns: %w", err)
+	}
+	if err := migrateHouseUpDown(db); err != nil {
+		return fmt.Errorf("migrate house_up_down_stats: %w", err)
 	}
 	return nil
 }
@@ -140,11 +139,17 @@ func migrateTeacherResign(db *sql.DB) error {
 	return nil
 }
 
+// migrateHouseUpDown 涨跌家数接口已下线（2026-08），DROP 残留表。
+// IF EXISTS 幂等：新库无此表直接跳过。
+func migrateHouseUpDown(db *sql.DB) error {
+	if _, err := db.Exec("DROP TABLE IF EXISTS house_up_down_stats"); err != nil {
+		return fmt.Errorf("drop house_up_down_stats: %w", err)
+	}
+	return nil
+}
+
 // Seed 各表为空时才插入种子数据（幂等：已有数据则跳过）
 func Seed(db *sql.DB) error {
-	if err := seedHouseUpDown(db); err != nil {
-		return err
-	}
 	if err := seedTeacher(db); err != nil {
 		return err
 	}
@@ -152,15 +157,6 @@ func Seed(db *sql.DB) error {
 		return err
 	}
 	return seedDiagnose(db)
-}
-
-// seedHouseUpDown house_up_down_stats 空表种子
-func seedHouseUpDown(db *sql.DB) error {
-	var count int
-	if err := db.QueryRow("SELECT COUNT(*) FROM house_up_down_stats").Scan(&count); err != nil {
-		return fmt.Errorf("seed count: %w", err)
-	}
-	return seedIfEmpty(db, count, seedSQL)
 }
 
 // seedTeacher teacher 空表种子（teacher/sales_user 一次事务写入）

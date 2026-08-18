@@ -17,13 +17,9 @@ func New(db *sql.DB) *gin.Engine {
 
 	repo := repository.New(db)
 	svc := service.New(repo)
-	h := handler.NewHouseUpDown(svc)
 	th := handler.NewTeacher(svc)
 	rh := handler.NewResign(svc)
 	dh := handler.NewDiagnose(svc)
-
-	v1 := r.Group("/handicap/v1")
-	v1.GET("/index-points/houses_up_or_down", h.Get)
 
 	// 老师管理（路径与前端 teacher.js 注释里的 URL 完全一致）
 	chat := r.Group("/api/v1/dxsf/chatSys")

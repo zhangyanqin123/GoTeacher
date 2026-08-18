@@ -110,7 +110,7 @@ db := sql.OpenDB(sqllog.NewConnector(c))
 
 1. `go build ./... && go vet ./... && go test ./...`
 2. `LOG_LEVEL=debug go run ./cmd/server`，另开终端 curl：
-   - `GET /handicap/v1/index-points/houses_up_or_down` → 无参 SELECT，Conn.QueryContext 一条
+   - `GET /api/v1/dxsf/chatSys/teacher/options` → 无参 SELECT，Conn.QueryContext 一条
    - `GET /api/v1/dxsf/chatSys/teacher/list?page=1&pageSize=10` → 带参，Stmt 层日志含 query 原文与 args
    - `POST /api/v1/dxsf/resign/add` → 事务，BEGIN + 多条 + COMMIT
    - 启动阶段 Migrate/Seed 的 SQL 也应出现在终端

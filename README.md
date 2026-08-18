@@ -1,6 +1,6 @@
 # handicap-service
 
-Go 学习项目：涨跌家数分布统计接口 + 老师管理（chatSys）接口 + 老师离职转移接口 + 诊股记录接口。数据从 MySQL 查询返回（非硬编码），首次启动自动建表并写入种子数据。
+Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + 诊股记录接口。数据从 MySQL 查询返回（非硬编码），首次启动自动建表并写入种子数据。
 
 ## 技术栈
 
@@ -11,41 +11,6 @@ Go 学习项目：涨跌家数分布统计接口 + 老师管理（chatSys）接�
 | 数据访问 | database/sql + [go-sql-driver/mysql](https://github.com/go-sql-driver/mysql) | Go 官方标准库，无 ORM |
 | 数据库 | MySQL 8 | Homebrew 安装 |
 | 环境变量 | [godotenv](https://github.com/joho/godotenv) | 支持 `.env` 文件 |
-
-## 接口
-
-```
-GET /handicap/v1/index-points/houses_up_or_down?secuMarket=000001&range=today
-```
-
-| 参数 | 必填 | 说明 |
-| --- | --- | --- |
-| secuMarket | 是 | 市场代码，如 `000001` |
-| range | 否 | 统计区间，默认 `today`；可选 `today` / `week` / `month` |
-
-返回（data 为 null 表示该市场该区间暂无统计数据）：
-
-```json
-{
-  "code": 200,
-  "msg": "ok",
-  "data": {
-    "above7": 53,
-    "between5_7": 37,
-    "between3_5": 111,
-    "between0_3": 1352,
-    "equal0": 87,
-    "betweenN3_0": 635,
-    "betweenN5_N3": 30,
-    "betweenN7_N5": 3,
-    "belowN7": 1,
-    "total": 2312,
-    "upCount": 1553,
-    "downCount": 669,
-    "flatCount": 87
-  }
-}
-```
 
 ## 老师管理接口（chatSys）
 
@@ -264,9 +229,9 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/diagnose/audit' \
 ├── cmd/server/main.go        # 入口：加载配置 → 连库 → 建表/种子 → 路由 → 启动
 └── internal/
     ├── config/               # 配置：环境变量 + 默认值，组装 MySQL DSN
-    ├── database/             # 连接池 + 迁移（schema.sql）+ 种子（seed.sql / teacher_seed.sql / resign_seed.sql / diagnose_seed.sql）
-    ├── model/                # Entity/DTO：HouseUpDown、Teacher、Resign、Diagnose、DateTimeString、StringSlice
-    ├── repository/           # DAO/Mapper：按 secuMarket + range 查询 / teacher・resign・diagnose CRUD
+    ├── database/             # 连接池 + 迁移（schema.sql）+ 种子（teacher_seed.sql / resign_seed.sql / diagnose_seed.sql）
+    ├── model/                # Entity/DTO：Teacher、Resign、Diagnose、DateTimeString、StringSlice
+    ├── repository/           # DAO/Mapper：teacher・resign・diagnose CRUD
     ├── service/              # Service：参数校验、默认值、白名单、诊股状态机
     ├── handler/              # Controller：参数绑定、错误 → HTTP 状态码
     ├── response/             # 统一响应 {code, msg, data}
@@ -306,29 +271,12 @@ go run ./cmd/server
 ### 5. 验证
 
 ```bash
-# 快乐路径：返回上方样例数据
-curl -s 'http://localhost:8080/handicap/v1/index-points/houses_up_or_down?secuMarket=000001&range=today'
+# 老师列表（分页返回 data.list / data.count）
+curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/list?pageIndex=1&pageSize=10'
 
-# 无数据路径：HTTP 200 + data:null
-curl -i 'http://localhost:8080/handicap/v1/index-points/houses_up_or_down?secuMarket=000001&range=week'
-
-# 参数错误：HTTP 400
-curl -i 'http://localhost:8080/handicap/v1/index-points/houses_up_or_down?secuMarket=&range=today'
+# 下拉选项
+curl -s 'http://localhost:8080/api/v1/dxsf/chatSys/teacher/options'
 ```
-
-## 数据库设计
-
-单表 `house_up_down_stats`（DDL 见 `internal/database/schema.sql`）：
-
-- 联合唯一索引 `(secu_market, stat_range, stat_date)`：同一市场、区间、日期只能有一条统计，天然去重
-- 查询按 `secu_market + stat_range` 过滤、`stat_date DESC` 取最新，命中最左前缀
-- `range` 是 MySQL 保留字，列名用 `stat_range`，Go 侧字段仍叫 `Range`（db tag 映射）
-
-### 种子数据说明
-
-- 仅在表为空时插入（重启不重复），重灌方式：`TRUNCATE TABLE house_up_down_stats` 后重启
-- 只种 1 行 `000001/today`，`stat_date = CURDATE()` 保证"今天"始终命中
-- 样例 `total=2312` 与 9 档之和 2309 不一致（差 3），照抄原样——真实接口返回如此，可留意
 
 ## 常见问题
 
@@ -337,12 +285,9 @@ curl -i 'http://localhost:8080/handicap/v1/index-points/houses_up_or_down?secuMa
 | 连接报 `error 1045` | 密码错误，检查 `.env` 的 `DB_PASSWORD` |
 | 连接报 `error 2002` | MySQL 未启动：`brew services start mysql` |
 | 认证失败（caching_sha2_password） | 兜底改回旧插件：`ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '<密码>';` |
-| 跨天重启后返回值变化 | 按约定返回 `stat_date` 最近一天的统计，属正常行为 |
 
 ## 进阶方向（本期未实现）
 
-- `INSERT ... ON DUPLICATE KEY UPDATE` 增量更新统计
-- 补充 week/month 种子数据
 - 接入 sqlx 自动映射结构体
 - 单元测试（handler / service / repository）
 - 优雅停机（signal + http.Server.Shutdown）

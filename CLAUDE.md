@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目定位
 
-Go 学习项目 `handicap-service`：涨跌家数统计接口 + chatSys（老师管理/离职转移）+ 诊股记录接口。**核心约束：chatSys 与诊股的接口路径、参数、响应结构必须与前端 mock（gyz-admin 项目）严格一致**，前端删 mock 启用真实 request 即可联调，调用处零改动。新增/修改这些接口前先读对应 `PLAN-*.md` 了解设计决策。
+Go 学习项目 `handicap-service`：chatSys（老师管理/离职转移）+ 诊股记录接口。**核心约束：chatSys 与诊股的接口路径、参数、响应结构必须与前端 mock（gyz-admin 项目）严格一致**，前端删 mock 启用真实 request 即可联调，调用处零改动。新增/修改这些接口前先读对应 `PLAN-*.md` 了解设计决策。
 
 ## 常用命令
 
