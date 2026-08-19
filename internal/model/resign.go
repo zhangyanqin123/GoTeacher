@@ -55,25 +55,24 @@ type ResignAddReq struct {
 }
 
 // ResignListReq 离职转移列表查询请求体（POST /teacher/resign/list）。
-// 数值字段用 FlexInt64：前端 el-select 清空产出 ''/null，统一宽容归一为未设置
-//（同 TeacherListReq），''/null/缺省不过滤，非法串仍报错。
+// 三个姓名筛选均为模糊匹配（前端为文本输入框而非下拉，2026-08-19 对齐真实接口契约）：
+// 姓名/业务员按落库冗余快照列匹配（离职后老师可能被改/删，快照保留转移当时值），
+// 空串不过滤。
 type ResignListReq struct {
-	DeptID            FlexInt64 `json:"dept_id" swaggertype:"integer"`            // 精确，匹配原老师部门
-	OriginalTeacherID FlexInt64 `json:"original_teacher_id" swaggertype:"integer"` // 精确
-	ReplaceTeacherID  FlexInt64 `json:"replace_teacher_id" swaggertype:"integer"`  // 精确
-	SalesmanName      string    `json:"salesman_name"`       // 模糊
-	TransferBeginTime string    `json:"transfer_begin_time"` // yyyy-MM-dd，与 EndTime 成对生效
-	TransferEndTime   string    `json:"transfer_end_time"`
-	PageIndex         int       `json:"page_index"` // 默认 1（service 层兜底）
-	PageSize          int       `json:"page_size"`  // 默认 10，上限 100
+	OriginalTeacher   string `json:"original_teacher"`     // 模糊，匹配 original_teacher_name
+	ReplaceTeacher    string `json:"replace_teacher"`      // 模糊，匹配 replace_teacher_name
+	Salesman          string `json:"salesman"`             // 模糊，匹配 salesman_name
+	TransferBeginTime string `json:"transfer_begin_time"` // yyyy-MM-dd，与 EndTime 成对生效
+	TransferEndTime   string `json:"transfer_end_time"`
+	PageIndex         int    `json:"page_index"` // 默认 1（service 层兜底）
+	PageSize          int    `json:"page_size"`  // 默认 10，上限 100
 }
 
 // ResignListFilter 离职转移列表查询条件（零值字段不参与过滤）
 type ResignListFilter struct {
-	DeptID            int64  // 匹配 original_teacher_dept_id（mock 同构）
-	OriginalTeacherID int64  // 精确
-	ReplaceTeacherID  int64  // 精确
-	SalesmanName      string // 模糊
+	OriginalTeacher   string // 模糊，匹配 original_teacher_name 快照
+	ReplaceTeacher    string // 模糊，匹配 replace_teacher_name 快照
+	Salesman          string // 模糊，匹配 salesman_name 快照
 	TransferBeginTime string // yyyy-MM-dd，与 EndTime 成对生效
 	TransferEndTime   string
 	PageIndex         int

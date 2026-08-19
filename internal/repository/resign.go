@@ -65,21 +65,17 @@ func resignWhere(f model.ResignListFilter) (string, []any) {
 	var conds []string
 	var args []any
 
-	if f.DeptID != 0 {
-		conds = append(conds, "r.original_teacher_dept_id = ?")
-		args = append(args, f.DeptID)
+	if f.OriginalTeacher != "" {
+		conds = append(conds, "r.original_teacher_name LIKE CONCAT('%', ?, '%')")
+		args = append(args, f.OriginalTeacher)
 	}
-	if f.OriginalTeacherID != 0 {
-		conds = append(conds, "r.original_teacher_id = ?")
-		args = append(args, f.OriginalTeacherID)
+	if f.ReplaceTeacher != "" {
+		conds = append(conds, "r.replace_teacher_name LIKE CONCAT('%', ?, '%')")
+		args = append(args, f.ReplaceTeacher)
 	}
-	if f.ReplaceTeacherID != 0 {
-		conds = append(conds, "r.replace_teacher_id = ?")
-		args = append(args, f.ReplaceTeacherID)
-	}
-	if f.SalesmanName != "" {
+	if f.Salesman != "" {
 		conds = append(conds, "r.salesman_name LIKE CONCAT('%', ?, '%')")
-		args = append(args, f.SalesmanName)
+		args = append(args, f.Salesman)
 	}
 	// 日期闭区间：EndTime 加一天走开区间，避免对列套函数失索引
 	if f.TransferBeginTime != "" && f.TransferEndTime != "" {

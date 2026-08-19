@@ -722,7 +722,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "分页查询离职转移记录（筛选条件走 JSON body，数值字段传空串/null 表示未填），dept_id 匹配原老师部门",
+                "description": "分页查询离职转移记录（筛选条件走 JSON body，姓名类为模糊匹配，空串表示未填）",
                 "consumes": [
                     "application/json"
                 ],
@@ -735,7 +735,7 @@ const docTemplate = `{
                 "summary": "离职转移列表",
                 "parameters": [
                     {
-                        "description": "查询条件（数值字段传空串/null 表示未填）",
+                        "description": "查询条件（姓名类模糊匹配，传空串表示未填）",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -1214,13 +1214,9 @@ const docTemplate = `{
         "model.ResignListReq": {
             "type": "object",
             "properties": {
-                "dept_id": {
-                    "description": "精确，匹配原老师部门",
-                    "type": "integer"
-                },
-                "original_teacher_id": {
-                    "description": "精确",
-                    "type": "integer"
+                "original_teacher": {
+                    "description": "模糊，匹配 original_teacher_name",
+                    "type": "string"
                 },
                 "page_index": {
                     "description": "默认 1（service 层兜底）",
@@ -1230,12 +1226,12 @@ const docTemplate = `{
                     "description": "默认 10，上限 100",
                     "type": "integer"
                 },
-                "replace_teacher_id": {
-                    "description": "精确",
-                    "type": "integer"
+                "replace_teacher": {
+                    "description": "模糊，匹配 replace_teacher_name",
+                    "type": "string"
                 },
-                "salesman_name": {
-                    "description": "模糊",
+                "salesman": {
+                    "description": "模糊，匹配 salesman_name",
                     "type": "string"
                 },
                 "transfer_begin_time": {

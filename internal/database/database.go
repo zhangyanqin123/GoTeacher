@@ -102,6 +102,7 @@ func migrateDiagnoseRemark(db *sql.DB) error {
 // 1) DROP COLUMN friend_count（新库无此列，COUNT=0 跳过；DROP 不可逆，该列已废弃）
 // 2) 旧逗号串形态的 transfer_content（VARCHAR(32)，存 'group'）先 DROP，为改名腾位
 // 3) remark RENAME 为 transfer_content VARCHAR(200)（CHANGE 保留数据，历史备注转为转移内容文本）
+// 4) 兜底补列：存量库可能建于 remark 加入 schema 之前（两列皆无），ADD COLUMN 补 transfer_content
 func migrateTeacherResign(db *sql.DB) error {
 	if err := dropResignColumn(db, "friend_count"); err != nil {
 		return err
@@ -116,13 +117,26 @@ func migrateTeacherResign(db *sql.DB) error {
 	).Scan(&cnt); err != nil {
 		return fmt.Errorf("check teacher_resign.remark: %w", err)
 	}
-	if cnt == 0 {
-		return nil // 已改名或表未建，幂等出口
+	if cnt > 0 {
+		// 与 schema.sql 中的列定义逐字一致，防两处漂移
+		const rename = "ALTER TABLE teacher_resign CHANGE COLUMN remark transfer_content VARCHAR(200) NOT NULL DEFAULT '' COMMENT '转移内容（自由文本，如：首席投顾；原 remark 列改名）'"
+		if _, err := db.Exec(rename); err != nil {
+			return fmt.Errorf("rename teacher_resign.remark to transfer_content: %w", err)
+		}
+		return nil
 	}
-	// 与 schema.sql 中的列定义逐字一致，防两处漂移
-	const alter = "ALTER TABLE teacher_resign CHANGE COLUMN remark transfer_content VARCHAR(200) NOT NULL DEFAULT '' COMMENT '转移内容（自由文本，如：首席投顾；原 remark 列改名）'"
-	if _, err := db.Exec(alter); err != nil {
-		return fmt.Errorf("rename teacher_resign.remark to transfer_content: %w", err)
+
+	// remark 不存在：要么已改名（transfer_content 在），要么建于 remark 之前（两列皆无，补列）
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'teacher_resign' AND COLUMN_NAME = 'transfer_content'",
+	).Scan(&cnt); err != nil {
+		return fmt.Errorf("check teacher_resign.transfer_content: %w", err)
+	}
+	if cnt == 0 {
+		const alter = "ALTER TABLE teacher_resign ADD COLUMN transfer_content VARCHAR(200) NOT NULL DEFAULT '' COMMENT '转移内容（自由文本，如：首席投顾；原 remark 列改名）'"
+		if _, err := db.Exec(alter); err != nil {
+			return fmt.Errorf("add teacher_resign.transfer_content: %w", err)
+		}
 	}
 	return nil
 }
