@@ -49,8 +49,8 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config) *gin.Engine {
 	dxsf.POST("/teacher/bind/salesman", th.Bind)
 
 	// 离职转移（路径与前端 resign.js 注释里的 URL 完全一致）
-	dxsf.GET("/resign/list", rh.List)
-	dxsf.POST("/resign/add", rh.Add)
+	dxsf.POST("/teacher/resign/list", rh.List)
+	dxsf.POST("/teacher/resign/add", rh.Add)
 
 	// 诊股记录（路径与前端 diagnose.js 注释里的 URL 完全一致）
 	diag := r.Group("/api/v1/dxsf/diagnose", Auth(svc))

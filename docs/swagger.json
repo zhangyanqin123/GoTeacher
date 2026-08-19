@@ -317,153 +317,6 @@
                 }
             }
         },
-        "/dxsf/resign/add": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算；原老师无绑定业务员时 400",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "离职转移"
-                ],
-                "summary": "新增离职转移",
-                "parameters": [
-                    {
-                        "description": "新增离职转移请求体",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.ResignAddReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "msg 固定「转移成功」，data 恒为 null",
-                        "schema": {
-                            "$ref": "#/definitions/model.ActionResp"
-                        }
-                    },
-                    "400": {
-                        "description": "请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200 字符 / 原老师无绑定业务员",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "老师不存在",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/dxsf/resign/list": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "分页查询离职转移记录，零值筛选字段不参与过滤；dept_id 匹配原老师部门",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "离职转移"
-                ],
-                "summary": "离职转移列表",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "原老师部门 ID",
-                        "name": "dept_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "原老师 ID（精确）",
-                        "name": "original_teacher_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "接替老师 ID（精确）",
-                        "name": "replace_teacher_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "业务员姓名（模糊）",
-                        "name": "salesman_name",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "转移时间起（yyyy-MM-dd，与 transfer_end_time 成对生效）",
-                        "name": "transfer_begin_time",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "转移时间止（yyyy-MM-dd）",
-                        "name": "transfer_end_time",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "页码（默认 1）",
-                        "name": "page_index",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "页大小（默认 10，上限 100）",
-                        "name": "page_size",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.ResignListResp"
-                        }
-                    },
-                    "400": {
-                        "description": "数字参数格式错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
         "/dxsf/teacher/bind/salesman": {
             "post": {
                 "security": [
@@ -790,6 +643,114 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/model.TeacherOptionsResp"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/dxsf/teacher/resign/add": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算；原老师无绑定业务员时 400",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "离职转移"
+                ],
+                "summary": "新增离职转移",
+                "parameters": [
+                    {
+                        "description": "新增离职转移请求体",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ResignAddReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "msg 固定「转移成功」，data 恒为 null",
+                        "schema": {
+                            "$ref": "#/definitions/model.ActionResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200 字符 / 原老师无绑定业务员",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "老师不存在",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/dxsf/teacher/resign/list": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "分页查询离职转移记录（筛选条件走 JSON body，数值字段传空串/null 表示未填），dept_id 匹配原老师部门",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "离职转移"
+                ],
+                "summary": "离职转移列表",
+                "parameters": [
+                    {
+                        "description": "查询条件（数值字段传空串/null 表示未填）",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ResignListReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.ResignListResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
@@ -1255,6 +1216,42 @@
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "model.ResignListReq": {
+            "type": "object",
+            "properties": {
+                "dept_id": {
+                    "description": "精确，匹配原老师部门",
+                    "type": "integer"
+                },
+                "original_teacher_id": {
+                    "description": "精确",
+                    "type": "integer"
+                },
+                "page_index": {
+                    "description": "默认 1（service 层兜底）",
+                    "type": "integer"
+                },
+                "page_size": {
+                    "description": "默认 10，上限 100",
+                    "type": "integer"
+                },
+                "replace_teacher_id": {
+                    "description": "精确",
+                    "type": "integer"
+                },
+                "salesman_name": {
+                    "description": "模糊",
+                    "type": "string"
+                },
+                "transfer_begin_time": {
+                    "description": "yyyy-MM-dd，与 EndTime 成对生效",
+                    "type": "string"
+                },
+                "transfer_end_time": {
+                    "type": "string"
                 }
             }
         },

@@ -7,8 +7,8 @@
 
 | # | 方法 | 路径 | 说明 |
 | --- | --- | --- | --- |
-| 1 | GET | `/api/v1/dxsf/resign/list` | 离职转移记录列表（分页 + 多条件筛选） |
-| 2 | POST | `/api/v1/dxsf/resign/add` | 新增离职转移 |
+| 1 | POST | `/api/v1/dxsf/teacher/resign/list` | 离职转移记录列表（分页 + 多条件筛选，条件走 JSON body） |
+| 2 | POST | `/api/v1/dxsf/teacher/resign/add` | 新增离职转移 |
 
 ## 设计决策
 
@@ -133,3 +133,5 @@ groupCount/salesman 快照取自转移前的查询，快照语义不变（可能
   （gin 英文详情进 slog 不外露）。涉及全部 service/handler 文件、README、CLAUDE.md。
 
 > **2026-08-18 字段命名整体迁移 snake_case**：本文中的驼峰字段名（originalTeacherId/transferContent 等）已全部改为蛇形（original_teacher_id/transfer_content），以 [PLAN-api-snake-case.md](PLAN-api-snake-case.md) 为准。
+
+> **2026-08-19 接口路径与请求方式变更**：两接口迁至 `/teacher/` 前缀下对齐老师管理风格——`GET /resign/list` → `POST /teacher/resign/list`（查询条件从 query string 改 JSON body，数值字段用 FlexInt64 宽容解析前端空串，同 TeacherListReq 先例），`POST /resign/add` → `POST /teacher/resign/add`（仅改路径）。service/repository 零改动。

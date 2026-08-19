@@ -46,7 +46,7 @@ type ResignInsert struct {
 	Remark                string
 }
 
-// ResignAddReq 新增离职转移请求体（POST /resign/add）。
+// ResignAddReq 新增离职转移请求体（POST /teacher/resign/add）。
 // 前端还会传 original_teacher_name 等 4 个冗余字段，后端不声明（gin 忽略未知键），
 // 一律从 teacher 表回查（单一事实来源）；group_count 由后端按原老师绑定业务员数计算，不接收前端传值。
 type ResignAddReq struct {
@@ -54,6 +54,20 @@ type ResignAddReq struct {
 	ReplaceTeacherID  int64    `json:"replace_teacher_id"`
 	TransferContent   []string `json:"transfer_content"` // 白名单 group，非空（传 friend 400）
 	Remark            string   `json:"remark"`
+}
+
+// ResignListReq 离职转移列表查询请求体（POST /teacher/resign/list）。
+// 数值字段用 FlexInt64：前端 el-select 清空产出 ''/null，统一宽容归一为未设置
+//（同 TeacherListReq），''/null/缺省不过滤，非法串仍报错。
+type ResignListReq struct {
+	DeptID            FlexInt64 `json:"dept_id" swaggertype:"integer"`            // 精确，匹配原老师部门
+	OriginalTeacherID FlexInt64 `json:"original_teacher_id" swaggertype:"integer"` // 精确
+	ReplaceTeacherID  FlexInt64 `json:"replace_teacher_id" swaggertype:"integer"`  // 精确
+	SalesmanName      string    `json:"salesman_name"`       // 模糊
+	TransferBeginTime string    `json:"transfer_begin_time"` // yyyy-MM-dd，与 EndTime 成对生效
+	TransferEndTime   string    `json:"transfer_end_time"`
+	PageIndex         int       `json:"page_index"` // 默认 1（service 层兜底）
+	PageSize          int       `json:"page_size"`  // 默认 10，上限 100
 }
 
 // ResignListFilter 离职转移列表查询条件（零值字段不参与过滤）

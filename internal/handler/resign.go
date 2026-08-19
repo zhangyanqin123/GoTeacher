@@ -3,7 +3,6 @@ package handler
 import (
 	"errors"
 	"log/slog"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -21,55 +20,37 @@ func NewResign(svc *service.Service) *ResignHandler {
 	return &ResignHandler{svc: svc}
 }
 
-// List GET /api/v1/dxsf/resign/list
+// List POST /api/v1/dxsf/teacher/resign/list
 //
-// 错误映射：数字参数格式错误 → 400；其他 → 500（真实原因只进日志）
+// 错误映射：body 绑定失败/数值字段非法串 → 400；其他 → 500（真实原因只进日志）
 //
 //	@Summary		离职转移列表
-//	@Description	分页查询离职转移记录，零值筛选字段不参与过滤；dept_id 匹配原老师部门
+//	@Description	分页查询离职转移记录（筛选条件走 JSON body，数值字段传空串/null 表示未填），dept_id 匹配原老师部门
 //	@Tags			离职转移
 //	@Accept			json
 //	@Produce		json
-//	@Param			dept_id query integer false "原老师部门 ID"
-//	@Param			original_teacher_id query integer false "原老师 ID（精确）"
-//	@Param			replace_teacher_id query integer false "接替老师 ID（精确）"
-//	@Param			salesman_name query string false "业务员姓名（模糊）"
-//	@Param			transfer_begin_time query string false "转移时间起（yyyy-MM-dd，与 transfer_end_time 成对生效）"
-//	@Param			transfer_end_time query string false "转移时间止（yyyy-MM-dd）"
-//	@Param			page_index query integer false "页码（默认 1）"
-//	@Param			page_size query integer false "页大小（默认 10，上限 100）"
+//	@Param			body body model.ResignListReq true "查询条件（数值字段传空串/null 表示未填）"
 //	@Success		200 {object} model.ResignListResp
-//	@Failure		400 {object} response.Response "数字参数格式错误"
+//	@Failure		400 {object} response.Response "请求体非法"
 //	@Failure		500 {object} response.Response "服务器内部错误"
 //	@Security		ApiKeyAuth
-//	@Router			/dxsf/resign/list [get]
+//	@Router			/dxsf/teacher/resign/list [post]
 func (h *ResignHandler) List(c *gin.Context) {
-	var f model.ResignListFilter
-
-	for _, num := range []struct {
-		key   string
-		dst   *int64
-		label string
-	}{
-		{"dept_id", &f.DeptID, "dept_id"},
-		{"original_teacher_id", &f.OriginalTeacherID, "original_teacher_id"},
-		{"replace_teacher_id", &f.ReplaceTeacherID, "replace_teacher_id"},
-	} {
-		s := c.Query(num.key)
-		if s == "" {
-			continue
-		}
-		v, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			response.Fail(c, 400, 400, "参数 "+num.label+" 必须是整数")
-			return
-		}
-		*num.dst = v
+	var req model.ResignListReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Error("bind resign list request failed", "err", err)
+		response.Fail(c, 400, 400, "请求体非法")
+		return
 	}
-	f.SalesmanName = c.Query("salesman_name")
-	f.TransferBeginTime = c.Query("transfer_begin_time")
-	f.TransferEndTime = c.Query("transfer_end_time")
-	f.PageIndex, f.PageSize = queryPage(c) // 默认在 service 层兜底
+
+	var f model.ResignListFilter
+	f.DeptID = derefOrZero(req.DeptID.Ptr())
+	f.OriginalTeacherID = derefOrZero(req.OriginalTeacherID.Ptr())
+	f.ReplaceTeacherID = derefOrZero(req.ReplaceTeacherID.Ptr())
+	f.SalesmanName = req.SalesmanName
+	f.TransferBeginTime = req.TransferBeginTime
+	f.TransferEndTime = req.TransferEndTime
+	f.PageIndex, f.PageSize = req.PageIndex, req.PageSize // 默认在 service 层兜底
 
 	result, err := h.svc.ListResigns(c.Request.Context(), f)
 	switch {
@@ -81,7 +62,7 @@ func (h *ResignHandler) List(c *gin.Context) {
 	}
 }
 
-// Add POST /api/v1/dxsf/resign/add
+// Add POST /api/v1/dxsf/teacher/resign/add
 //
 // 错误映射：body 绑定失败/同人/内容白名单/remark 超长 → 400；
 // 老师不存在 → 404；其他 → 500
@@ -97,7 +78,7 @@ func (h *ResignHandler) List(c *gin.Context) {
 //	@Failure		404 {object} response.Response "老师不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
 //	@Security		ApiKeyAuth
-//	@Router			/dxsf/resign/add [post]
+//	@Router			/dxsf/teacher/resign/add [post]
 func (h *ResignHandler) Add(c *gin.Context) {
 	var req model.ResignAddReq
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -53,8 +53,8 @@ curl -s -X POST 'http://localhost:8080/api/v1/logout' -H "Authorization: Bearer 
 | 4 | GET | `/api/v1/dxsf/teacher/bind/salesman/list` | 老师绑定业务员列表（详情弹窗） |
 | 5 | POST | `/api/v1/dxsf/teacher/bind/salesman` | 绑定业务员（追加语义，重复绑定幂等） |
 | 6 | GET | `/api/v1/dxsf/teacher/bind/salesman/users` | 全量已绑定业务员 userId（绑定弹窗人员树过滤用） |
-| 7 | GET | `/api/v1/dxsf/resign/list` | 离职转移记录列表（分页 + 多条件筛选） |
-| 8 | POST | `/api/v1/dxsf/resign/add` | 新增离职转移 |
+| 7 | POST | `/api/v1/dxsf/teacher/resign/list` | 离职转移记录列表（分页 + 多条件筛选，条件走 body） |
+| 8 | POST | `/api/v1/dxsf/teacher/resign/add` | 新增离职转移 |
 
 ### 列表筛选参数
 
@@ -155,11 +155,13 @@ curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/users'
 ### curl 示例
 
 ```bash
-# 列表（部门 + 时间范围）
-curl -s 'http://localhost:8080/api/v1/dxsf/resign/list?dept_id=3&transfer_begin_time=2025-08-01&transfer_end_time=2025-08-31&page_index=1&page_size=10'
+# 列表（部门 + 时间范围；筛选条件走 JSON body，数值字段传空串/null 表示未填）
+curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/list' \
+  -H 'Content-Type: application/json' \
+  -d '{"dept_id":3,"transfer_begin_time":"2025-08-01","transfer_end_time":"2025-08-31","page_index":1,"page_size":10}'
 
 # 新增离职转移
-curl -s -X POST 'http://localhost:8080/api/v1/dxsf/resign/add' \
+curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/add' \
   -H 'Content-Type: application/json' \
   -d '{"original_teacher_id":4,"replace_teacher_id":1,"transfer_content":["group"],"remark":"离职交接"}'
 ```

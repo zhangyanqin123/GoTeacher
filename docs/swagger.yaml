@@ -239,6 +239,32 @@ definitions:
           type: string
         type: array
     type: object
+  model.ResignListReq:
+    properties:
+      dept_id:
+        description: 精确，匹配原老师部门
+        type: integer
+      original_teacher_id:
+        description: 精确
+        type: integer
+      page_index:
+        description: 默认 1（service 层兜底）
+        type: integer
+      page_size:
+        description: 默认 10，上限 100
+        type: integer
+      replace_teacher_id:
+        description: 精确
+        type: integer
+      salesman_name:
+        description: 模糊
+        type: string
+      transfer_begin_time:
+        description: yyyy-MM-dd，与 EndTime 成对生效
+        type: string
+      transfer_end_time:
+        type: string
+    type: object
   model.ResignListResp:
     properties:
       code:
@@ -730,102 +756,6 @@ paths:
       summary: 提交诊股报告
       tags:
       - 诊股记录
-  /dxsf/resign/add:
-    post:
-      consumes:
-      - application/json
-      description: 原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算；原老师无绑定业务员时
-        400
-      parameters:
-      - description: 新增离职转移请求体
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/model.ResignAddReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: msg 固定「转移成功」，data 恒为 null
-          schema:
-            $ref: '#/definitions/model.ActionResp'
-        "400":
-          description: 请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200
-            字符 / 原老师无绑定业务员
-          schema:
-            $ref: '#/definitions/response.Response'
-        "404":
-          description: 老师不存在
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
-      security:
-      - ApiKeyAuth: []
-      summary: 新增离职转移
-      tags:
-      - 离职转移
-  /dxsf/resign/list:
-    get:
-      consumes:
-      - application/json
-      description: 分页查询离职转移记录，零值筛选字段不参与过滤；dept_id 匹配原老师部门
-      parameters:
-      - description: 原老师部门 ID
-        in: query
-        name: dept_id
-        type: integer
-      - description: 原老师 ID（精确）
-        in: query
-        name: original_teacher_id
-        type: integer
-      - description: 接替老师 ID（精确）
-        in: query
-        name: replace_teacher_id
-        type: integer
-      - description: 业务员姓名（模糊）
-        in: query
-        name: salesman_name
-        type: string
-      - description: 转移时间起（yyyy-MM-dd，与 transfer_end_time 成对生效）
-        in: query
-        name: transfer_begin_time
-        type: string
-      - description: 转移时间止（yyyy-MM-dd）
-        in: query
-        name: transfer_end_time
-        type: string
-      - description: 页码（默认 1）
-        in: query
-        name: page_index
-        type: integer
-      - description: 页大小（默认 10，上限 100）
-        in: query
-        name: page_size
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.ResignListResp'
-        "400":
-          description: 数字参数格式错误
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
-      security:
-      - ApiKeyAuth: []
-      summary: 离职转移列表
-      tags:
-      - 离职转移
   /dxsf/teacher/bind/salesman:
     post:
       consumes:
@@ -1038,6 +968,76 @@ paths:
       summary: 老师下拉选项
       tags:
       - 老师管理
+  /dxsf/teacher/resign/add:
+    post:
+      consumes:
+      - application/json
+      description: 原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算；原老师无绑定业务员时
+        400
+      parameters:
+      - description: 新增离职转移请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ResignAddReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「转移成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200
+            字符 / 原老师无绑定业务员
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 老师不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 新增离职转移
+      tags:
+      - 离职转移
+  /dxsf/teacher/resign/list:
+    post:
+      consumes:
+      - application/json
+      description: 分页查询离职转移记录（筛选条件走 JSON body，数值字段传空串/null 表示未填），dept_id 匹配原老师部门
+      parameters:
+      - description: 查询条件（数值字段传空串/null 表示未填）
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ResignListReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.ResignListResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 离职转移列表
+      tags:
+      - 离职转移
   /getinfo:
     get:
       description: 返回角色/昵称等（gyz-admin 动态路由依赖 roles 非空）。需登录态

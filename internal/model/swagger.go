@@ -57,7 +57,7 @@ type TeacherBoundResp struct {
 	Data []int64 `json:"data" example:"1"`
 }
 
-// ResignListResp 离职转移列表响应（GET /chatSys/resign/list）
+// ResignListResp 离职转移列表响应（POST /teacher/resign/list）
 type ResignListResp struct {
 	Code int    `json:"code" example:"200"`
 	Msg  string `json:"msg"  example:"success"`
