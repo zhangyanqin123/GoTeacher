@@ -136,3 +136,24 @@ CREATE TABLE IF NOT EXISTS teacher_resign (
   KEY idx_replace_teacher (replace_teacher_id),
   KEY idx_transfer_time (transfer_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='老师离职转移记录';
+-- ============================================================
+-- 管理员账号（鉴权，见 PLAN-auth.md）
+-- 密码列存 bcrypt 哈希（定长 60）；种子由 Go 代码动态生成
+-- （bcrypt 哈希无法手写 SQL，且固定哈希串入库等于泄露口令）
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS admin_user (
+  id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  username      VARCHAR(50)  NOT NULL                   COMMENT '登录账号',
+  password      CHAR(60)     NOT NULL                   COMMENT '密码（bcrypt 哈希，定长 60）',
+  nickname      VARCHAR(50)  NOT NULL DEFAULT ''        COMMENT '显示名（getinfo 的 name）',
+  role          VARCHAR(50)  NOT NULL DEFAULT 'admin'   COMMENT '角色（getinfo 的 roles 单元素）',
+  avatar        VARCHAR(255) NOT NULL DEFAULT ''        COMMENT '头像（空串，前端自行拼前缀）',
+  status        TINYINT      NOT NULL DEFAULT 1         COMMENT '1 启用 / 0 停用',
+  last_login_at DATETIME                DEFAULT NULL    COMMENT '最近登录时间',
+  last_login_ip VARCHAR(64)  NOT NULL DEFAULT ''        COMMENT '最近登录 IP',
+  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='管理员账号';

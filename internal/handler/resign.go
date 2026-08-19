@@ -41,7 +41,8 @@ func NewResign(svc *service.Service) *ResignHandler {
 //	@Success		200 {object} model.ResignListResp
 //	@Failure		400 {object} response.Response "数字参数格式错误"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/resign/list [get]
+//	@Security		ApiKeyAuth
+//	@Router			/dxsf/resign/list [get]
 func (h *ResignHandler) List(c *gin.Context) {
 	var f model.ResignListFilter
 
@@ -95,7 +96,8 @@ func (h *ResignHandler) List(c *gin.Context) {
 //	@Failure		400 {object} response.Response "请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200 字符 / 原老师无绑定业务员"
 //	@Failure		404 {object} response.Response "老师不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/resign/add [post]
+//	@Security		ApiKeyAuth
+//	@Router			/dxsf/resign/add [post]
 func (h *ResignHandler) Add(c *gin.Context) {
 	var req model.ResignAddReq
 	if err := c.ShouldBindJSON(&req); err != nil {

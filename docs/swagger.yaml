@@ -1,4 +1,4 @@
-basePath: /api/v1/dxsf
+basePath: /api/v1
 definitions:
   model.ActionResp:
     properties:
@@ -136,6 +136,51 @@ definitions:
         type: integer
       report_content:
         description: 富文本 HTML
+        type: string
+    type: object
+  model.GetInfoResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        $ref: '#/definitions/model.UserInfo'
+      msg:
+        example: success
+        type: string
+    type: object
+  model.LoginReq:
+    properties:
+      password:
+        example: admin123
+        type: string
+      username:
+        example: admin
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  model.LoginResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        description: 恒为 null
+      expire:
+        description: JWT exp（Unix 秒）
+        example: 1724054400
+        type: integer
+      msg:
+        example: 登录成功
+        type: string
+      passwd_expired:
+        description: 密码是否过期（暂恒 false）
+        example: false
+        type: boolean
+      token:
+        example: eyJhbGciOiJIUzI1NiIs...
         type: string
     type: object
   model.Resign:
@@ -445,6 +490,30 @@ definitions:
       title:
         type: string
     type: object
+  model.UserInfo:
+    properties:
+      avatar:
+        example: ""
+        type: string
+      introduction:
+        example: ""
+        type: string
+      name:
+        example: 系统管理员
+        type: string
+      permissions:
+        example:
+        - '*:*:*'
+        items:
+          type: string
+        type: array
+      roles:
+        example:
+        - admin
+        items:
+          type: string
+        type: array
+    type: object
   response.Response:
     properties:
       code:
@@ -458,10 +527,11 @@ info:
   description: |-
     chatSys（老师管理/绑定业务员/离职转移）+ 诊股记录接口。
     统一响应结构 {code, msg, data}；写操作 msg 为约定中文，查询类为 "success"。
+    业务接口需 Bearer token（JWT + Redis 白名单，见 PLAN-auth.md）。
   title: im系统诊股 API
   version: "1.0"
 paths:
-  /diagnose/audit:
+  /dxsf/diagnose/audit:
     post:
       consumes:
       - application/json
@@ -493,10 +563,12 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
       summary: 审核诊股报告
       tags:
       - 诊股记录
-  /diagnose/detail:
+  /dxsf/diagnose/detail:
     get:
       description: 诊股记录全字段 + 审核流程日志（audit_logs）
       parameters:
@@ -524,10 +596,12 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
       summary: 诊股记录详情
       tags:
       - 诊股记录
-  /diagnose/list:
+  /dxsf/diagnose/list:
     get:
       consumes:
       - application/json
@@ -615,10 +689,12 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
       summary: 诊股记录列表
       tags:
       - 诊股记录
-  /diagnose/submitReport:
+  /dxsf/diagnose/submitReport:
     post:
       consumes:
       - application/json
@@ -649,10 +725,12 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
       summary: 提交诊股报告
       tags:
       - 诊股记录
-  /resign/add:
+  /dxsf/resign/add:
     post:
       consumes:
       - application/json
@@ -685,10 +763,12 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
       summary: 新增离职转移
       tags:
       - 离职转移
-  /resign/list:
+  /dxsf/resign/list:
     get:
       consumes:
       - application/json
@@ -741,10 +821,12 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
       summary: 离职转移列表
       tags:
       - 离职转移
-  /teacher/bind/salesman:
+  /dxsf/teacher/bind/salesman:
     post:
       consumes:
       - application/json
@@ -775,10 +857,12 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
       summary: 绑定业务员
       tags:
       - 绑定业务员
-  /teacher/bind/salesman/list:
+  /dxsf/teacher/bind/salesman/list:
     get:
       description: 分页查询指定老师已绑定的业务员（id/用户名/昵称/部门/绑定时间）；data 回显 pageIndex/pageSize
       parameters:
@@ -810,10 +894,12 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
       summary: 老师绑定业务员列表
       tags:
       - 绑定业务员
-  /teacher/bind/salesman/users:
+  /dxsf/teacher/bind/salesman/users:
     get:
       description: 返回全部已绑定业务员 userId（去重平铺数组），供人员树过滤已绑定人员
       produces:
@@ -827,10 +913,12 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
       summary: 全量已绑定业务员
       tags:
       - 绑定业务员
-  /teacher/detail:
+  /dxsf/teacher/detail:
     get:
       description: 编辑弹窗回显（昵称/头衔/评级/头像/签名；列 rating/signature 映射接口 level/sign）
       parameters:
@@ -858,10 +946,12 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
       summary: 老师详情
       tags:
       - 老师管理
-  /teacher/edit:
+  /dxsf/teacher/edit:
     post:
       consumes:
       - application/json
@@ -892,10 +982,12 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
       summary: 编辑老师
       tags:
       - 老师管理
-  /teacher/list:
+  /dxsf/teacher/list:
     post:
       consumes:
       - application/json
@@ -922,10 +1014,12 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
       summary: 老师列表
       tags:
       - 老师管理
-  /teacher/options:
+  /dxsf/teacher/options:
     get:
       description: 全量老师选项（含停用，离职转移弹窗用）
       produces:
@@ -939,9 +1033,82 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
       summary: 老师下拉选项
       tags:
       - 老师管理
+  /getinfo:
+    get:
+      description: 返回角色/昵称等（gyz-admin 动态路由依赖 roles 非空）。需登录态
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.GetInfoResp'
+        "401":
+          description: 登录已过期，请重新登录
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 当前用户信息
+      tags:
+      - 鉴权
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: 账号密码登录，签发 Bearer token（Redis 白名单单设备模式：重新登录即互踢旧设备）。phone_code/uuid
+        等多余字段忽略不校验
+      parameters:
+      - description: 登录凭据
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.LoginReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.LoginResp'
+      summary: 登录
+      tags:
+      - 鉴权
+  /logout:
+    post:
+      description: 删除 Redis 白名单使 token 立即失效（幂等）。需登录态
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 为 退出成功
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "401":
+          description: 登录已过期，请重新登录
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 退出登录
+      tags:
+      - 鉴权
 schemes:
 - http
+securityDefinitions:
+  ApiKeyAuth:
+    description: 值格式：Bearer {token}，登录接口签发
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

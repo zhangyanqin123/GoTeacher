@@ -34,7 +34,8 @@ func NewTeacher(svc *service.Service) *TeacherHandler {
 //	@Success		200 {object} model.TeacherListResp
 //	@Failure		400 {object} response.Response "请求体非法"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/teacher/list [post]
+//	@Security		ApiKeyAuth
+//	@Router			/dxsf/teacher/list [post]
 func (h *TeacherHandler) List(c *gin.Context) {
 	var req model.TeacherListReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -82,7 +83,8 @@ func (h *TeacherHandler) List(c *gin.Context) {
 //	@Produce		json
 //	@Success		200 {object} model.TeacherOptionsResp
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/teacher/options [get]
+//	@Security		ApiKeyAuth
+//	@Router			/dxsf/teacher/options [get]
 func (h *TeacherHandler) Options(c *gin.Context) {
 	list, err := h.svc.ListTeacherOptions(c.Request.Context())
 	switch {
@@ -104,7 +106,8 @@ func (h *TeacherHandler) Options(c *gin.Context) {
 //	@Produce		json
 //	@Success		200 {object} model.TeacherBoundResp
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/teacher/bind/salesman/users [get]
+//	@Security		ApiKeyAuth
+//	@Router			/dxsf/teacher/bind/salesman/users [get]
 func (h *TeacherHandler) BoundUserIds(c *gin.Context) {
 	list, err := h.svc.ListAllTeacherSales(c.Request.Context())
 	switch {
@@ -129,7 +132,8 @@ func (h *TeacherHandler) BoundUserIds(c *gin.Context) {
 //	@Failure		400 {object} response.Response "id 缺失或非法"
 //	@Failure		404 {object} response.Response "老师不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/teacher/detail [get]
+//	@Security		ApiKeyAuth
+//	@Router			/dxsf/teacher/detail [get]
 func (h *TeacherHandler) Detail(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Query("id"), 10, 64)
 	if err != nil || id <= 0 {
@@ -163,7 +167,8 @@ func (h *TeacherHandler) Detail(c *gin.Context) {
 //	@Failure		400 {object} response.Response "请求体非法 / level 非 0/3/5 / 签名超过 200 字符"
 //	@Failure		404 {object} response.Response "老师不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/teacher/edit [post]
+//	@Security		ApiKeyAuth
+//	@Router			/dxsf/teacher/edit [post]
 func (h *TeacherHandler) Update(c *gin.Context) {
 	var req model.TeacherUpdateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -199,7 +204,8 @@ func (h *TeacherHandler) Update(c *gin.Context) {
 //	@Success		200 {object} model.TeacherSalesListResp
 //	@Failure		400 {object} response.Response "id 缺失或非法"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/teacher/bind/salesman/list [get]
+//	@Security		ApiKeyAuth
+//	@Router			/dxsf/teacher/bind/salesman/list [get]
 func (h *TeacherHandler) SalesList(c *gin.Context) {
 	teacherID, err := strconv.ParseInt(c.Query("id"), 10, 64)
 	if err != nil || teacherID <= 0 {
@@ -232,7 +238,8 @@ func (h *TeacherHandler) SalesList(c *gin.Context) {
 //	@Failure		400 {object} response.Response "请求体非法"
 //	@Failure		404 {object} response.Response "老师不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/teacher/bind/salesman [post]
+//	@Security		ApiKeyAuth
+//	@Router			/dxsf/teacher/bind/salesman [post]
 func (h *TeacherHandler) Bind(c *gin.Context) {
 	var req model.TeacherBindReq
 	if err := c.ShouldBindJSON(&req); err != nil {

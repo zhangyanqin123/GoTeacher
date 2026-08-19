@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -18,6 +19,12 @@ type Config struct {
 	ServerPort string
 	LogLevel   string // 日志级别：debug/info/warn/error，debug 时输出全部 SQL 执行日志
 	DSN        string // MySQL 连接串，由 mysql.Config 组装
+
+	RedisAddr     string // Redis 地址（鉴权白名单）
+	RedisPassword string
+	RedisDB       int
+	JWTSecret     string // JWT HS256 签发密钥（必填，空值启动退出）
+	JWTTTLHours   int    // JWT 有效期（小时），同时是 Redis 白名单 TTL
 }
 
 // Load 加载配置并组装 DSN。
@@ -34,6 +41,12 @@ func Load() *Config {
 		DBName:     getEnv("DB_NAME", "handicap_db"),
 		ServerPort: getEnv("SERVER_PORT", "8080"),
 		LogLevel:   getEnv("LOG_LEVEL", "info"),
+
+		RedisAddr:     getEnv("REDIS_ADDR", "127.0.0.1:6379"),
+		RedisPassword: getEnv("REDIS_PASSWORD", ""),
+		RedisDB:       getEnvInt("REDIS_DB", 0),
+		JWTSecret:     getEnv("JWT_SECRET", ""),
+		JWTTTLHours:   getEnvInt("JWT_TTL_HOURS", 24),
 	}
 
 	mc := mysql.Config{
@@ -42,7 +55,7 @@ func Load() *Config {
 		Net:       "tcp",
 		Addr:      c.DBHost + ":" + c.DBPort,
 		DBName:    c.DBName,
-		ParseTime: true, // 必须：让 DATETIME 列扫描进 time.Time，否则报错
+		ParseTime: true,       // 必须：让 DATETIME 列扫描进 time.Time，否则报错
 		Loc:       time.Local, // Go 侧时区（MySQL 连接默认 utf8mb4 字符集）
 	}
 	c.DSN = mc.FormatDSN()
@@ -52,6 +65,16 @@ func Load() *Config {
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+// getEnvInt 整型环境变量：缺失/非法值回落默认（非法不报错，保持与其他配置一致的无害降级）
+func getEnvInt(key string, fallback int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
 	}
 	return fallback
 }

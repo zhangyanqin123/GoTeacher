@@ -48,7 +48,8 @@ func NewDiagnose(svc *service.Service) *DiagnoseHandler {
 //	@Success		200 {object} model.DiagnoseListResp
 //	@Failure		400 {object} response.Response "数值参数格式错误 / status 越界（非 1-6）"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/diagnose/list [get]
+//	@Security		ApiKeyAuth
+//	@Router			/dxsf/diagnose/list [get]
 func (h *DiagnoseHandler) List(c *gin.Context) {
 	var f model.DiagnoseListFilter
 
@@ -128,7 +129,8 @@ func (h *DiagnoseHandler) List(c *gin.Context) {
 //	@Failure		400 {object} response.Response "id 缺失或非整数"
 //	@Failure		404 {object} response.Response "诊股记录不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/diagnose/detail [get]
+//	@Security		ApiKeyAuth
+//	@Router			/dxsf/diagnose/detail [get]
 func (h *DiagnoseHandler) Detail(c *gin.Context) {
 	s := c.Query("id")
 	if s == "" {
@@ -166,7 +168,8 @@ func (h *DiagnoseHandler) Detail(c *gin.Context) {
 //	@Failure		400 {object} response.Response "请求体非法 / 报告内容为空 / 当前状态不允许提交"
 //	@Failure		404 {object} response.Response "诊股记录不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/diagnose/submitReport [post]
+//	@Security		ApiKeyAuth
+//	@Router			/dxsf/diagnose/submitReport [post]
 func (h *DiagnoseHandler) SubmitReport(c *gin.Context) {
 	var req model.DiagnoseSubmitReportReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -203,7 +206,8 @@ func (h *DiagnoseHandler) SubmitReport(c *gin.Context) {
 //	@Failure		400 {object} response.Response "请求体非法 / audit_type 或 result 非法 / 驳回时原因必填 / 当前状态不允许审核"
 //	@Failure		404 {object} response.Response "诊股记录不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
-//	@Router			/diagnose/audit [post]
+//	@Security		ApiKeyAuth
+//	@Router			/dxsf/diagnose/audit [post]
 func (h *DiagnoseHandler) Audit(c *gin.Context) {
 	var req model.DiagnoseAuditReq
 	if err := c.ShouldBindJSON(&req); err != nil {

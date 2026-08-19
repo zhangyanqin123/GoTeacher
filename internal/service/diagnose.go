@@ -38,6 +38,7 @@ var (
 )
 
 // 审核操作人固定串（无登录态，对齐 resign operator="admin" 先例）
+// TODO: 接入登录态后改取 handler 传入的 c.GetString(model.CtxKeyUsername)
 const (
 	proAuditOperator  = "专业审核员"
 	compAuditOperator = "合规审核员"

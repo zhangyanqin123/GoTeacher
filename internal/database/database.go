@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
+	"golang.org/x/crypto/bcrypt"
 
 	"handicap-service/internal/config"
 )
@@ -156,7 +157,10 @@ func Seed(db *sql.DB) error {
 	if err := seedResign(db); err != nil {
 		return err
 	}
-	return seedDiagnose(db)
+	if err := seedDiagnose(db); err != nil {
+		return err
+	}
+	return seedAdminUser(db)
 }
 
 // seedTeacher teacher 空表种子（teacher/sales_user 一次事务写入）
@@ -184,6 +188,32 @@ func seedDiagnose(db *sql.DB) error {
 		return fmt.Errorf("seed diagnose count: %w", err)
 	}
 	return seedIfEmpty(db, count, diagnoseSeedSQL)
+}
+
+// seedAdminUser admin_user 空表种子（初始账号 admin/admin123，见 PLAN-auth.md）。
+// 不走 seedIfEmpty SQL 脚本模式：bcrypt 哈希需 Go 动态生成
+// （固定哈希串写进 SQL 等于明文泄露，且每次生成结果不同）。改密后 COUNT>0 自然跳过。
+func seedAdminUser(db *sql.DB) error {
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM admin_user").Scan(&count); err != nil {
+		return fmt.Errorf("seed admin_user count: %w", err)
+	}
+	if count > 0 {
+		return nil
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("seed admin_user hash password: %w", err)
+	}
+	_, err = db.Exec(
+		"INSERT INTO admin_user (username, password, nickname, role) VALUES ('admin', ?, '系统管理员', 'admin')",
+		string(hash),
+	)
+	if err != nil {
+		return fmt.Errorf("seed admin_user insert: %w", err)
+	}
+	return nil
 }
 
 // seedIfEmpty count 为 0 时在事务里逐条执行 seedSQL

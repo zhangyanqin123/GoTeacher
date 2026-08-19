@@ -15,8 +15,13 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/diagnose/audit": {
+        "/dxsf/diagnose/audit": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "professional 专业审核（状态 2）/ compliance 合规审核（状态 4）；通过 → 3/6，驳回 → 5/4（驳回时 reject_reason 必填，富文本 HTML）",
                 "consumes": [
                     "application/json"
@@ -67,8 +72,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/diagnose/detail": {
+        "/dxsf/diagnose/detail": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "诊股记录全字段 + 审核流程日志（audit_logs）",
                 "produces": [
                     "application/json"
@@ -114,8 +124,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/diagnose/list": {
+        "/dxsf/diagnose/list": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "分页查询诊股记录，零值/未传筛选字段不参与过滤；昵称/姓名/股票代码/股票名/老师模糊匹配，ID/买入价/持仓数/状态精确匹配",
                 "consumes": [
                     "application/json"
@@ -249,8 +264,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/diagnose/submitReport": {
+        "/dxsf/diagnose/submitReport": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "状态 1/3/5 可提交（首次编写 / 重新提审），提交后状态统一回落 2；report_content 为富文本 HTML",
                 "consumes": [
                     "application/json"
@@ -301,8 +321,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/resign/add": {
+        "/dxsf/resign/add": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算；原老师无绑定业务员时 400",
                 "consumes": [
                     "application/json"
@@ -353,8 +378,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/resign/list": {
+        "/dxsf/resign/list": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "分页查询离职转移记录，零值筛选字段不参与过滤；dept_id 匹配原老师部门",
                 "consumes": [
                     "application/json"
@@ -438,8 +468,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/teacher/bind/salesman": {
+        "/dxsf/teacher/bind/salesman": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "追加语义：仅新增绑定，已存在的绑定保持不变；重复绑定幂等",
                 "consumes": [
                     "application/json"
@@ -490,8 +525,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/teacher/bind/salesman/list": {
+        "/dxsf/teacher/bind/salesman/list": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "分页查询指定老师已绑定的业务员（id/用户名/昵称/部门/绑定时间）；data 回显 pageIndex/pageSize",
                 "produces": [
                     "application/json"
@@ -543,8 +583,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/teacher/bind/salesman/users": {
+        "/dxsf/teacher/bind/salesman/users": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "返回全部已绑定业务员 userId（去重平铺数组），供人员树过滤已绑定人员",
                 "produces": [
                     "application/json"
@@ -569,8 +614,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/teacher/detail": {
+        "/dxsf/teacher/detail": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "编辑弹窗回显（昵称/头衔/评级/头像/签名；列 rating/signature 映射接口 level/sign）",
                 "produces": [
                     "application/json"
@@ -616,8 +666,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/teacher/edit": {
+        "/dxsf/teacher/edit": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "编辑头衔/评级/头像/签名（仅这 4 个字段可改，冗余快照字段一律忽略；level 0 无 / 3 初级 / 5 高级）",
                 "consumes": [
                     "application/json"
@@ -668,8 +723,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/teacher/list": {
+        "/dxsf/teacher/list": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "分页查询老师（筛选条件走 JSON body），未传/null 字段不参与过滤；姓名/账号/昵称/头衔/操作人模糊匹配，部门/ID/认证/状态精确匹配",
                 "consumes": [
                     "application/json"
@@ -714,8 +774,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/teacher/options": {
+        "/dxsf/teacher/options": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "全量老师选项（含停用，离职转移弹窗用）",
                 "produces": [
                     "application/json"
@@ -729,6 +794,108 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/model.TeacherOptionsResp"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/getinfo": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "返回角色/昵称等（gyz-admin 动态路由依赖 roles 非空）。需登录态",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "鉴权"
+                ],
+                "summary": "当前用户信息",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.GetInfoResp"
+                        }
+                    },
+                    "401": {
+                        "description": "登录已过期，请重新登录",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/login": {
+            "post": {
+                "description": "账号密码登录，签发 Bearer token（Redis 白名单单设备模式：重新登录即互踢旧设备）。phone_code/uuid 等多余字段忽略不校验",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "鉴权"
+                ],
+                "summary": "登录",
+                "parameters": [
+                    {
+                        "description": "登录凭据",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.LoginReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.LoginResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/logout": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "删除 Redis 白名单使 token 立即失效（幂等）。需登录态",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "鉴权"
+                ],
+                "summary": "退出登录",
+                "responses": {
+                    "200": {
+                        "description": "msg 为 退出成功",
+                        "schema": {
+                            "$ref": "#/definitions/model.ActionResp"
+                        }
+                    },
+                    "401": {
+                        "description": "登录已过期，请重新登录",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
@@ -945,6 +1112,69 @@ const docTemplate = `{
                 "report_content": {
                     "description": "富文本 HTML",
                     "type": "string"
+                }
+            }
+        },
+        "model.GetInfoResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "$ref": "#/definitions/model.UserInfo"
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "model.LoginReq": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "admin123"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
+        "model.LoginResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "description": "恒为 null"
+                },
+                "expire": {
+                    "description": "JWT exp（Unix 秒）",
+                    "type": "integer",
+                    "example": 1724054400
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "登录成功"
+                },
+                "passwd_expired": {
+                    "description": "密码是否过期（暂恒 false）",
+                    "type": "boolean",
+                    "example": false
+                },
+                "token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIs..."
                 }
             }
         },
@@ -1398,6 +1628,41 @@ const docTemplate = `{
                 }
             }
         },
+        "model.UserInfo": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string",
+                    "example": ""
+                },
+                "introduction": {
+                    "type": "string",
+                    "example": ""
+                },
+                "name": {
+                    "type": "string",
+                    "example": "系统管理员"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "*:*:*"
+                    ]
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "admin"
+                    ]
+                }
+            }
+        },
         "response.Response": {
             "type": "object",
             "properties": {
@@ -1410,6 +1675,14 @@ const docTemplate = `{
                 }
             }
         }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "description": "值格式：Bearer {token}，登录接口签发",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
     }
 }`
 
@@ -1417,10 +1690,10 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "",
-	BasePath:         "/api/v1/dxsf",
+	BasePath:         "/api/v1",
 	Schemes:          []string{"http"},
 	Title:            "im系统诊股 API",
-	Description:      "chatSys（老师管理/绑定业务员/离职转移）+ 诊股记录接口。\n统一响应结构 {code, msg, data}；写操作 msg 为约定中文，查询类为 \"success\"。",
+	Description:      "chatSys（老师管理/绑定业务员/离职转移）+ 诊股记录接口。\n统一响应结构 {code, msg, data}；写操作 msg 为约定中文，查询类为 \"success\"。\n业务接口需 Bearer token（JWT + Redis 白名单，见 PLAN-auth.md）。",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

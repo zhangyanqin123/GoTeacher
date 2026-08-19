@@ -38,6 +38,7 @@ func (s *Service) ListResigns(ctx context.Context, f model.ResignListFilter) (*m
 // AddResign 新增离职转移：校验 → 从 teacher 表回查冗余快照 → 落库。
 // 前端传的姓名/部门冗余字段一律忽略，以库为准；operateIP 由 handler 传入（c.ClientIP()）；
 // operator 无登录态固定 "admin"（对齐 UpdateTeacher 的 update_by）。
+// TODO: 接入登录态后 operator 改取 handler 传入的 c.GetString(model.CtxKeyUsername)
 func (s *Service) AddResign(ctx context.Context, req model.ResignAddReq, operateIP string) error {
 	// 1. 基础校验
 	if req.OriginalTeacherID <= 0 || req.ReplaceTeacherID <= 0 {

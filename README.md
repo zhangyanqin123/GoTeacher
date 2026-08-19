@@ -1,6 +1,6 @@
 # handicap-service
 
-Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + 诊股记录接口。数据从 MySQL 查询返回（非硬编码），首次启动自动建表并写入种子数据。
+Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + 诊股记录接口。数据从 MySQL 查询返回（非硬编码），首次启动自动建表并写入种子数据。业务接口统一 Bearer token 鉴权（见下文「鉴权」）。
 
 ## 技术栈
 
@@ -10,7 +10,36 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 | Web 框架 | [Gin](https://github.com/gin-gonic/gin) | 路由、中间件、JSON 渲染 |
 | 数据访问 | database/sql + [go-sql-driver/mysql](https://github.com/go-sql-driver/mysql) | Go 官方标准库，无 ORM |
 | 数据库 | MySQL 8 | Homebrew 安装 |
+| 缓存 | [go-redis/v9](https://github.com/redis/go-redis) | 鉴权白名单（token 主动失效） |
+| 鉴权 | [golang-jwt/jwt/v5](https://github.com/golang-jwt/jwt) + bcrypt | JWT HS256 签发 + Redis 白名单 |
 | 环境变量 | [godotenv](https://github.com/joho/godotenv) | 支持 `.env` 文件 |
+
+## 鉴权（JWT + Redis 白名单）
+
+设计决策详见 `PLAN-auth.md`。除 `POST /api/v1/login` 与 `/swagger/**` 外，全部接口需带 `Authorization: Bearer {token}`；未授权统一 HTTP 401 + `{"code":401,"msg":"登录已过期，请重新登录"}`。
+
+| # | 方法 | 路径 | 说明 |
+| --- | --- | --- | --- |
+| 1 | POST | `/api/v1/login` | 登录签发 token（初始账号 admin/admin123） |
+| 2 | POST | `/api/v1/logout` | 退出登录（token 立即失效，幂等） |
+| 3 | GET | `/api/v1/getinfo` | 当前用户信息（roles/name/permissions） |
+
+- **login 响应是全局约定的特例**：失败也返回 HTTP 200 + `code:400`（gyz-admin 登录页对 reject 值调 `error.includes('密码')`，HTTP 4xx 会使其抛 TypeError）；`token`/`expire`/`passwd_expired` 在 body 根而非 `data` 内（前端 store 从响应根解构）。前端多传的 `phone_code`/`uuid` 静默忽略
+- **单设备登录**：Redis key `auth:token:{user_id}` 存当前有效 token 的 jti（TTL=JWT 有效期），重新登录覆盖即互踢旧设备；`DEL` 该 key 即主动踢人
+- token 有效期 `JWT_TTL_HOURS`（默认 24h）；`JWT_SECRET` 必填，空值启动退出
+
+```bash
+# 1. 登录拿 token
+TOKEN=$(curl -s -X POST 'http://localhost:8080/api/v1/login' \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin123"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
+
+# 2. 业务接口带 token
+curl -s 'http://localhost:8080/api/v1/dxsf/teacher/options' -H "Authorization: Bearer $TOKEN"
+
+# 3. 退出（token 立即失效）
+curl -s -X POST 'http://localhost:8080/api/v1/logout' -H "Authorization: Bearer $TOKEN"
+```
 
 ## 老师管理接口（chatSys）
 
@@ -252,6 +281,7 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/diagnose/audit' \
 
 - Go 1.24+
 - MySQL 8（未安装先执行：`brew install mysql && brew services start mysql`）
+- Redis（鉴权白名单依赖。本机用版本化 formula：`brew install redis@6.2`，keg-only 不进 PATH，启动 `/usr/local/opt/redis@6.2/bin/redis-server --daemonize yes`）
 
 ### 2. 初始化数据库
 
@@ -262,7 +292,7 @@ mysql -u root -e "CREATE DATABASE IF NOT EXISTS handicap_db CHARACTER SET utf8mb
 ### 3. 配置环境变量
 
 ```bash
-cp .env.example .env   # 按需修改 DB_PASSWORD（Homebrew 初始 root 无密码）
+cp .env.example .env   # 按需修改 DB_PASSWORD；JWT_SECRET 必填（openssl rand -hex 32 生成）
 ```
 
 ### 4. 启动
@@ -272,7 +302,7 @@ go mod tidy
 go run ./cmd/server
 ```
 
-首次启动自动执行：建表（幂等）→ 表为空则插入种子数据。之后启动直接可用。
+首次启动自动执行：建表（幂等，含 admin_user）→ 表为空则插入种子数据（admin_user 种子：admin/admin123）。之后启动直接可用。
 
 ### 5. 验证
 

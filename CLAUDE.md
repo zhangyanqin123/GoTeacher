@@ -18,8 +18,9 @@ swag init -g cmd/server/main.go -o docs   # 接口注释改动后重新生成 Sw
 ```
 
 - 依赖 MySQL 8：`brew services start mysql`，库需先建：`CREATE DATABASE handicap_db ...utf8mb4_0900_ai_ci`
+- 依赖 Redis（鉴权白名单）：本机为版本化 formula `redis@6.2`（keg-only，二进制在 `/usr/local/opt/redis@6.2/bin/`，不进 PATH），启动：`/usr/local/opt/redis@6.2/bin/redis-server --daemonize yes`；`JWT_SECRET` 必填（空值启动退出），见 PLAN-auth.md
 - 配置走 `.env`（模板 `.env.example`），Homebrew root 初始无密码
-- 重灌种子：`TRUNCATE TABLE <表>;` 后重启（种子仅在表空时写入，schema/seed SQL 均 go:embed 随二进制发布）
+- 重灌种子：`TRUNCATE TABLE <表>;` 后重启（种子仅在表空时写入，schema/seed SQL 均 go:embed 随二进制发布；admin_user 种子为 Go 代码 bcrypt 动态生成 admin/admin123，不走 seed SQL）
 - 无 lint 工具链，无 Makefile
 - Swagger：handler 注释即文档源（@Summary/@Param/@Success 等），启动后 `/swagger/index.html` 可视化；`docs/` 生成物需随代码提交（`cmd/server/main.go` blank import 依赖）；文档专用响应类型（弥补 `PageResult.List` 为 any 无法展开 schema）集中在 `internal/model/swagger.go`，运行时不使用
 
@@ -31,9 +32,16 @@ swag init -g cmd/server/main.go -o docs   # 接口注释改动后重新生成 Sw
 handler → service → repository → model
 ```
 
-- `internal/router/router.go` 是唯一组装点：`repository.New(db) → service.New(repo) → 各 handler`。repository 与 service 均为**单一结构体**，按业务域拆文件，不按实体建多 struct
-- `cmd/server/main.go`：加载配置 → 连库 → `Migrate`（幂等建表 + 存量列型升级）→ `Seed` → 路由启动
+- `internal/router/router.go` 是唯一组装点：`repository.New(db) → service.New(repo, rdb, secret, ttl) → 各 handler`。repository 与 service 均为**单一结构体**，按业务域拆文件，不按实体建多 struct
+- `cmd/server/main.go`：加载配置 → 连 MySQL/Redis → `Migrate`（幂等建表 + 存量列型升级）→ `Seed` → 路由启动
 - 数据访问是裸 `database/sql`（无 ORM）：动态 WHERE 靠拼 SQL 片段 + args；模糊查询用 `LIKE CONCAT('%',?,'%')`；LIMIT/OFFSET 只能拼常量，参数放最后
+
+### 鉴权约定（JWT + Redis 白名单，设计决策见 PLAN-auth.md）
+
+- 除 `POST /api/v1/login` 与 `/swagger/**` 外全部挂 `Auth` 中间件（`internal/router/auth.go`）：解析 `Authorization: Bearer` → `service.VerifyAccessToken` 验签 + 白名单比对 → `c.Set` 用户信息（key 常量在 `internal/model/auth.go`）。**新增业务接口默认进鉴权组**（挂 `Auth(svc)` 或放 `authed` 组内）
+- 单设备模式：Redis `auth:token:{user_id}` 存当前有效 jti，TTL=JWT 有效期；重新登录覆盖即互踢，`DEL` 即踢人；登出/logout 幂等
+- 401 统一文案 `登录已过期，请重新登录`（哨兵错误 `service.ErrUnauthorized`，不区分失败原因防探测）；Redis 故障映 500（fail-closed）
+- **login 接口是响应约定特例**：失败也返回 HTTP 200 + `code:400`（前端登录页对 reject 值调 `error.includes('密码')`）；`token`/`expire`/`passwd_expired` 在 body 根而非 data 内；`ErrInvalidCredentials` 文案必须含「密码」关键词（前端据此定位密码输入框），勿改措辞
 
 ### 错误处理约定
 

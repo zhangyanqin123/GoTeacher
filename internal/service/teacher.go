@@ -72,6 +72,7 @@ func (s *Service) UpdateTeacher(ctx context.Context, req model.TeacherUpdateReq)
 		return ErrTeacherNotFound
 	}
 	// 无登录态，更新人固定 admin（与 mock 一致）
+	// TODO: 接入登录态后改取 handler 传入的 c.GetString(model.CtxKeyUsername)
 	return s.repo.UpdateTeacher(ctx, req, "admin")
 }
 
