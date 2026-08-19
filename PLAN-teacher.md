@@ -11,7 +11,7 @@
 | 1 | POST | `/api/v1/dxsf/teacher/list` | 分页 + 多条件筛选；返回 `data.list / data.count` |
 | 2 | GET | `/api/v1/dxsf/teacher/options` | 全量下拉（含停用）：`[{id, name, deptName}]` |
 | 3 | POST | `/api/v1/dxsf/teacher/edit` | 编辑 title / level(0无3初级5高级) / avatar / sign |
-| 4 | GET | `/api/v1/dxsf/teacher/bind/salesman/list` | 老师绑定业务员分页（默认 pageSize=5） |
+| 4 | GET | `/api/v1/dxsf/teacher/bind/salesman/list` | 老师绑定业务员分页（默认 pageSize=5）；行含 `id/username/nickname/dept_name/bind_time`，data 回显 `pageIndex/pageSize`（驼峰，2026-08-19 前端要求） |
 | 5 | POST | `/api/v1/dxsf/teacher/bind/salesman` | ~~全量替换绑定；`userIds: []` = 解绑全部~~ → 2026-08-18 起改为**追加语义**（INSERT IGNORE 幂等，仅新增绑定；空数组 no-op，无解统能力） |
 
 ## 与前端 mock 对齐的兼容约定（勿改）
@@ -61,3 +61,5 @@
 - 重启幂等：种子不重复、编辑/绑定结果保留；原 house 接口无回归（total=2312）
 
 > **2026-08-18 字段命名整体迁移 snake_case**：本文接口清单与验证记录中的驼峰字段名（bindSalesCount/deptId 等）已全部改为蛇形（bind_sales_count/dept_id），以 [PLAN-api-snake-case.md](PLAN-api-snake-case.md) 为准。
+>
+> **2026-08-19 绑定业务员列表返回结构调整**：行新增 `id`（sales_user.id）、`name` 改 `username`（仍取 sales_user.nickname，桩表无独立账号列）；data 外层回显 `pageIndex`/`pageSize`——驼峰键为该接口前端约定的返回结构，属 snake_case 全链路约束的已确认例外（新增专用 `SalesPageResult`，不动通用 `PageResult`）。

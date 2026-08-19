@@ -78,13 +78,14 @@ func (s *Service) UpdateTeacher(ctx context.Context, req model.TeacherUpdateReq)
 // ListTeacherSales 老师绑定业务员分页列表。
 // 老师不存在时返回空列表（对齐 mock：find 不到 → count 0 → list []），不视为错误。
 // 默认 pageSize=5（对齐 mock 的 query.pageSize || 5，与列表接口的 10 不同）。
-func (s *Service) ListTeacherSales(ctx context.Context, teacherID int64, pageIndex, pageSize int) (*model.PageResult, error) {
+// 返回 SalesPageResult：data 回显 pageIndex/pageSize（该接口前端约定的返回结构）。
+func (s *Service) ListTeacherSales(ctx context.Context, teacherID int64, pageIndex, pageSize int) (*model.SalesPageResult, error) {
 	pageIndex, pageSize = normalizePage(pageIndex, pageSize, defaultSalesPageSize)
 	list, count, err := s.repo.ListTeacherSalesByTeacher(ctx, teacherID, pageSize, (pageIndex-1)*pageSize)
 	if err != nil {
 		return nil, err
 	}
-	return &model.PageResult{List: list, Count: count}, nil
+	return &model.SalesPageResult{List: list, Count: count, PageIndex: pageIndex, PageSize: pageSize}, nil
 }
 
 // BindTeacherSales 追加绑定业务员：仅新增绑定，已存在的不动（INSERT IGNORE 幂等）

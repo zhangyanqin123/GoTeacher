@@ -37,13 +37,16 @@ type TeacherDetailResp struct {
 	Data TeacherDetail `json:"data"`
 }
 
-// TeacherSalesListResp 老师绑定业务员列表响应（GET /chatSys/teacher/bindSales/list）
+// TeacherSalesListResp 老师绑定业务员列表响应（GET /teacher/bind/salesman/list）。
+// data 回显 pageIndex/pageSize（驼峰为本接口前端约定，snake_case 全链路约束的例外）。
 type TeacherSalesListResp struct {
 	Code int    `json:"code" example:"200"`
 	Msg  string `json:"msg"  example:"success"`
 	Data struct {
-		List  []TeacherSalesRow `json:"list"`
-		Count int               `json:"count" example:"3"`
+		List      []TeacherSalesRow `json:"list"`
+		Count     int               `json:"count" example:"3"`
+		PageIndex int               `json:"pageIndex" example:"1"`
+		PageSize  int               `json:"pageSize" example:"5"`
 	} `json:"data"`
 }
 

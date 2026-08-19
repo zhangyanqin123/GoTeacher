@@ -407,6 +407,12 @@ definitions:
             items:
               $ref: '#/definitions/model.TeacherSalesRow'
             type: array
+          pageIndex:
+            example: 1
+            type: integer
+          pageSize:
+            example: 5
+            type: integer
         type: object
       msg:
         example: success
@@ -418,9 +424,11 @@ definitions:
         type: string
       dept_name:
         type: string
-      name:
-        type: string
+      id:
+        type: integer
       nickname:
+        type: string
+      username:
         type: string
     type: object
   model.TeacherUpdateReq:
@@ -772,7 +780,7 @@ paths:
       - 绑定业务员
   /teacher/bind/salesman/list:
     get:
-      description: 分页查询指定老师已绑定的业务员（姓名/昵称/部门/绑定时间）
+      description: 分页查询指定老师已绑定的业务员（id/用户名/昵称/部门/绑定时间）；data 回显 pageIndex/pageSize
       parameters:
       - description: 老师 ID
         in: query

@@ -44,7 +44,8 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 - `qualification` 存/传中文 `已认证`/`未认证`
 - 时间字段输出 `YYYY-MM-DD HH:mm:ss`（`model.DateTimeString` 在扫描点格式化，避免 RFC3339 带 T）
 - `level` 原样存取（列名 rating）：种子为 1-5 星，编辑后为 0 无 / 3 初级 / 5 高级
-- 分页返回 `data.list` / `data.count`；老师不存在时绑定列表返回空 list + count 0（不报错）
+- 分页返回 `data.list` / `data.count`；老师不存在时绑定列表返回空 list + count 0（不报错）；绑定业务员列表额外回显 `pageIndex`/`pageSize`（驼峰，该接口前端返回结构约定，snake_case 约定的例外）
+- 绑定业务员列表行：`username` 取 `sales_user.nickname`（桩表无独立账号列，与离职转移快照同源），同表 `nickname` 一并输出
 
 ### curl 示例
 
@@ -62,8 +63,9 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/edit' \
   -H 'Content-Type: application/json' \
   -d '{"id":1,"title":"首席投顾","level":5,"avatar":"","sign":"签名"}'
 
-# 老师绑定业务员列表
+# 老师绑定业务员列表（data 回显 pageIndex/pageSize，为该接口前端约定的驼峰例外）
 curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/list?id=1&page_index=1&page_size=5'
+# → {"code":200,"msg":"success","data":{"list":[{"id":179,"username":"zzy5","nickname":"zzy5","dept_name":"市场部一部","bind_time":"2026-08-19 14:37:03"}],"count":1,"pageIndex":1,"pageSize":5}}
 
 # 绑定业务员（追加语义；user_ids 为业务员表 id）
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman' \

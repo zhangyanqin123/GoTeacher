@@ -47,11 +47,12 @@ type TeacherDetail struct {
 }
 
 // TeacherSalesRow 老师绑定业务员行（详情弹窗用）。
-// 业务员姓名 name 取 sales_user.nickname（桩表无独立姓名列，与离职转移快照同源）。
+// 业务员 username 取 sales_user.nickname（桩表无独立账号列，与离职转移快照同源）。
 type TeacherSalesRow struct {
-	Name    string         `json:"name"        db:"nickname"`
-	Nickname string        `json:"nickname"    db:"nickname"`
-	DeptName string        `json:"dept_name"   db:"dept_name"`
+	ID       int64          `json:"id"         db:"id"`
+	Username string         `json:"username"   db:"nickname"`
+	Nickname string         `json:"nickname"   db:"nickname"`
+	DeptName string         `json:"dept_name"  db:"dept_name"`
 	BindTime DateTimeString `json:"bind_time"  db:"bind_time"`
 }
 
@@ -114,4 +115,13 @@ type TeacherListFilter struct {
 type PageResult struct {
 	List  any `json:"list"`
 	Count int `json:"count"`
+}
+
+// SalesPageResult 绑定业务员列表专用分页结果：在 PageResult 基础上回显
+// pageIndex/pageSize（前端返回结构要求回显分页参数；键名为该接口约定，不蛇形）
+type SalesPageResult struct {
+	List      any `json:"list"`
+	Count     int `json:"count"`
+	PageIndex int `json:"pageIndex"`
+	PageSize  int `json:"pageSize"`
 }

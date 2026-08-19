@@ -190,7 +190,7 @@ func (h *TeacherHandler) Update(c *gin.Context) {
 // SalesList GET /api/v1/dxsf/teacher/bind/salesman/list
 //
 //	@Summary		老师绑定业务员列表
-//	@Description	分页查询指定老师已绑定的业务员（姓名/昵称/部门/绑定时间）
+//	@Description	分页查询指定老师已绑定的业务员（id/用户名/昵称/部门/绑定时间）；data 回显 pageIndex/pageSize
 //	@Tags			绑定业务员
 //	@Produce		json
 //	@Param			id query integer true "老师 ID"

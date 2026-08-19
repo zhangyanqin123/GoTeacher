@@ -492,7 +492,7 @@ const docTemplate = `{
         },
         "/teacher/bind/salesman/list": {
             "get": {
-                "description": "分页查询指定老师已绑定的业务员（姓名/昵称/部门/绑定时间）",
+                "description": "分页查询指定老师已绑定的业务员（id/用户名/昵称/部门/绑定时间）；data 回显 pageIndex/pageSize",
                 "produces": [
                     "application/json"
                 ],
@@ -1340,6 +1340,14 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/model.TeacherSalesRow"
                             }
+                        },
+                        "pageIndex": {
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "pageSize": {
+                            "type": "integer",
+                            "example": 5
                         }
                     }
                 },
@@ -1358,10 +1366,13 @@ const docTemplate = `{
                 "dept_name": {
                     "type": "string"
                 },
-                "name": {
-                    "type": "string"
+                "id": {
+                    "type": "integer"
                 },
                 "nickname": {
+                    "type": "string"
+                },
+                "username": {
                     "type": "string"
                 }
             }
