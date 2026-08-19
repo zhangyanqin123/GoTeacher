@@ -13,9 +13,10 @@ import (
 // resign 业务错误定义，handler 用 errors.Is 判断并映射 HTTP 状态码
 // （ErrTeacherNotFound 复用 teacher.go 的，同包共享，勿重复声明）
 var (
-	ErrSameTeacher            = errors.New("original teacher and replace teacher must differ")
-	ErrInvalidTransferContent = errors.New("transferContent must be a non-empty subset of [group]")
-	ErrRemarkTooLong          = errors.New("remark must be at most 200 characters")
+	ErrSameTeacher               = errors.New("original teacher and replace teacher must differ")
+	ErrInvalidTransferContent    = errors.New("transferContent must be a non-empty subset of [group]")
+	ErrRemarkTooLong             = errors.New("remark must be at most 200 characters")
+	ErrOriginalTeacherNoSalesman = errors.New("original teacher has no bound salesmen")
 )
 
 // 转移内容枚举（前端 resign.js / teacherQuery.vue 转移弹窗勾选一致；好友概念已移除）
@@ -67,10 +68,14 @@ func (s *Service) AddResign(ctx context.Context, req model.ResignAddReq, operate
 		return ErrTeacherNotFound
 	}
 
-	// 3. 业务员快照：原老师全部绑定业务员，多个逗号拼接（与姓名一一对应）
+	// 3. 业务员快照：原老师全部绑定业务员，多个逗号拼接（与姓名一一对应）；
+	//    空绑定是无效转移（无可转内容，快照/计数全空），直接 400 拦截不入库
 	salesmen, err := s.repo.ListTeacherSalesmen(ctx, req.OriginalTeacherID)
 	if err != nil {
 		return err
+	}
+	if len(salesmen) == 0 {
+		return ErrOriginalTeacherNoSalesman
 	}
 	names := make([]string, 0, len(salesmen))
 	depts := make([]string, 0, len(salesmen))

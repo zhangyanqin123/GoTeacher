@@ -86,13 +86,13 @@ func (h *ResignHandler) List(c *gin.Context) {
 // 老师不存在 → 404；其他 → 500
 //
 //	@Summary		新增离职转移
-//	@Description	原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算
+//	@Description	原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算；原老师无绑定业务员时 400
 //	@Tags			离职转移
 //	@Accept			json
 //	@Produce		json
 //	@Param			body body model.ResignAddReq true "新增离职转移请求体"
 //	@Success		200 {object} model.ActionResp "msg 固定「转移成功」，data 恒为 null"
-//	@Failure		400 {object} response.Response "请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200 字符"
+//	@Failure		400 {object} response.Response "请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200 字符 / 原老师无绑定业务员"
 //	@Failure		404 {object} response.Response "老师不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
 //	@Router			/resign/add [post]
@@ -114,6 +114,8 @@ func (h *ResignHandler) Add(c *gin.Context) {
 		response.Fail(c, 400, 400, "transfer_content must be a non-empty subset of [group]")
 	case errors.Is(err, service.ErrRemarkTooLong):
 		response.Fail(c, 400, 400, "remark must be at most 200 characters")
+	case errors.Is(err, service.ErrOriginalTeacherNoSalesman):
+		response.Fail(c, 400, 400, "original teacher has no bound salesmen")
 	default:
 		slog.Error("add resign failed", "original_teacher_id", req.OriginalTeacherID, "replace_teacher_id", req.ReplaceTeacherID, "err", err)
 		response.Fail(c, 500, 500, "internal server error")

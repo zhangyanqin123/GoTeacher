@@ -53,9 +53,10 @@ add 从「只写快照」升级为事务内真实转移 `teacher_sales`（老师
    行 id 与原 bind_time 保留（非重叠绑定的"原绑定时间"需求由 UPDATE 天然满足，展示顺序稳定）。
 3. **落快照**：原 INSERT 搬入事务。
 
-不设 `RowsAffected==0` 守卫：原老师空绑定是合法转移（groupCount=0，种子 101/102/103 即如此），
-0 行是幂等正常结果而非 400；并发给接替老师绑定重叠业务员由 uk_teacher_user 1062 兜底（整体回滚 500，重试即成功），
-不加 `SELECT ... FOR UPDATE`（项目无先例）。前置依赖：service 的 ErrSameTeacher 校验承重（同 ID 时语句 1 会清空全部绑定）。
+事务内不设 `RowsAffected==0` 守卫：0 行是幂等正常结果（service 已在事务前拦截空绑定，
+事务内空集只可能是拦截后到执行前的并发解绑窗口，按无操作处理优于报错）；并发给接替老师绑定重叠业务员由
+uk_teacher_user 1062 兜底（整体回滚 500，重试即成功），不加 `SELECT ... FOR UPDATE`（项目无先例）。
+前置依赖：service 的 ErrSameTeacher 校验承重（同 ID 时语句 1 会清空全部绑定）。
 groupCount/salesman 快照取自转移前的查询，快照语义不变（可能大于实际移动数）。
 
 ### 7. 复用既有代码
@@ -115,5 +116,12 @@ groupCount/salesman 快照取自转移前的查询，快照语义不变（可能
   导致确认转移后老师列表关联业务人员数不变。`InsertResign` 改名 `TransferResign` 扩为三步事务
   （删重叠/移剩余/落快照，见设计决策 6），重叠绑定去重合并（保留接替老师现有 bind_time）；
   service 调用点同步换名。无 schema 变更、无新增错误类型（1062 冲突走既有 500 分支）。
+- **2026-08-19 拦截原老师空绑定**：联调发现原老师无绑定业务员时会落一条 salesman_name/dept 与
+  group_count 全空的转移记录（运营无价值，且易被误认为转移 bug——本次排查即如此）。AddResign 在
+  业务员快照查询后增加空切片判断，返回新增哨兵错误 `ErrOriginalTeacherNoSalesman`，handler 映射
+  400（零额外查询：salesmen 本就要查来做快照）。这反转了设计决策 6「空绑定为合法转移」的旧表述：
+  事务内仍不设 RowsAffected 守卫（拦截后到执行前的并发解绑窗口，空集按无操作处理）。
+  种子 101/102/103（group_count=0）为历史记录，不追改。涉及：service/handler 的 resign 文件、
+  README、Swagger 注释。
 
 > **2026-08-18 字段命名整体迁移 snake_case**：本文中的驼峰字段名（originalTeacherId/transferContent 等）已全部改为蛇形（original_teacher_id/transfer_content），以 [PLAN-api-snake-case.md](PLAN-api-snake-case.md) 为准。

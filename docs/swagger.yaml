@@ -648,7 +648,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: 原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算
+      description: 原老师绑定业务员全部转移给接替老师（去重合并），姓名/部门等冗余快照由后端回查，group_count 按原老师绑定数计算；原老师无绑定业务员时
+        400
       parameters:
       - description: 新增离职转移请求体
         in: body
@@ -665,7 +666,7 @@ paths:
             $ref: '#/definitions/model.ActionResp'
         "400":
           description: 请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200
-            字符
+            字符 / 原老师无绑定业务员
           schema:
             $ref: '#/definitions/response.Response'
         "404":

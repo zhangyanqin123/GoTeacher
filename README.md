@@ -111,6 +111,7 @@ curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/users'
 
 - `transfer_content` 白名单 `group`（转移客户群），非空；`friend` 及其他值 400
 - 原/接替老师不能相同（400），老师不存在 404
+- 原老师无绑定业务员时 400（无可转移内容，不再落 group_count=0 的空记录）
 - `group_count` 由后端计算（=原老师绑定业务员数，一个绑定业务员对应一个客户群），请求体不接收该字段；旧客户端多传的 `group_count`/`friend_count` 会被 gin 静默忽略
 - `operator` 无登录态固定 `admin`；`operate_ip` 取 `c.ClientIP()`；`transfer_time` 库端 NOW()
 
