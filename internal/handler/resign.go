@@ -60,7 +60,7 @@ func (h *ResignHandler) List(c *gin.Context) {
 		}
 		v, err := strconv.ParseInt(s, 10, 64)
 		if err != nil {
-			response.Fail(c, 400, 400, num.label+" must be an integer")
+			response.Fail(c, 400, 400, "参数 "+num.label+" 必须是整数")
 			return
 		}
 		*num.dst = v
@@ -74,7 +74,7 @@ func (h *ResignHandler) List(c *gin.Context) {
 	switch {
 	case err != nil:
 		slog.Error("list resigns failed", "err", err)
-		response.Fail(c, 500, 500, "internal server error")
+		response.Fail(c, 500, 500, "服务器内部错误")
 	default:
 		response.OKMsg(c, "success", result)
 	}
@@ -99,7 +99,8 @@ func (h *ResignHandler) List(c *gin.Context) {
 func (h *ResignHandler) Add(c *gin.Context) {
 	var req model.ResignAddReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, 400, 400, "invalid request body: "+err.Error())
+		slog.Error("bind resign add request failed", "err", err)
+		response.Fail(c, 400, 400, "请求体非法")
 		return
 	}
 
@@ -107,17 +108,17 @@ func (h *ResignHandler) Add(c *gin.Context) {
 	case err == nil:
 		response.OKMsg(c, "转移成功", nil) // mock 约定 msg
 	case errors.Is(err, service.ErrTeacherNotFound):
-		response.Fail(c, 404, 404, "teacher not found")
+		response.Fail(c, 404, 404, err.Error())
 	case errors.Is(err, service.ErrSameTeacher):
-		response.Fail(c, 400, 400, "original teacher and replace teacher must differ")
+		response.Fail(c, 400, 400, err.Error())
 	case errors.Is(err, service.ErrInvalidTransferContent):
-		response.Fail(c, 400, 400, "transfer_content must be a non-empty subset of [group]")
+		response.Fail(c, 400, 400, err.Error())
 	case errors.Is(err, service.ErrRemarkTooLong):
-		response.Fail(c, 400, 400, "remark must be at most 200 characters")
+		response.Fail(c, 400, 400, err.Error())
 	case errors.Is(err, service.ErrOriginalTeacherNoSalesman):
-		response.Fail(c, 400, 400, "original teacher has no bound salesmen")
+		response.Fail(c, 400, 400, err.Error())
 	default:
 		slog.Error("add resign failed", "original_teacher_id", req.OriginalTeacherID, "replace_teacher_id", req.ReplaceTeacherID, "err", err)
-		response.Fail(c, 500, 500, "internal server error")
+		response.Fail(c, 500, 500, "服务器内部错误")
 	}
 }

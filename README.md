@@ -39,6 +39,7 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 ### 响应约定（与前端 mock 对齐的兼容点）
 
 - 成功 msg：查询类 `success`，写操作 `编辑成功` / `绑定成功`（非 `ok`）
+- 失败 msg 一律中文可展示文案（前端拦截器 error 分支直接弹 `error.response.data.msg`），HTTP 状态码保留 4xx/5xx 语义；哨兵错误文本即文案，handler 透传 `err.Error()`
 - `status` 输出字符串 `"1"`/`"0"`（前端 el-switch 直接比较）
 - `qualification` 存/传中文 `已认证`/`未认证`
 - 时间字段输出 `YYYY-MM-DD HH:mm:ss`（`model.DateTimeString` 在扫描点格式化，避免 RFC3339 带 T）

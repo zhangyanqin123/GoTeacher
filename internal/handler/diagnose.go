@@ -67,7 +67,7 @@ func (h *DiagnoseHandler) List(c *gin.Context) {
 		}
 		v, err := strconv.ParseInt(s, 10, 64)
 		if err != nil {
-			response.Fail(c, 400, 400, num.label+" must be an integer")
+			response.Fail(c, 400, 400, "参数 "+num.label+" 必须是整数")
 			return
 		}
 		*num.dst = &v
@@ -77,7 +77,7 @@ func (h *DiagnoseHandler) List(c *gin.Context) {
 	if s := c.Query("buy_price"); s != "" {
 		v, err := strconv.ParseFloat(s, 64)
 		if err != nil {
-			response.Fail(c, 400, 400, "buy_price must be a number")
+			response.Fail(c, 400, 400, "参数 buy_price 必须是数字")
 			return
 		}
 		f.BuyPrice = &v
@@ -87,7 +87,7 @@ func (h *DiagnoseHandler) List(c *gin.Context) {
 	if s := c.Query("status"); s != "" {
 		v, err := strconv.Atoi(s)
 		if err != nil {
-			response.Fail(c, 400, 400, "status must be an integer")
+			response.Fail(c, 400, 400, "参数 status 必须是整数")
 			return
 		}
 		f.Status = &v
@@ -111,7 +111,7 @@ func (h *DiagnoseHandler) List(c *gin.Context) {
 		response.Fail(c, 400, 400, err.Error())
 	default:
 		slog.Error("list diagnoses failed", "err", err)
-		response.Fail(c, 500, 500, "internal server error")
+		response.Fail(c, 500, 500, "服务器内部错误")
 	}
 }
 
@@ -132,12 +132,12 @@ func (h *DiagnoseHandler) List(c *gin.Context) {
 func (h *DiagnoseHandler) Detail(c *gin.Context) {
 	s := c.Query("id")
 	if s == "" {
-		response.Fail(c, 400, 400, "id is required")
+		response.Fail(c, 400, 400, "参数 id 不能为空")
 		return
 	}
 	id, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		response.Fail(c, 400, 400, "id must be an integer")
+		response.Fail(c, 400, 400, "参数 id 必须是整数")
 		return
 	}
 
@@ -148,7 +148,7 @@ func (h *DiagnoseHandler) Detail(c *gin.Context) {
 		response.Fail(c, 404, 404, err.Error())
 	default:
 		slog.Error("get diagnose detail failed", "id", id, "err", err)
-		response.Fail(c, 500, 500, "internal server error")
+		response.Fail(c, 500, 500, "服务器内部错误")
 	}
 }
 
@@ -170,7 +170,8 @@ func (h *DiagnoseHandler) Detail(c *gin.Context) {
 func (h *DiagnoseHandler) SubmitReport(c *gin.Context) {
 	var req model.DiagnoseSubmitReportReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, 400, 400, "invalid request body: "+err.Error())
+		slog.Error("bind request body failed", "err", err)
+		response.Fail(c, 400, 400, "请求体非法")
 		return
 	}
 
@@ -184,7 +185,7 @@ func (h *DiagnoseHandler) SubmitReport(c *gin.Context) {
 		response.Fail(c, 400, 400, err.Error())
 	default:
 		slog.Error("submit diagnose report failed", "id", req.ID, "err", err)
-		response.Fail(c, 500, 500, "internal server error")
+		response.Fail(c, 500, 500, "服务器内部错误")
 	}
 }
 
@@ -206,7 +207,8 @@ func (h *DiagnoseHandler) SubmitReport(c *gin.Context) {
 func (h *DiagnoseHandler) Audit(c *gin.Context) {
 	var req model.DiagnoseAuditReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, 400, 400, "invalid request body: "+err.Error())
+		slog.Error("bind request body failed", "err", err)
+		response.Fail(c, 400, 400, "请求体非法")
 		return
 	}
 
@@ -226,6 +228,6 @@ func (h *DiagnoseHandler) Audit(c *gin.Context) {
 		response.Fail(c, 400, 400, err.Error())
 	default:
 		slog.Error("audit diagnose failed", "id", req.ID, "audit_type", req.AuditType, "err", err)
-		response.Fail(c, 500, 500, "internal server error")
+		response.Fail(c, 500, 500, "服务器内部错误")
 	}
 }

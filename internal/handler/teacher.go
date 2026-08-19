@@ -38,7 +38,8 @@ func NewTeacher(svc *service.Service) *TeacherHandler {
 func (h *TeacherHandler) List(c *gin.Context) {
 	var req model.TeacherListReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, 400, 400, "invalid request body: "+err.Error())
+		slog.Error("bind teacher list request failed", "err", err)
+		response.Fail(c, 400, 400, "请求体非法")
 		return
 	}
 
@@ -67,7 +68,7 @@ func (h *TeacherHandler) List(c *gin.Context) {
 	switch {
 	case err != nil:
 		slog.Error("list teachers failed", "err", err)
-		response.Fail(c, 500, 500, "internal server error")
+		response.Fail(c, 500, 500, "服务器内部错误")
 	default:
 		response.OKMsg(c, "success", result)
 	}
@@ -87,7 +88,7 @@ func (h *TeacherHandler) Options(c *gin.Context) {
 	switch {
 	case err != nil:
 		slog.Error("list teacher options failed", "err", err)
-		response.Fail(c, 500, 500, "internal server error")
+		response.Fail(c, 500, 500, "服务器内部错误")
 	default:
 		response.OKMsg(c, "success", list)
 	}
@@ -109,7 +110,7 @@ func (h *TeacherHandler) BoundUserIds(c *gin.Context) {
 	switch {
 	case err != nil:
 		slog.Error("list bound user ids failed", "err", err)
-		response.Fail(c, 500, 500, "internal server error")
+		response.Fail(c, 500, 500, "服务器内部错误")
 	default:
 		response.OKMsg(c, "success", list)
 	}
@@ -132,7 +133,7 @@ func (h *TeacherHandler) BoundUserIds(c *gin.Context) {
 func (h *TeacherHandler) Detail(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Query("id"), 10, 64)
 	if err != nil || id <= 0 {
-		response.Fail(c, 400, 400, "id is required")
+		response.Fail(c, 400, 400, "参数 id 不能为空")
 		return
 	}
 
@@ -140,9 +141,9 @@ func (h *TeacherHandler) Detail(c *gin.Context) {
 	switch {
 	case err != nil:
 		slog.Error("get teacher detail failed", "id", id, "err", err)
-		response.Fail(c, 500, 500, "internal server error")
+		response.Fail(c, 500, 500, "服务器内部错误")
 	case detail == nil:
-		response.Fail(c, 404, 404, "teacher not found")
+		response.Fail(c, 404, 404, service.ErrTeacherNotFound.Error())
 	default:
 		response.OKMsg(c, "success", detail)
 	}
@@ -166,7 +167,8 @@ func (h *TeacherHandler) Detail(c *gin.Context) {
 func (h *TeacherHandler) Update(c *gin.Context) {
 	var req model.TeacherUpdateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, 400, 400, "invalid request body: "+err.Error())
+		slog.Error("bind teacher update request failed", "err", err)
+		response.Fail(c, 400, 400, "请求体非法")
 		return
 	}
 
@@ -174,14 +176,14 @@ func (h *TeacherHandler) Update(c *gin.Context) {
 	case err == nil:
 		response.OKMsg(c, "编辑成功", nil)
 	case errors.Is(err, service.ErrInvalidLevel):
-		response.Fail(c, 400, 400, "level must be 0/3/5")
+		response.Fail(c, 400, 400, err.Error())
 	case errors.Is(err, service.ErrSignatureTooLong):
-		response.Fail(c, 400, 400, "signature must be at most 200 characters")
+		response.Fail(c, 400, 400, err.Error())
 	case errors.Is(err, service.ErrTeacherNotFound):
-		response.Fail(c, 404, 404, "teacher not found")
+		response.Fail(c, 404, 404, err.Error())
 	default:
 		slog.Error("update teacher failed", "id", req.ID, "err", err)
-		response.Fail(c, 500, 500, "internal server error")
+		response.Fail(c, 500, 500, "服务器内部错误")
 	}
 }
 
@@ -201,7 +203,7 @@ func (h *TeacherHandler) Update(c *gin.Context) {
 func (h *TeacherHandler) SalesList(c *gin.Context) {
 	teacherID, err := strconv.ParseInt(c.Query("id"), 10, 64)
 	if err != nil || teacherID <= 0 {
-		response.Fail(c, 400, 400, "id is required")
+		response.Fail(c, 400, 400, "参数 id 不能为空")
 		return
 	}
 	pageIndex, pageSize := queryPage(c)
@@ -210,7 +212,7 @@ func (h *TeacherHandler) SalesList(c *gin.Context) {
 	switch {
 	case err != nil:
 		slog.Error("list teacher sales failed", "teacher_id", teacherID, "err", err)
-		response.Fail(c, 500, 500, "internal server error")
+		response.Fail(c, 500, 500, "服务器内部错误")
 	default:
 		response.OKMsg(c, "success", result)
 	}
@@ -234,7 +236,8 @@ func (h *TeacherHandler) SalesList(c *gin.Context) {
 func (h *TeacherHandler) Bind(c *gin.Context) {
 	var req model.TeacherBindReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, 400, 400, "invalid request body: "+err.Error())
+		slog.Error("bind teacher bind request failed", "err", err)
+		response.Fail(c, 400, 400, "请求体非法")
 		return
 	}
 
@@ -242,10 +245,10 @@ func (h *TeacherHandler) Bind(c *gin.Context) {
 	case err == nil:
 		response.OKMsg(c, "绑定成功", nil)
 	case errors.Is(err, service.ErrTeacherNotFound):
-		response.Fail(c, 404, 404, "teacher not found")
+		response.Fail(c, 404, 404, err.Error())
 	default:
 		slog.Error("bind teacher sales failed", "teacher_id", req.TeacherID, "err", err)
-		response.Fail(c, 500, 500, "internal server error")
+		response.Fail(c, 500, 500, "服务器内部错误")
 	}
 }
 

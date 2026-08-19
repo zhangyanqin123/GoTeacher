@@ -10,10 +10,11 @@ import (
 )
 
 // teacher 业务错误定义，handler 用 errors.Is 判断并映射 HTTP 状态码
+// （文本即 API 契约：中文可展示文案，handler 透传 err.Error() 给前端）
 var (
-	ErrTeacherNotFound  = errors.New("teacher not found")
-	ErrInvalidLevel     = errors.New("level must be 0/3/5")
-	ErrSignatureTooLong = errors.New("signature must be at most 200 characters")
+	ErrTeacherNotFound  = errors.New("老师不存在")
+	ErrInvalidLevel     = errors.New("评级必须是 0/3/5")
+	ErrSignatureTooLong = errors.New("签名不能超过 200 字符")
 )
 
 // 编辑弹窗评级枚举（前端 teacherQuery.vue editForm 下拉一致：0 无 / 3 初级 / 5 高级）

@@ -123,5 +123,13 @@ groupCount/salesman 快照取自转移前的查询，快照语义不变（可能
   事务内仍不设 RowsAffected 守卫（拦截后到执行前的并发解绑窗口，空集按无操作处理）。
   种子 101/102/103（group_count=0）为历史记录，不追改。涉及：service/handler 的 resign 文件、
   README、Swagger 注释。
+- **2026-08-19 错误 msg 中文化**：前端拦截器 error 分支取 `error.response.data.msg` 直接弹给用户，
+  英文 msg 对运营不友好（且与成功侧中文「转移成功」割裂）。方案：仅中文化 msg，HTTP 状态码保留
+  4xx/5xx 语义（不切恒 200——保留监控/网关 5xx 告警；讨论中确认 axios 非 2xx 会 reject 并造英文
+  `Request failed with status code 404`，但响应体挂在 `error.response.data` 上可正常取用）。
+  落地：15 个 service 哨兵错误文本改中文（**文本即 API 契约**，改动需与前端确认），handler 哨兵分支
+  统一透传 `err.Error()`（消灭 teacher/resign 写死文案与哨兵文本的重复，对齐 diagnose 既有模式）；
+  硬编码英文改中文（`服务器内部错误`/`参数 xx 必须是整数`等），body 绑定失败改固定 `请求体非法`
+  （gin 英文详情进 slog 不外露）。涉及全部 service/handler 文件、README、CLAUDE.md。
 
 > **2026-08-18 字段命名整体迁移 snake_case**：本文中的驼峰字段名（originalTeacherId/transferContent 等）已全部改为蛇形（original_teacher_id/transfer_content），以 [PLAN-api-snake-case.md](PLAN-api-snake-case.md) 为准。

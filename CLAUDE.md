@@ -37,7 +37,7 @@ handler → service → repository → model
 
 ### 错误处理约定
 
-service 层定义哨兵错误（`ErrTeacherNotFound` 等），handler 用 `errors.Is` 映射 HTTP 状态码（404/400）。响应统一走 `internal/response`：`{code, msg, data}`，写操作 msg 用约定中文（`编辑成功`/`转移成功` 等，非 `ok`），查询类为 `success`。
+service 层定义哨兵错误（`ErrTeacherNotFound` 等），handler 用 `errors.Is` 映射 HTTP 状态码（404/400）。响应统一走 `internal/response`：`{code, msg, data}`，写操作 msg 用约定中文（`编辑成功`/`转移成功` 等，非 `ok`），查询类为 `success`。失败 msg 为中文可展示文案（前端拦截器直接弹 `error.response.data.msg`）：哨兵错误文本即文案，handler 透传 `err.Error()`；HTTP 状态码保留 4xx/5xx 语义（不切恒 200，保留监控/网关 5xx 告警）。
 
 ### 响应格式约定（对接前端 gyz-admin，改动接口时勿破坏）
 

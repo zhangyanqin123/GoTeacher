@@ -10,14 +10,15 @@ import (
 )
 
 // diagnose 业务错误定义，handler 用 errors.Is 判断并映射 HTTP 状态码
+// （文本即 API 契约：中文可展示文案，handler 透传 err.Error() 给前端）
 var (
-	ErrDiagnoseNotFound        = errors.New("diagnose record not found")
-	ErrInvalidStatusFilter     = errors.New("status must be 1-6")
-	ErrReportContentRequired   = errors.New("reportContent must not be empty")
-	ErrInvalidStatusTransition = errors.New("current status does not allow this operation")
-	ErrInvalidAuditType        = errors.New("auditType must be professional or compliance")
-	ErrInvalidAuditResult      = errors.New("result must be pass or reject")
-	ErrRejectReasonRequired    = errors.New("rejectReason is required when result is reject")
+	ErrDiagnoseNotFound        = errors.New("诊股记录不存在")
+	ErrInvalidStatusFilter     = errors.New("状态筛选必须是 1-6")
+	ErrReportContentRequired   = errors.New("报告内容不能为空")
+	ErrInvalidStatusTransition = errors.New("当前状态不允许此操作")
+	ErrInvalidAuditType        = errors.New("审核类型必须是 professional 或 compliance")
+	ErrInvalidAuditResult      = errors.New("审核结果必须是 pass 或 reject")
+	ErrRejectReasonRequired    = errors.New("驳回时必须填写驳回原因")
 )
 
 // 诊股状态枚举（前端 diagnoseQuery.vue statusOptions 一致，勿改）
