@@ -4,8 +4,8 @@ package model
 //
 // 兼容约定（前端 teacherQuery.vue 直接展示，勿改）：
 //   - 姓名/部门为冗余快照（离职后老师可能被改/删，记录保留转移当时值）
-//   - TransferContent 用 StringSlice：库存逗号串 'group'，接口输出 ["group"]
 //   - SalesmanName/SalesmanDept 为原老师全部绑定业务员，多个逗号分隔
+//   - TransferContent 为转移内容自由文本（2026-08-19 由 remark 改名，如「首席投顾」）
 //   - TransferTime 等用 DateTimeString：扫描点格式化为 "2006-01-02 15:04:05"
 type Resign struct {
 	ID                    int64          `json:"id"                      db:"id"`
@@ -18,12 +18,11 @@ type Resign struct {
 	ReplaceTeacherDept    string         `json:"replace_teacher_dept"     db:"replace_teacher_dept"`
 	SalesmanName          string         `json:"salesman_name"            db:"salesman_name"`
 	SalesmanDept          string         `json:"salesman_dept"            db:"salesman_dept"`
-	TransferContent       StringSlice    `json:"transfer_content"         db:"transfer_content"`
 	GroupCount            int            `json:"group_count"              db:"group_count"` // 原老师绑定业务员数（一业务员一群，后端计算）
 	Operator              string         `json:"operator"                 db:"operator"`
 	OperateIP             string         `json:"operate_ip"               db:"operate_ip"`
 	TransferTime          DateTimeString `json:"transfer_time"            db:"transfer_time"`
-	Remark                string         `json:"remark"                   db:"remark"`
+	TransferContent       string         `json:"transfer_content"         db:"transfer_content"`
 	CreatedAt             DateTimeString `json:"created_at"               db:"created_at"`
 	UpdatedAt             DateTimeString `json:"updated_at"               db:"updated_at"`
 }
@@ -39,21 +38,20 @@ type ResignInsert struct {
 	ReplaceTeacherDept    string
 	SalesmanName          string
 	SalesmanDept          string
-	TransferContent       StringSlice
 	GroupCount            int
 	Operator              string
 	OperateIP             string
-	Remark                string
+	TransferContent       string
 }
 
 // ResignAddReq 新增离职转移请求体（POST /teacher/resign/add）。
-// 前端还会传 original_teacher_name 等 4 个冗余字段，后端不声明（gin 忽略未知键），
+// 前端可能多传 original_teacher_name 等冗余字段，后端不声明（gin 忽略未知键），
 // 一律从 teacher 表回查（单一事实来源）；group_count 由后端按原老师绑定业务员数计算，不接收前端传值。
+// transfer_content 为转移内容自由文本（2026-08-19 由原 remark 改名而来，如「首席投顾」）。
 type ResignAddReq struct {
-	OriginalTeacherID int64    `json:"original_teacher_id"`
-	ReplaceTeacherID  int64    `json:"replace_teacher_id"`
-	TransferContent   []string `json:"transfer_content"` // 白名单 group，非空（传 friend 400）
-	Remark            string   `json:"remark"`
+	OriginalTeacherID int64  `json:"original_teacher_id"`
+	ReplaceTeacherID  int64  `json:"replace_teacher_id"`
+	TransferContent   string `json:"transfer_content"` // 自由文本，≤200 字符
 }
 
 // ResignListReq 离职转移列表查询请求体（POST /teacher/resign/list）。

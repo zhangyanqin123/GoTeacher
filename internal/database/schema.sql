@@ -106,8 +106,8 @@ CREATE TABLE IF NOT EXISTS diagnose_audit_log (
 -- 兼容约定（与 mock 同构，勿改）：
 --   姓名/部门为冗余快照（离职后老师可能被改/删，记录保留转移当时值）
 --   original_teacher_dept_id 供 deptId 筛选（mock 按 originalTeacherDeptId 过滤）
---   transfer_content 存逗号分隔 'group'，接口输出为数组
 --   salesman_name/dept 存原老师全部绑定业务员，多个逗号分隔
+--   transfer_content 为转移内容自由文本（2026-08-19 由 remark 改名，如「首席投顾」）
 -- ============================================================
 
 -- 老师离职转移记录
@@ -122,12 +122,11 @@ CREATE TABLE IF NOT EXISTS teacher_resign (
   replace_teacher_dept     VARCHAR(50)     NOT NULL DEFAULT ''     COMMENT '接替老师部门名（冗余快照）',
   salesman_name            VARCHAR(500)    NOT NULL DEFAULT ''     COMMENT '业务员姓名（原老师全部绑定业务员，逗号分隔）',
   salesman_dept            VARCHAR(500)    NOT NULL DEFAULT ''     COMMENT '业务员部门（逗号分隔，与姓名一一对应）',
-  transfer_content         VARCHAR(32)     NOT NULL DEFAULT ''     COMMENT '转移内容：group 转移客户群，逗号分隔',
   group_count              INT             NOT NULL DEFAULT 0      COMMENT '转移客户群数（=原老师绑定业务员数，后端计算入库）',
   operator                 VARCHAR(50)     NOT NULL DEFAULT ''     COMMENT '操作人（无登录态固定 admin，对齐 teacher.update_by）',
   operate_ip               VARCHAR(64)     NOT NULL DEFAULT ''     COMMENT '操作IP（handler 取 c.ClientIP()）',
   transfer_time            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '转移时间（INSERT 时 NOW()）',
-  remark                   VARCHAR(200)    NOT NULL DEFAULT ''     COMMENT '备注',
+  transfer_content         VARCHAR(200)    NOT NULL DEFAULT ''     COMMENT '转移内容（自由文本，如：首席投顾；原 remark 列改名）',
   created_at               DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at               DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),

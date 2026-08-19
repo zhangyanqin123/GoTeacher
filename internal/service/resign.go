@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -15,15 +14,11 @@ import (
 // 文本即 API 契约：中文可展示文案，handler 透传 err.Error() 给前端）
 var (
 	ErrSameTeacher               = errors.New("原老师和接替老师不能相同")
-	ErrInvalidTransferContent    = errors.New("转移内容必须为非空 group 子集")
-	ErrRemarkTooLong             = errors.New("备注不能超过 200 字符")
+	ErrTransferContentTooLong    = errors.New("转移内容不能超过 200 字符")
 	ErrOriginalTeacherNoSalesman = errors.New("原老师无绑定业务员")
 )
 
-// 转移内容枚举（前端 resign.js / teacherQuery.vue 转移弹窗勾选一致；好友概念已移除）
-var validTransferContents = []string{"group"}
-
-const maxResignRemarkUTF8 = 200 // 对齐 remark 列宽与前端 maxlength
+const maxTransferContentUTF8 = 200 // 对齐 transfer_content 列宽与前端 maxlength
 
 // ListResigns 离职转移列表（分页 + 多条件筛选，默认 pageSize=10 对齐 mock）
 func (s *Service) ListResigns(ctx context.Context, f model.ResignListFilter) (*model.PageResult, error) {
@@ -47,12 +42,8 @@ func (s *Service) AddResign(ctx context.Context, req model.ResignAddReq, operate
 	if req.OriginalTeacherID == req.ReplaceTeacherID {
 		return ErrSameTeacher // 前端已有同校验，后端兜底
 	}
-	content := normalizeTransferContent(req.TransferContent)
-	if len(content) == 0 {
-		return ErrInvalidTransferContent
-	}
-	if utf8.RuneCountInString(req.Remark) > maxResignRemarkUTF8 {
-		return ErrRemarkTooLong
+	if utf8.RuneCountInString(req.TransferContent) > maxTransferContentUTF8 {
+		return ErrTransferContentTooLong
 	}
 
 	// 2. 回查老师（一次 IN 查询拿两个），id/姓名/部门以库为准
@@ -99,25 +90,9 @@ func (s *Service) AddResign(ctx context.Context, req model.ResignAddReq, operate
 		ReplaceTeacherDept:    replace.DeptName,
 		SalesmanName:          strings.Join(names, ","),
 		SalesmanDept:          strings.Join(depts, ","),
-		TransferContent:       model.StringSlice(content),
 		GroupCount:            len(salesmen),
 		Operator:              "admin",
 		OperateIP:             operateIP,
-		Remark:                req.Remark,
+		TransferContent:       req.TransferContent,
 	})
-}
-
-// normalizeTransferContent 白名单收敛：非法值直接判空触发 ErrInvalidTransferContent
-// （对齐 rating 白名单"拒绝而非静默纠正"的风格），合法值去重保序。
-func normalizeTransferContent(content []string) []string {
-	var out []string
-	for _, v := range content {
-		if !slices.Contains(validTransferContents, v) {
-			return nil
-		}
-		if !slices.Contains(out, v) {
-			out = append(out, v)
-		}
-	}
-	return out
 }

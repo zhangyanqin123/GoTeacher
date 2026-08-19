@@ -54,7 +54,7 @@ func Connect(cfg *config.Config) (*sql.DB, error) {
 	return db, nil
 }
 
-// Migrate 执行建表 DDL（CREATE TABLE IF NOT EXISTS，幂等）+ 存量库列型升级 + 存量库列清理（teacher_resign 移除 friend_count）
+// Migrate 执行建表 DDL（CREATE TABLE IF NOT EXISTS，幂等）+ 存量库列型升级 + 存量库列清理（teacher_resign 移除 friend_count、remark 改名 transfer_content）
 func Migrate(db *sql.DB) error {
 	if err := execStatements(db, schemaSQL); err != nil {
 		return fmt.Errorf("migrate: %w", err)
@@ -97,45 +97,50 @@ func migrateDiagnoseRemark(db *sql.DB) error {
 	return nil
 }
 
-// migrateTeacherResign teacher_resign 列清理（移除好友概念，2026-08）。
+// migrateTeacherResign teacher_resign 列清理（2026-08：移除好友概念；2026-08-19：remark 改名 transfer_content）。
 // CREATE TABLE IF NOT EXISTS 不改已建表，存量库靠此处幂等升级：
 // 1) DROP COLUMN friend_count（新库无此列，COUNT=0 跳过；DROP 不可逆，该列已废弃）
-// 2) MODIFY group_count 注释为新语义（纯元数据变更，与 schema.sql 逐字一致防漂移）
-// 3) 清洗 transfer_content 残留 'friend'（首跑后 WHERE 永不命中，不触发 updated_at）
+// 2) 旧逗号串形态的 transfer_content（VARCHAR(32)，存 'group'）先 DROP，为改名腾位
+// 3) remark RENAME 为 transfer_content VARCHAR(200)（CHANGE 保留数据，历史备注转为转移内容文本）
 func migrateTeacherResign(db *sql.DB) error {
+	if err := dropResignColumn(db, "friend_count"); err != nil {
+		return err
+	}
+	if err := dropResignColumn(db, "transfer_content"); err != nil {
+		return err
+	}
+
 	var cnt int
 	if err := db.QueryRow(
-		"SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'teacher_resign' AND COLUMN_NAME = 'friend_count'",
+		"SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'teacher_resign' AND COLUMN_NAME = 'remark'",
 	).Scan(&cnt); err != nil {
-		return fmt.Errorf("check teacher_resign.friend_count: %w", err)
+		return fmt.Errorf("check teacher_resign.remark: %w", err)
 	}
-	if cnt > 0 {
-		if _, err := db.Exec("ALTER TABLE teacher_resign DROP COLUMN friend_count"); err != nil {
-			return fmt.Errorf("drop teacher_resign.friend_count: %w", err)
-		}
-	}
-
-	var comment string
-	err := db.QueryRow(
-		"SELECT COLUMN_COMMENT FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'teacher_resign' AND COLUMN_NAME = 'group_count'",
-	).Scan(&comment)
-	if err == sql.ErrNoRows {
-		return nil // 表未建（防御出口，正常不会走到）
-	}
-	if err != nil {
-		return fmt.Errorf("check teacher_resign.group_count comment: %w", err)
+	if cnt == 0 {
+		return nil // 已改名或表未建，幂等出口
 	}
 	// 与 schema.sql 中的列定义逐字一致，防两处漂移
-	const want = "转移客户群数（=原老师绑定业务员数，后端计算入库）"
-	if comment != want {
-		const alter = "ALTER TABLE teacher_resign MODIFY COLUMN group_count INT NOT NULL DEFAULT 0 COMMENT '" + want + "'"
-		if _, err := db.Exec(alter); err != nil {
-			return fmt.Errorf("alter teacher_resign.group_count comment: %w", err)
-		}
+	const alter = "ALTER TABLE teacher_resign CHANGE COLUMN remark transfer_content VARCHAR(200) NOT NULL DEFAULT '' COMMENT '转移内容（自由文本，如：首席投顾；原 remark 列改名）'"
+	if _, err := db.Exec(alter); err != nil {
+		return fmt.Errorf("rename teacher_resign.remark to transfer_content: %w", err)
 	}
+	return nil
+}
 
-	if _, err := db.Exec("UPDATE teacher_resign SET transfer_content = 'group' WHERE FIND_IN_SET('friend', transfer_content)"); err != nil {
-		return fmt.Errorf("normalize teacher_resign.transfer_content: %w", err)
+// dropResignColumn teacher_resign 无条件 DROP 指定列（列不存在时跳过，幂等）
+func dropResignColumn(db *sql.DB, column string) error {
+	var cnt int
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'teacher_resign' AND COLUMN_NAME = ?",
+		column,
+	).Scan(&cnt); err != nil {
+		return fmt.Errorf("check teacher_resign.%s: %w", column, err)
+	}
+	if cnt == 0 {
+		return nil
+	}
+	if _, err := db.Exec("ALTER TABLE teacher_resign DROP COLUMN " + column); err != nil {
+		return fmt.Errorf("drop teacher_resign.%s: %w", column, err)
 	}
 	return nil
 }

@@ -52,7 +52,6 @@ service 层定义哨兵错误（`ErrTeacherNotFound` 等），handler 用 `error
 - JSON 键名全链路 snake_case：model `json:"..."` tag、handler `c.Query` 参数名、Swagger `@Param`、请求/响应体均蛇形（`db` tag 本就蛇形，两者天然同名）；分页参数 `page_index`/`page_size`
 - 时间输出 `YYYY-MM-DD HH:mm:ss`：DATETIME 列用 `model.DateTimeString`（sql.Scanner 在扫描点格式化，避免 RFC3339 带 T）；NULL 扫为空串
 - `status` 等输出字符串 `"1"`/`"0"`（库存 TINYINT）；`qualification`/审核日志的 `log_type`、`result` 存中文展示串
-- 逗号串 ↔ 数组：`model.StringSlice`（如 `transfer_content`）
 - 分页统一 `data.list` / `data.count`；默认 page_size=10（绑定列表 5），上限 100
 - 数值筛选传 `0` 是有效过滤值：用指针区分「未传」与「传 0」
 

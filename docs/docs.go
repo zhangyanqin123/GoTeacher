@@ -695,7 +695,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200 字符 / 原老师无绑定业务员",
+                        "description": "请求体非法 / 原老师与接替老师相同 / 转移内容超过 200 字符 / 原老师无绑定业务员",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -1170,9 +1170,6 @@ const docTemplate = `{
                 "original_teacher_name": {
                     "type": "string"
                 },
-                "remark": {
-                    "type": "string"
-                },
                 "replace_teacher_dept": {
                     "type": "string"
                 },
@@ -1189,10 +1186,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "transfer_content": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "type": "string"
                 },
                 "transfer_time": {
                     "type": "string"
@@ -1208,18 +1202,12 @@ const docTemplate = `{
                 "original_teacher_id": {
                     "type": "integer"
                 },
-                "remark": {
-                    "type": "string"
-                },
                 "replace_teacher_id": {
                     "type": "integer"
                 },
                 "transfer_content": {
-                    "description": "白名单 group，非空（传 friend 400）",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "description": "自由文本，≤200 字符",
+                    "type": "string"
                 }
             }
         },

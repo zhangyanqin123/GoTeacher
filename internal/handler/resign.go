@@ -64,7 +64,7 @@ func (h *ResignHandler) List(c *gin.Context) {
 
 // Add POST /api/v1/dxsf/teacher/resign/add
 //
-// 错误映射：body 绑定失败/同人/内容白名单/remark 超长 → 400；
+// 错误映射：body 绑定失败/同人/转移内容超长 → 400；
 // 老师不存在 → 404；其他 → 500
 //
 //	@Summary		新增离职转移
@@ -74,7 +74,7 @@ func (h *ResignHandler) List(c *gin.Context) {
 //	@Produce		json
 //	@Param			body body model.ResignAddReq true "新增离职转移请求体"
 //	@Success		200 {object} model.ActionResp "msg 固定「转移成功」，data 恒为 null"
-//	@Failure		400 {object} response.Response "请求体非法 / 原老师与接替老师相同 / transfer_content 白名单校验失败 / remark 超过 200 字符 / 原老师无绑定业务员"
+//	@Failure		400 {object} response.Response "请求体非法 / 原老师与接替老师相同 / 转移内容超过 200 字符 / 原老师无绑定业务员"
 //	@Failure		404 {object} response.Response "老师不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
 //	@Security		ApiKeyAuth
@@ -94,9 +94,7 @@ func (h *ResignHandler) Add(c *gin.Context) {
 		response.Fail(c, 404, 404, err.Error())
 	case errors.Is(err, service.ErrSameTeacher):
 		response.Fail(c, 400, 400, err.Error())
-	case errors.Is(err, service.ErrInvalidTransferContent):
-		response.Fail(c, 400, 400, err.Error())
-	case errors.Is(err, service.ErrRemarkTooLong):
+	case errors.Is(err, service.ErrTransferContentTooLong):
 		response.Fail(c, 400, 400, err.Error())
 	case errors.Is(err, service.ErrOriginalTeacherNoSalesman):
 		response.Fail(c, 400, 400, err.Error())

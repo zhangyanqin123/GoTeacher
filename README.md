@@ -138,18 +138,18 @@ curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/users'
 ### 新增请求体
 
 ```json
-{ "original_teacher_id": 4, "replace_teacher_id": 1, "transfer_content": ["group"], "remark": "离职交接" }
+{ "original_teacher_id": 4, "replace_teacher_id": 1, "transfer_content": "首席投顾" }
 ```
 
-- `transfer_content` 白名单 `group`（转移客户群），非空；`friend` 及其他值 400
 - 原/接替老师不能相同（400），老师不存在 404
 - 原老师无绑定业务员时 400（无可转移内容，不再落 group_count=0 的空记录）
-- `group_count` 由后端计算（=原老师绑定业务员数，一个绑定业务员对应一个客户群），请求体不接收该字段；旧客户端多传的 `group_count`/`friend_count` 会被 gin 静默忽略
+- `transfer_content` 为转移内容自由文本（2026-08-19 由原 `remark` 改名），≤200 字符
+- `group_count` 由后端计算（=原老师绑定业务员数，一个绑定业务员对应一个客户群），请求体不接收该字段；旧客户端多传的 `group_count`/`friend_count`/`remark` 会被 gin 静默忽略
 - `operator` 无登录态固定 `admin`；`operate_ip` 取 `c.ClientIP()`；`transfer_time` 库端 NOW()
 
 ### 响应约定
 
-- 列表 `data.list` / `data.count`；`transfer_content` 输出数组（库存逗号串）；时间字段 `YYYY-MM-DD HH:mm:ss`
+- 列表 `data.list` / `data.count`；时间字段 `YYYY-MM-DD HH:mm:ss`
 - 新增成功 `{code:200, msg:"转移成功"}`
 
 ### curl 示例
@@ -163,14 +163,14 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/list' \
 # 新增离职转移
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/add' \
   -H 'Content-Type: application/json' \
-  -d '{"original_teacher_id":4,"replace_teacher_id":1,"transfer_content":["group"],"remark":"离职交接"}'
+  -d '{"original_teacher_id":4,"replace_teacher_id":1,"transfer_content":"首席投顾"}'
 ```
 
 ### 表设计
 
 | 表 | 说明 |
 | --- | --- |
-| `teacher_resign` | 离职转移记录；`transfer_content` 存逗号串（接口输出数组，`model.StringSlice`）；`salesman_name/dept` 存原老师全部绑定业务员逗号串；`original_teacher_dept_id` 供 deptId 筛选；`group_count` = 原老师绑定业务员数（后端计算入库）；`friend_count` 列已移除（存量库由启动迁移幂等 DROP） |
+| `teacher_resign` | 离职转移记录；`salesman_name/dept` 存原老师全部绑定业务员逗号串；`original_teacher_dept_id` 供 deptId 筛选；`group_count` = 原老师绑定业务员数（后端计算入库）；`transfer_content` 为转移内容自由文本（原 `remark` 改名，存量库由启动迁移 CHANGE 幂等改名）；`friend_count` 列已移除（存量库由启动迁移幂等 DROP） |
 
 种子数据照抄 mock 的 6 条（id 101-106），仅在表为空时写入，重灌方式：`TRUNCATE TABLE teacher_resign;` 后重启。
 

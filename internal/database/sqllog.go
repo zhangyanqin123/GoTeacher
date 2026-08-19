@@ -141,7 +141,7 @@ func (c *sqllogConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver
 
 // 以下纯委托：mysql 驱动实现了这些可选接口，丢失会导致静默退化——
 // ResetSession 丢 → 连接放回池时被关闭重连；Validator 丢 → 坏连接检测退化；
-// Pinger 丢 → 探活空转；NamedValueChecker 丢 → model.StringSlice 等 Valuer 转换退回默认转换器。
+// Pinger 丢 → 探活空转；NamedValueChecker 丢 → 自定义 Valuer 类型转换退回默认转换器。
 
 func (c *sqllogConn) Ping(ctx context.Context) error {
 	if p, ok := c.inner.(driver.Pinger); ok {

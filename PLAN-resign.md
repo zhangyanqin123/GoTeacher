@@ -12,11 +12,13 @@
 
 ## 设计决策
 
-### 1. transfer_content 存逗号分隔 VARCHAR
+### 1. ~~transfer_content 存逗号分隔 VARCHAR~~（2026-08-19 已改为自由文本）
 
-库存 `'group'`，接口输出 `["group"]`。用 `model.StringSlice`（sql.Scanner + driver.Valuer）
-在扫描点/写库点转换，风格对齐已有的 `model.DateTimeString`。不引入 JSON 列：与项目"原生 SQL、无 ORM"的
-简单风格一致，且白名单只有单个值，无需 JSON 的表达能力。
+原方案：库存 `'group'`，接口输出 `["group"]`，`model.StringSlice`（sql.Scanner + driver.Valuer）
+在扫描点/写库点转换。白名单收敛为单值 `group` 后字段无实义，2026-08-19 整体重构：
+**`remark` 字段改名 `transfer_content`**（前端弹窗「备注」改「转移内容」自由文本，如「首席投顾」，≤200 字符）。
+列类型 VARCHAR(200)、string 直传，`model.StringSlice` 类型随之删除（唯一使用者）；
+存量库旧逗号串列 DROP、`remark` CHANGE 改名保留历史数据。
 
 ### 2. 姓名/部门为冗余快照，后端回查
 
@@ -97,9 +99,9 @@ groupCount/salesman 快照取自转移前的查询，快照语义不变（可能
 | `internal/database/resign_seed.sql` | 新 | 种子 6 条（照抄 mock id 101-106） |
 | `internal/database/database.go` | 改 | embed resign_seed.sql + seedResign |
 | `internal/model/resign.go` | 新 | Resign / ResignInsert / ResignAddReq / ResignListFilter / TeacherBrief / TeacherSalesmanBrief |
-| `internal/model/stringslice.go` | 新 | StringSlice（Scanner + Valuer） |
+| `internal/model/stringslice.go` | 新 | StringSlice（Scanner + Valuer）（2026-08-19 随 transfer_content 移除已删除） |
 | `internal/repository/resign.go` | 新 | ListResigns / resignWhere / GetTeachersByIDs / ListTeacherSalesmen / TransferResign（三步事务：删重叠/移剩余/落快照 + 2 个 tx helper） |
-| `internal/service/resign.go` | 新 | ListResigns / AddResign / normalizeTransferContent + 4 个业务错误 |
+| `internal/service/resign.go` | 新 | ListResigns / AddResign + 3 个业务错误（ErrRemarkTooLong 已改名 ErrTransferContentTooLong，ErrInvalidTransferContent/normalizeTransferContent 已删除） |
 | `internal/handler/resign.go` | 新 | List / Add（错误映射 400/404/500） |
 | `internal/router/router.go` | 改 | chat 组注册 2 行 |
 | `gyz-admin/src/api/dxData/chatSys/resign.js` | 改 | 删 mock，启用 request 调用（baseURL=VUE_APP_LOCAL_API） |
@@ -135,3 +137,5 @@ groupCount/salesman 快照取自转移前的查询，快照语义不变（可能
 > **2026-08-18 字段命名整体迁移 snake_case**：本文中的驼峰字段名（originalTeacherId/transferContent 等）已全部改为蛇形（original_teacher_id/transfer_content），以 [PLAN-api-snake-case.md](PLAN-api-snake-case.md) 为准。
 
 > **2026-08-19 接口路径与请求方式变更**：两接口迁至 `/teacher/` 前缀下对齐老师管理风格——`GET /resign/list` → `POST /teacher/resign/list`（查询条件从 query string 改 JSON body，数值字段用 FlexInt64 宽容解析前端空串，同 TeacherListReq 先例），`POST /resign/add` → `POST /teacher/resign/add`（仅改路径）。service/repository 零改动。
+
+> **2026-08-19 remark 改名 transfer_content（自由文本）**：白名单仅剩 `group` 单值、前端勾选框恒定唯一，字段无实义；前端将弹窗「备注」改为「转移内容」文本输入（如「首席投顾」）。变更：`ResignAddReq`/`Resign`/`ResignInsert` 的 `Remark` 全链路改名 `TransferContent`（string），哨兵错误 `ErrRemarkTooLong` 改名 `ErrTransferContentTooLong`（文案「转移内容不能超过 200 字符」），删 `ErrInvalidTransferContent` 与 `normalizeTransferContent`；schema.sql `remark` 列改 `transfer_content VARCHAR(200)`；存量库迁移 `migrateTeacherResign` 重构：`dropResignColumn` 幂等 DROP friend_count 与旧逗号串 transfer_content，`remark` CHANGE 改名（保留历史数据）；`model.StringSlice` 删除（唯一使用者）；前端删勾选框、改文本输入与列表列（teacherQuery.vue），resign.js 注释同步。旧客户端多传 `remark` 被 gin 静默忽略。
