@@ -46,11 +46,12 @@ type TeacherDetail struct {
 	Sign     string `json:"sign"     db:"signature"`
 }
 
-// TeacherSalesRow 老师绑定业务员行（详情弹窗用）
+// TeacherSalesRow 老师绑定业务员行（详情弹窗用）。
+// 业务员姓名 name 取 sales_user.nickname（桩表无独立姓名列，与离职转移快照同源）。
 type TeacherSalesRow struct {
-	Phone    string         `json:"phone"      db:"phone"`
-	Nickname string         `json:"nickname"   db:"nickname"`
-	DeptName string         `json:"dept_name"  db:"dept_name"`
+	Name    string         `json:"name"        db:"nickname"`
+	Nickname string        `json:"nickname"    db:"nickname"`
+	DeptName string        `json:"dept_name"   db:"dept_name"`
 	BindTime DateTimeString `json:"bind_time"  db:"bind_time"`
 }
 

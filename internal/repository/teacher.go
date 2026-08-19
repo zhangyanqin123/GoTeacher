@@ -186,7 +186,7 @@ func (r *Repository) ListTeacherSalesByTeacher(ctx context.Context, teacherID in
 		return nil, 0, fmt.Errorf("count teacher_sales %d: %w", teacherID, err)
 	}
 
-	const query = `SELECT su.phone, su.nickname, su.dept_name, ts.bind_time
+	const query = `SELECT su.nickname, su.nickname, su.dept_name, ts.bind_time
 	               FROM teacher_sales ts
 	               JOIN sales_user su ON su.id = ts.user_id
 	               WHERE ts.teacher_id = ?
@@ -202,7 +202,7 @@ func (r *Repository) ListTeacherSalesByTeacher(ctx context.Context, teacherID in
 
 	for rows.Next() {
 		var s model.TeacherSalesRow
-		if err := rows.Scan(&s.Phone, &s.Nickname, &s.DeptName, &s.BindTime); err != nil {
+		if err := rows.Scan(&s.Name, &s.Nickname, &s.DeptName, &s.BindTime); err != nil {
 			return nil, 0, fmt.Errorf("scan teacher_sales row: %w", err)
 		}
 		list = append(list, s)
