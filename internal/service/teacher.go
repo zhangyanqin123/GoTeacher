@@ -12,12 +12,12 @@ import (
 // teacher 业务错误定义，handler 用 errors.Is 判断并映射 HTTP 状态码
 var (
 	ErrTeacherNotFound  = errors.New("teacher not found")
-	ErrInvalidRating    = errors.New("rating must be 0/1/2")
+	ErrInvalidLevel     = errors.New("level must be 0/3/5")
 	ErrSignatureTooLong = errors.New("signature must be at most 200 characters")
 )
 
-// 编辑弹窗评级枚举（前端 teacherQuery.vue editForm 下拉一致）
-var validRatings = []int{0, 1, 2}
+// 编辑弹窗评级枚举（前端 teacherQuery.vue editForm 下拉一致：0 无 / 3 初级 / 5 高级）
+var validLevels = []int{0, 3, 5}
 
 const (
 	maxPageSize          = 100
@@ -41,6 +41,11 @@ func (s *Service) ListTeacherOptions(ctx context.Context) ([]model.TeacherOption
 	return s.repo.ListTeacherOptions(ctx)
 }
 
+// GetTeacherDetail 老师详情（编辑弹窗回显），不存在返回 nil（handler 映射 404）
+func (s *Service) GetTeacherDetail(ctx context.Context, id int64) (*model.TeacherDetail, error) {
+	return s.repo.GetTeacherDetailByID(ctx, id)
+}
+
 // ListAllTeacherSales 全量已绑定业务员 userId（绑定弹窗人员树过滤用）
 func (s *Service) ListAllTeacherSales(ctx context.Context) ([]int64, error) {
 	return s.repo.ListAllTeacherSales(ctx)
@@ -51,10 +56,10 @@ func (s *Service) UpdateTeacher(ctx context.Context, req model.TeacherUpdateReq)
 	if req.ID <= 0 {
 		return ErrTeacherNotFound
 	}
-	if !slices.Contains(validRatings, req.Rating) {
-		return ErrInvalidRating
+	if !slices.Contains(validLevels, req.Level) {
+		return ErrInvalidLevel
 	}
-	if utf8.RuneCountInString(req.Signature) > maxSignatureUTF8 {
+	if utf8.RuneCountInString(req.Sign) > maxSignatureUTF8 {
 		return ErrSignatureTooLong
 	}
 

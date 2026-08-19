@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | 1 | POST | `/api/v1/dxsf/teacher/list` | 分页 + 多条件筛选；返回 `data.list / data.count` |
 | 2 | GET | `/api/v1/dxsf/teacher/options` | 全量下拉（含停用）：`[{id, name, deptName}]` |
-| 3 | POST | `/api/v1/dxsf/teacher/edit` | 编辑 title / rating(0-2) / avatar / signature |
+| 3 | POST | `/api/v1/dxsf/teacher/edit` | 编辑 title / level(0无3初级5高级) / avatar / sign |
 | 4 | GET | `/api/v1/dxsf/teacher/bind/salesman/list` | 老师绑定业务员分页（默认 pageSize=5） |
 | 5 | POST | `/api/v1/dxsf/teacher/bind/salesman` | ~~全量替换绑定；`userIds: []` = 解绑全部~~ → 2026-08-18 起改为**追加语义**（INSERT IGNORE 幂等，仅新增绑定；空数组 no-op，无解统能力） |
 
@@ -22,7 +22,7 @@
 | `qualification` 存中文 `已认证`/`未认证` | el-tag 直接展示，下拉 value 即中文 |
 | 时间输出 `YYYY-MM-DD HH:mm:ss` | 前端无 formatter 直接展示；RFC3339 带 T 会破格式 |
 | 查询 msg=`success`、写 msg=`编辑成功`/`绑定成功` | mock 响应原样 |
-| `rating` 原样存取 | 列表展示 1-5 星（种子），编辑弹窗提交 0/1/2；前端做映射 |
+| `level` 原样存取 | 列表展示 1-5 星（种子），编辑弹窗提交 0/3/5（0 无 / 3 初级 / 5 高级） |
 | 绑定列表：老师不存在 → 空 list + count 0 | mock 同构，不视为错误 |
 
 ## 表设计（internal/database/schema.sql）
@@ -39,7 +39,7 @@
 - `model/teacher.go`：Teacher / TeacherOption / TeacherSalesRow / 请求 DTO / TeacherListFilter / PageResult
 - `model/datetime.go`：`DateTimeString` 实现 `sql.Scanner`，把 DATETIME 在扫描点格式化为 `2006-01-02 15:04:05`
 - `repository/teacher.go`：动态 WHERE（`strings.Builder` 拼 SQL + args）；模糊 `LIKE CONCAT('%',?,'%')`；时间闭区间 `updated_at >= ? AND < DATE_ADD(?, INTERVAL 1 DAY)`（避免函数包列失索引）；`ReplaceTeacherSales` 事务内先删后插
-- `service/teacher.go`：哨兵错误 + 白名单校验（rating 0/1/2、签名 ≤200 字符、userIds 存在性）；分页默认列表 10 / 绑定 5、上限 100
+- `service/teacher.go`：哨兵错误 + 白名单校验（level 0/3/5、签名 ≤200 字符、userIds 存在性）；分页默认列表 10 / 绑定 5、上限 100
 - `handler/teacher.go`：query/body 绑定、`errors.Is` 错误映射（400 参数错 / 404 老师不存在 / 500 内部错误只进日志）
 - `response.OKMsg`：新增（mock 约定 msg 不是 `ok`），不动原 `OK`
 
@@ -56,7 +56,7 @@
 - `gofmt` / `go vet` / `go build` 通过
 - 列表：默认分页 count=12；status=0（3 条）、name=张（1 条）、qualification=已认证（9 条）、bindSalesCount=0（3 条）、deptId、时间范围、组合条件、id 精确全部与 mock 一致
 - options：12 条含停用；绑定列表：默认 pageSize=5、显式 pageSize 生效、不存在的老师返回空
-- 编辑：字段落库、rating 白名单 400、不存在 404、updatedAt/updateBy 自动更新
+- 编辑：字段落库、level 白名单 400、不存在 404、updatedAt/updateBy 自动更新
 - 绑定：全量替换、空数组解绑、重复 id 去重、不存在 userId 400、不存在 teacherId 404
 - 重启幂等：种子不重复、编辑/绑定结果保留；原 house 接口无回归（total=2312）
 

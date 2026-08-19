@@ -257,7 +257,8 @@ definitions:
     type: object
   model.TeacherBindReq:
     properties:
-      teacher_id:
+      id:
+        description: 老师表 id（接口键名 id，内部字段语义仍为 teacher_id）
         type: integer
       user_ids:
         description: 追加语义，仅新增绑定
@@ -280,20 +281,47 @@ definitions:
         example: success
         type: string
     type: object
+  model.TeacherDetail:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: integer
+      level:
+        description: 0 无 / 3 初级 / 5 高级
+        type: integer
+      nickname:
+        type: string
+      sign:
+        type: string
+      title:
+        type: string
+    type: object
+  model.TeacherDetailResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        $ref: '#/definitions/model.TeacherDetail'
+      msg:
+        example: success
+        type: string
+    type: object
   model.TeacherListReq:
     properties:
       account:
         description: 模糊
         type: string
       bind_sales_count:
-        description: 精确，空串不参与过滤；"0" 是有效过滤值
-        type: string
+        description: 精确，未填不过滤；0 是有效过滤值
+        type: integer
       dept_id:
-        description: 精确，空串不参与过滤
-        type: string
+        description: 精确，null/""/缺省不过滤
+        type: integer
       id:
-        description: 精确，空串不参与过滤
-        type: string
+        description: 精确，null/""/缺省不过滤
+        type: integer
       name:
         description: 模糊
         type: string
@@ -310,8 +338,8 @@ definitions:
         description: 精确（中文）
         type: string
       status:
-        description: 精确 "1"/"0"
-        type: string
+        description: -1 全部不过滤 / 1 启用 / 0 停用
+        type: integer
       title:
         description: 模糊
         type: string
@@ -401,10 +429,10 @@ definitions:
         type: string
       id:
         type: integer
-      rating:
-        description: 0 无 / 1 初级 / 2 高级
+      level:
+        description: 0 无 / 3 初级 / 5 高级（前端 editForm 下拉取值）
         type: integer
-      signature:
+      sign:
         type: string
       title:
         type: string
@@ -747,7 +775,7 @@ paths:
       parameters:
       - description: 老师 ID
         in: query
-        name: teacher_id
+        name: id
         required: true
         type: integer
       - description: 页码（默认 1）
@@ -766,7 +794,7 @@ paths:
           schema:
             $ref: '#/definitions/model.TeacherSalesListResp'
         "400":
-          description: teacher_id 缺失或非法
+          description: id 缺失或非法
           schema:
             $ref: '#/definitions/response.Response'
         "500":
@@ -793,11 +821,42 @@ paths:
       summary: 全量已绑定业务员
       tags:
       - 绑定业务员
+  /teacher/detail:
+    get:
+      description: 编辑弹窗回显（昵称/头衔/评级/头像/签名；列 rating/signature 映射接口 level/sign）
+      parameters:
+      - description: 老师 ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.TeacherDetailResp'
+        "400":
+          description: id 缺失或非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 老师不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 老师详情
+      tags:
+      - 老师管理
   /teacher/edit:
     post:
       consumes:
       - application/json
-      description: 编辑头衔/评级/头像/签名（仅这 4 个字段可改，冗余快照字段一律忽略）
+      description: 编辑头衔/评级/头像/签名（仅这 4 个字段可改，冗余快照字段一律忽略；level 0 无 / 3 初级 / 5 高级）
       parameters:
       - description: 编辑老师请求体
         in: body
@@ -813,7 +872,7 @@ paths:
           schema:
             $ref: '#/definitions/model.ActionResp'
         "400":
-          description: 请求体非法 / rating 非 0/1/2 / 签名超过 200 字符
+          description: 请求体非法 / level 非 0/3/5 / 签名超过 200 字符
           schema:
             $ref: '#/definitions/response.Response'
         "404":
@@ -831,9 +890,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: 分页查询老师（筛选条件走 JSON body），零值筛选字段不参与过滤；姓名/账号/昵称/头衔/操作人模糊匹配，部门/ID/认证/状态精确匹配
+      description: 分页查询老师（筛选条件走 JSON body），未传/null 字段不参与过滤；姓名/账号/昵称/头衔/操作人模糊匹配，部门/ID/认证/状态精确匹配
       parameters:
-      - description: 查询条件（数值字段传空串表示未填）
+      - description: 查询条件（数值字段传 null 表示未填）
         in: body
         name: body
         required: true
@@ -847,7 +906,7 @@ paths:
           schema:
             $ref: '#/definitions/model.TeacherListResp'
         "400":
-          description: 请求体非法 / 数字参数格式错误
+          description: 请求体非法
           schema:
             $ref: '#/definitions/response.Response'
         "500":

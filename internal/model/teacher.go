@@ -35,6 +35,17 @@ type TeacherOption struct {
 	DeptName string `json:"dept_name"  db:"dept_name"`
 }
 
+// TeacherDetail 老师详情（GET /teacher/detail，编辑弹窗回显用）。
+// 列名与接口键名不同映射：rating → level、signature → sign（前端 editForm 字段名）。
+type TeacherDetail struct {
+	ID       int64  `json:"id"       db:"id"`
+	Nickname string `json:"nickname" db:"nickname"`
+	Title    string `json:"title"    db:"title"`
+	Level    int    `json:"level"    db:"rating"` // 0 无 / 3 初级 / 5 高级
+	Avatar   string `json:"avatar"   db:"avatar"`
+	Sign     string `json:"sign"     db:"signature"`
+}
+
 // TeacherSalesRow 老师绑定业务员行（详情弹窗用）
 type TeacherSalesRow struct {
 	Phone    string         `json:"phone"      db:"phone"`
@@ -45,37 +56,38 @@ type TeacherSalesRow struct {
 
 // TeacherUpdateReq 编辑老师请求体（POST /teacher/edit）
 type TeacherUpdateReq struct {
-	ID        int64  `json:"id"`
-	Title     string `json:"title"`
-	Rating    int    `json:"rating"` // 0 无 / 1 初级 / 2 高级
-	Avatar    string `json:"avatar"`
-	Signature string `json:"signature"`
+	ID     int64  `json:"id"`
+	Title  string `json:"title"`
+	Level  int    `json:"level"` // 0 无 / 3 初级 / 5 高级（前端 editForm 下拉取值）
+	Avatar string `json:"avatar"`
+	Sign   string `json:"sign"`
 }
 
-// TeacherBindReq 绑定业务员请求体（POST /teacher/bindSales）
+// TeacherBindReq 绑定业务员请求体（POST /teacher/bind/salesman）
 type TeacherBindReq struct {
-	TeacherID int64   `json:"teacher_id"`
+	TeacherID int64   `json:"id"` // 老师表 id（接口键名 id，内部字段语义仍为 teacher_id）
 	UserIDs   []int64 `json:"user_ids"` // 追加语义，仅新增绑定
 }
 
 // TeacherListReq 老师列表查询请求体（POST /teacher/list）。
-// 数值字段用 string：前端筛选框（el-input/el-select-number）传空串表示未填，
-// 非空才由 handler 解析为整数（空 = 不过滤），避免空串反序列化 int 报错。
+// 数值字段用 FlexInt64：前端各控件产出形态不一（el-input 字符串 "5"、
+// admin 部门树 Long→"80"、重置空串 ''、初始 null），统一宽容解析，
+// null/空串 = 未填不过滤。status：-1 全部（不过滤）/ 1 启用 / 0 停用。
 type TeacherListReq struct {
-	DeptID          string `json:"dept_id"`          // 精确，空串不参与过滤
-	ID              string `json:"id"`               // 精确，空串不参与过滤
-	Account         string `json:"account"`          // 模糊
-	Nickname        string `json:"nickname"`         // 模糊
-	Name            string `json:"name"`             // 模糊
-	Title           string `json:"title"`            // 模糊
-	Qualification   string `json:"qualification"`    // 精确（中文）
-	BindSalesCount  string `json:"bind_sales_count"` // 精确，空串不参与过滤；"0" 是有效过滤值
-	Status          string `json:"status"`           // 精确 "1"/"0"
-	UpdateBy        string `json:"update_by"`        // 模糊
-	UpdateBeginTime string `json:"update_begin_time"` // yyyy-MM-dd，与 EndTime 成对生效
-	UpdateEndTime   string `json:"update_end_time"`
-	PageIndex       int    `json:"page_index"`       // 默认 1（service 层兜底）
-	PageSize        int    `json:"page_size"`        // 默认 10，上限 100
+	DeptID          FlexInt64 `json:"dept_id" swaggertype:"integer"`          // 精确，null/""/缺省不过滤
+	ID              FlexInt64 `json:"id" swaggertype:"integer"`               // 精确，null/""/缺省不过滤
+	Account         string    `json:"account"`          // 模糊
+	Nickname        string    `json:"nickname"`         // 模糊
+	Name            string    `json:"name"`             // 模糊
+	Title           string    `json:"title"`            // 模糊
+	Qualification   string    `json:"qualification"`    // 精确（中文）
+	BindSalesCount  FlexInt64 `json:"bind_sales_count" swaggertype:"integer"` // 精确，未填不过滤；0 是有效过滤值
+	Status          FlexInt64 `json:"status" swaggertype:"integer"`           // -1 全部不过滤 / 1 启用 / 0 停用
+	UpdateBy        string    `json:"update_by"`        // 模糊
+	UpdateBeginTime string    `json:"update_begin_time"` // yyyy-MM-dd，与 EndTime 成对生效
+	UpdateEndTime   string    `json:"update_end_time"`
+	PageIndex       int       `json:"page_index"`       // 默认 1（service 层兜底）
+	PageSize        int       `json:"page_size"`        // 默认 10，上限 100
 }
 
 // TeacherListFilter 老师列表查询条件（零值字段不参与过滤）
@@ -88,7 +100,8 @@ type TeacherListFilter struct {
 	Title           string // 模糊
 	Qualification   string // 精确（中文）
 	BindSalesCount  *int   // 精确（指针区分"未传"与 0）
-	Status          string // 精确 "1"/"0"
+	Status          int    // 归一后：0 不参与过滤；非 0 见 StatusFilter
+	StatusFilter    *int   // 精确匹配 TINYINT status（仅 0/1 会设置；0 停用是有效过滤值，故用指针）
 	UpdateBy        string // 模糊
 	UpdateBeginTime string // yyyy-MM-dd，与 EndTime 成对生效
 	UpdateEndTime   string

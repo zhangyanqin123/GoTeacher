@@ -26,13 +26,13 @@ func NewTeacher(svc *service.Service) *TeacherHandler {
 // 错误映射：body 绑定失败/数字参数格式错误 → 400；其他 → 500（真实原因只进日志）
 //
 //	@Summary		老师列表
-//	@Description	分页查询老师（筛选条件走 JSON body），零值筛选字段不参与过滤；姓名/账号/昵称/头衔/操作人模糊匹配，部门/ID/认证/状态精确匹配
+//	@Description	分页查询老师（筛选条件走 JSON body），未传/null 字段不参与过滤；姓名/账号/昵称/头衔/操作人模糊匹配，部门/ID/认证/状态精确匹配
 //	@Tags			老师管理
 //	@Accept			json
 //	@Produce		json
-//	@Param			body body model.TeacherListReq true "查询条件（数值字段传空串表示未填）"
+//	@Param			body body model.TeacherListReq true "查询条件（数值字段传 null 表示未填）"
 //	@Success		200 {object} model.TeacherListResp
-//	@Failure		400 {object} response.Response "请求体非法 / 数字参数格式错误"
+//	@Failure		400 {object} response.Response "请求体非法"
 //	@Failure		500 {object} response.Response "服务器内部错误"
 //	@Router			/teacher/list [post]
 func (h *TeacherHandler) List(c *gin.Context) {
@@ -43,38 +43,21 @@ func (h *TeacherHandler) List(c *gin.Context) {
 	}
 
 	var f model.TeacherListFilter
-	for _, num := range []struct {
-		raw   string
-		dst   *int64
-		label string
-	}{
-		{req.DeptID, &f.DeptID, "dept_id"},
-		{req.ID, &f.ID, "id"},
-	} {
-		if num.raw == "" {
-			continue
-		}
-		v, err := strconv.ParseInt(num.raw, 10, 64)
-		if err != nil {
-			response.Fail(c, 400, 400, num.label+" must be an integer")
-			return
-		}
-		*num.dst = v
+	f.DeptID = derefOrZero(req.DeptID.Ptr())
+	f.ID = derefOrZero(req.ID.Ptr())
+	if p := req.BindSalesCount.Ptr(); p != nil { // 0 是有效过滤值，指针区分"未传"
+		v := int(*p)
+		f.BindSalesCount = &v
 	}
-	if req.BindSalesCount != "" {
-		v, err := strconv.Atoi(req.BindSalesCount)
-		if err != nil {
-			response.Fail(c, 400, 400, "bind_sales_count must be an integer")
-			return
-		}
-		f.BindSalesCount = &v // 指针：区分"未传"与 0
+	if p := req.Status.Ptr(); p != nil && *p != -1 { // 前端下拉 -1 全部；0 停用是有效过滤值
+		v := int(*p)
+		f.StatusFilter = &v
 	}
 	f.Account = req.Account
 	f.Nickname = req.Nickname
 	f.Name = req.Name
 	f.Title = req.Title
 	f.Qualification = req.Qualification
-	f.Status = req.Status
 	f.UpdateBy = req.UpdateBy
 	f.UpdateBeginTime = req.UpdateBeginTime
 	f.UpdateEndTime = req.UpdateEndTime
@@ -132,18 +115,51 @@ func (h *TeacherHandler) BoundUserIds(c *gin.Context) {
 	}
 }
 
+// Detail GET /api/v1/dxsf/teacher/detail
+//
+// 错误映射：id 缺失/非法 → 400；老师不存在 → 404；其他 → 500
+//
+//	@Summary		老师详情
+//	@Description	编辑弹窗回显（昵称/头衔/评级/头像/签名；列 rating/signature 映射接口 level/sign）
+//	@Tags			老师管理
+//	@Produce		json
+//	@Param			id query integer true "老师 ID"
+//	@Success		200 {object} model.TeacherDetailResp
+//	@Failure		400 {object} response.Response "id 缺失或非法"
+//	@Failure		404 {object} response.Response "老师不存在"
+//	@Failure		500 {object} response.Response "服务器内部错误"
+//	@Router			/teacher/detail [get]
+func (h *TeacherHandler) Detail(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Query("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.Fail(c, 400, 400, "id is required")
+		return
+	}
+
+	detail, err := h.svc.GetTeacherDetail(c.Request.Context(), id)
+	switch {
+	case err != nil:
+		slog.Error("get teacher detail failed", "id", id, "err", err)
+		response.Fail(c, 500, 500, "internal server error")
+	case detail == nil:
+		response.Fail(c, 404, 404, "teacher not found")
+	default:
+		response.OKMsg(c, "success", detail)
+	}
+}
+
 // Update POST /api/v1/dxsf/teacher/edit
 //
-// 错误映射：body 绑定失败/非法 rating/签名超长 → 400；老师不存在 → 404；其他 → 500
+// 错误映射：body 绑定失败/非法 level/签名超长 → 400；老师不存在 → 404；其他 → 500
 //
 //	@Summary		编辑老师
-//	@Description	编辑头衔/评级/头像/签名（仅这 4 个字段可改，冗余快照字段一律忽略）
+//	@Description	编辑头衔/评级/头像/签名（仅这 4 个字段可改，冗余快照字段一律忽略；level 0 无 / 3 初级 / 5 高级）
 //	@Tags			老师管理
 //	@Accept			json
 //	@Produce		json
 //	@Param			body body model.TeacherUpdateReq true "编辑老师请求体"
 //	@Success		200 {object} model.ActionResp "msg 固定「编辑成功」，data 恒为 null"
-//	@Failure		400 {object} response.Response "请求体非法 / rating 非 0/1/2 / 签名超过 200 字符"
+//	@Failure		400 {object} response.Response "请求体非法 / level 非 0/3/5 / 签名超过 200 字符"
 //	@Failure		404 {object} response.Response "老师不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
 //	@Router			/teacher/edit [post]
@@ -157,8 +173,8 @@ func (h *TeacherHandler) Update(c *gin.Context) {
 	switch err := h.svc.UpdateTeacher(c.Request.Context(), req); {
 	case err == nil:
 		response.OKMsg(c, "编辑成功", nil)
-	case errors.Is(err, service.ErrInvalidRating):
-		response.Fail(c, 400, 400, "rating must be 0/1/2")
+	case errors.Is(err, service.ErrInvalidLevel):
+		response.Fail(c, 400, 400, "level must be 0/3/5")
 	case errors.Is(err, service.ErrSignatureTooLong):
 		response.Fail(c, 400, 400, "signature must be at most 200 characters")
 	case errors.Is(err, service.ErrTeacherNotFound):
@@ -175,17 +191,17 @@ func (h *TeacherHandler) Update(c *gin.Context) {
 //	@Description	分页查询指定老师已绑定的业务员（手机号/昵称/部门/绑定时间）
 //	@Tags			绑定业务员
 //	@Produce		json
-//	@Param			teacher_id query integer true "老师 ID"
+//	@Param			id query integer true "老师 ID"
 //	@Param			page_index query integer false "页码（默认 1）"
 //	@Param			page_size query integer false "页大小（默认 5，上限 100）"
 //	@Success		200 {object} model.TeacherSalesListResp
-//	@Failure		400 {object} response.Response "teacher_id 缺失或非法"
+//	@Failure		400 {object} response.Response "id 缺失或非法"
 //	@Failure		500 {object} response.Response "服务器内部错误"
 //	@Router			/teacher/bind/salesman/list [get]
 func (h *TeacherHandler) SalesList(c *gin.Context) {
-	teacherID, err := strconv.ParseInt(c.Query("teacher_id"), 10, 64)
+	teacherID, err := strconv.ParseInt(c.Query("id"), 10, 64)
 	if err != nil || teacherID <= 0 {
-		response.Fail(c, 400, 400, "teacher_id is required")
+		response.Fail(c, 400, 400, "id is required")
 		return
 	}
 	pageIndex, pageSize := queryPage(c)
@@ -238,4 +254,12 @@ func queryPage(c *gin.Context) (pageIndex, pageSize int) {
 	pageIndex, _ = strconv.Atoi(c.Query("page_index"))
 	pageSize, _ = strconv.Atoi(c.Query("page_size"))
 	return pageIndex, pageSize
+}
+
+// derefOrZero 指针取值，nil 返回 0（0 在 dept_id/id 语义里本就不过滤）
+func derefOrZero(p *int64) int64 {
+	if p == nil {
+		return 0
+	}
+	return *p
 }

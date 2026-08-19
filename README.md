@@ -20,7 +20,7 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 | --- | --- | --- | --- |
 | 1 | POST | `/api/v1/dxsf/teacher/list` | 老师列表（分页 + 多条件筛选） |
 | 2 | GET | `/api/v1/dxsf/teacher/options` | 老师下拉选项（含停用，带部门名） |
-| 3 | POST | `/api/v1/dxsf/teacher/edit` | 编辑老师（title / rating / avatar / signature） |
+| 3 | POST | `/api/v1/dxsf/teacher/edit` | 编辑老师（title / level / avatar / sign） |
 | 4 | GET | `/api/v1/dxsf/teacher/bind/salesman/list` | 老师绑定业务员列表（详情弹窗） |
 | 5 | POST | `/api/v1/dxsf/teacher/bind/salesman` | 绑定业务员（追加语义，重复绑定幂等） |
 | 6 | GET | `/api/v1/dxsf/teacher/bind/salesman/users` | 全量已绑定业务员 userId（绑定弹窗人员树过滤用） |
@@ -31,7 +31,7 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 
 | 参数 | 匹配 | 说明 |
 | --- | --- | --- |
-| dept_id / id / qualification / bind_sales_count / status | 精确 | status 传 `"1"`/`"0"`；qualification 传中文 |
+| dept_id / id / qualification / bind_sales_count / status | 精确 | 数值字段传 null 表示未填；status 数值 -1 全部 / 1 启用 / 0 停用；qualification 传中文 |
 | account / nickname / name / title / update_by | 模糊 | LIKE %val% |
 | update_begin_time + update_end_time | 范围 | yyyy-MM-dd，按 updated_at 闭区间，成对生效 |
 | page_index / page_size | 分页 | 默认 1 / 10（绑定列表默认 page_size=5），page_size 上限 100 |
@@ -42,32 +42,32 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 - `status` 输出字符串 `"1"`/`"0"`（前端 el-switch 直接比较）
 - `qualification` 存/传中文 `已认证`/`未认证`
 - 时间字段输出 `YYYY-MM-DD HH:mm:ss`（`model.DateTimeString` 在扫描点格式化，避免 RFC3339 带 T）
-- `rating` 原样存取：种子为 1-5 星，编辑后为 0 无 / 1 初级 / 2 高级
+- `level` 原样存取（列名 rating）：种子为 1-5 星，编辑后为 0 无 / 3 初级 / 5 高级
 - 分页返回 `data.list` / `data.count`；老师不存在时绑定列表返回空 list + count 0（不报错）
 
 ### curl 示例
 
 ```bash
-# 列表（POST body：模糊 + 精确 + 分页，数值字段传空串表示未填）
+# 列表（POST body：模糊 + 精确 + 分页，数值字段传 null 表示未填）
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/list' \
   -H 'Content-Type: application/json' \
-  -d '{"status":"1","name":"张","page_index":1,"page_size":10}'
+  -d '{"status":1,"name":"张","dept_id":null,"page_index":1,"page_size":10}'
 
 # 下拉选项
 curl -s 'http://localhost:8080/api/v1/dxsf/teacher/options'
 
-# 编辑老师（rating: 0 无 / 1 初级 / 2 高级）
+# 编辑老师（level: 0 无 / 3 初级 / 5 高级）
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/edit' \
   -H 'Content-Type: application/json' \
-  -d '{"id":1,"title":"首席投顾","rating":2,"avatar":"","signature":"签名"}'
+  -d '{"id":1,"title":"首席投顾","level":5,"avatar":"","sign":"签名"}'
 
 # 老师绑定业务员列表
-curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/list?teacher_id=1&page_index=1&page_size=5'
+curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/list?id=1&page_index=1&page_size=5'
 
 # 绑定业务员（追加语义；user_ids 为业务员表 id）
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman' \
   -H 'Content-Type: application/json' \
-  -d '{"teacher_id":1,"user_ids":[1,2,3]}'
+  -d '{"id":1,"user_ids":[1,2,3]}'
 
 # 全量已绑定业务员 userId（人员树过滤，不分页）
 curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/users'

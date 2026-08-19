@@ -30,6 +30,13 @@ type TeacherOptionsResp struct {
 	Data []TeacherOption `json:"data"`
 }
 
+// TeacherDetailResp 老师详情响应（GET /teacher/detail）
+type TeacherDetailResp struct {
+	Code int           `json:"code" example:"200"`
+	Msg  string        `json:"msg"  example:"success"`
+	Data TeacherDetail `json:"data"`
+}
+
 // TeacherSalesListResp 老师绑定业务员列表响应（GET /chatSys/teacher/bindSales/list）
 type TeacherSalesListResp struct {
 	Code int    `json:"code" example:"200"`

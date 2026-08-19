@@ -93,9 +93,9 @@ func teacherWhere(f model.TeacherListFilter) (string, []any) {
 		conds = append(conds, "(SELECT COUNT(*) FROM teacher_sales ts WHERE ts.teacher_id = t.id) = ?")
 		args = append(args, *f.BindSalesCount)
 	}
-	if f.Status != "" {
+	if f.StatusFilter != nil { // 0 停用是有效过滤值，指针区分"未传"
 		conds = append(conds, "t.status = ?")
-		args = append(args, f.Status)
+		args = append(args, *f.StatusFilter)
 	}
 	// 日期闭区间：EndTime 加一天走开区间，避免对列套函数失索引
 	if f.UpdateBeginTime != "" && f.UpdateEndTime != "" {
@@ -148,13 +148,30 @@ func (r *Repository) ExistsTeacher(ctx context.Context, id int64) (bool, error) 
 	return true, nil
 }
 
-// UpdateTeacher 编辑老师（title/rating/avatar/signature）
+// GetTeacherDetailByID 老师详情（编辑弹窗回显；rating/signature 列映射接口 level/sign）
+func (r *Repository) GetTeacherDetailByID(ctx context.Context, id int64) (*model.TeacherDetail, error) {
+	const query = `SELECT id, nickname, title, rating, avatar, signature
+	               FROM teacher WHERE id = ?`
+	var d model.TeacherDetail
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&d.ID, &d.Nickname, &d.Title, &d.Level, &d.Avatar, &d.Sign,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get teacher detail %d: %w", id, err)
+	}
+	return &d, nil
+}
+
+// UpdateTeacher 编辑老师（title/rating/avatar/signature；接口字段 level/sign 映射到列 rating/signature）
 func (r *Repository) UpdateTeacher(ctx context.Context, req model.TeacherUpdateReq, updateBy string) error {
 	const query = `UPDATE teacher
 	               SET title = ?, rating = ?, avatar = ?, signature = ?, update_by = ?
 	               WHERE id = ?`
 	if _, err := r.db.ExecContext(ctx, query,
-		req.Title, req.Rating, req.Avatar, req.Signature, updateBy, req.ID,
+		req.Title, req.Level, req.Avatar, req.Sign, updateBy, req.ID,
 	); err != nil {
 		return fmt.Errorf("update teacher %d: %w", req.ID, err)
 	}

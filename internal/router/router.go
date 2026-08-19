@@ -30,6 +30,7 @@ func New(db *sql.DB) *gin.Engine {
 	dxsf := r.Group("/api/v1/dxsf")
 	dxsf.POST("/teacher/list", th.List)
 	dxsf.GET("/teacher/options", th.Options)
+	dxsf.GET("/teacher/detail", th.Detail)
 	dxsf.POST("/teacher/edit", th.Update)
 	dxsf.GET("/teacher/bind/salesman/list", th.SalesList)
 	dxsf.GET("/teacher/bind/salesman/users", th.BoundUserIds)

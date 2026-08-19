@@ -500,7 +500,7 @@
                     {
                         "type": "integer",
                         "description": "老师 ID",
-                        "name": "teacher_id",
+                        "name": "id",
                         "in": "query",
                         "required": true
                     },
@@ -525,7 +525,7 @@
                         }
                     },
                     "400": {
-                        "description": "teacher_id 缺失或非法",
+                        "description": "id 缺失或非法",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -565,9 +565,56 @@
                 }
             }
         },
+        "/teacher/detail": {
+            "get": {
+                "description": "编辑弹窗回显（昵称/头衔/评级/头像/签名；列 rating/signature 映射接口 level/sign）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "老师管理"
+                ],
+                "summary": "老师详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "老师 ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.TeacherDetailResp"
+                        }
+                    },
+                    "400": {
+                        "description": "id 缺失或非法",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "老师不存在",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/teacher/edit": {
             "post": {
-                "description": "编辑头衔/评级/头像/签名（仅这 4 个字段可改，冗余快照字段一律忽略）",
+                "description": "编辑头衔/评级/头像/签名（仅这 4 个字段可改，冗余快照字段一律忽略；level 0 无 / 3 初级 / 5 高级）",
                 "consumes": [
                     "application/json"
                 ],
@@ -597,7 +644,7 @@
                         }
                     },
                     "400": {
-                        "description": "请求体非法 / rating 非 0/1/2 / 签名超过 200 字符",
+                        "description": "请求体非法 / level 非 0/3/5 / 签名超过 200 字符",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -619,7 +666,7 @@
         },
         "/teacher/list": {
             "post": {
-                "description": "分页查询老师（筛选条件走 JSON body），零值筛选字段不参与过滤；姓名/账号/昵称/头衔/操作人模糊匹配，部门/ID/认证/状态精确匹配",
+                "description": "分页查询老师（筛选条件走 JSON body），未传/null 字段不参与过滤；姓名/账号/昵称/头衔/操作人模糊匹配，部门/ID/认证/状态精确匹配",
                 "consumes": [
                     "application/json"
                 ],
@@ -632,7 +679,7 @@
                 "summary": "老师列表",
                 "parameters": [
                     {
-                        "description": "查询条件（数值字段传空串表示未填）",
+                        "description": "查询条件（数值字段传 null 表示未填）",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -649,7 +696,7 @@
                         }
                     },
                     "400": {
-                        "description": "请求体非法 / 数字参数格式错误",
+                        "description": "请求体非法",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -1074,7 +1121,8 @@
         "model.TeacherBindReq": {
             "type": "object",
             "properties": {
-                "teacher_id": {
+                "id": {
+                    "description": "老师表 id（接口键名 id，内部字段语义仍为 teacher_id）",
                     "type": "integer"
                 },
                 "user_ids": {
@@ -1108,6 +1156,46 @@
                 }
             }
         },
+        "model.TeacherDetail": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "level": {
+                    "description": "0 无 / 3 初级 / 5 高级",
+                    "type": "integer"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "sign": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.TeacherDetailResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "$ref": "#/definitions/model.TeacherDetail"
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
         "model.TeacherListReq": {
             "type": "object",
             "properties": {
@@ -1116,16 +1204,16 @@
                     "type": "string"
                 },
                 "bind_sales_count": {
-                    "description": "精确，空串不参与过滤；\"0\" 是有效过滤值",
-                    "type": "string"
+                    "description": "精确，未填不过滤；0 是有效过滤值",
+                    "type": "integer"
                 },
                 "dept_id": {
-                    "description": "精确，空串不参与过滤",
-                    "type": "string"
+                    "description": "精确，null/\"\"/缺省不过滤",
+                    "type": "integer"
                 },
                 "id": {
-                    "description": "精确，空串不参与过滤",
-                    "type": "string"
+                    "description": "精确，null/\"\"/缺省不过滤",
+                    "type": "integer"
                 },
                 "name": {
                     "description": "模糊",
@@ -1148,8 +1236,8 @@
                     "type": "string"
                 },
                 "status": {
-                    "description": "精确 \"1\"/\"0\"",
-                    "type": "string"
+                    "description": "-1 全部不过滤 / 1 启用 / 0 停用",
+                    "type": "integer"
                 },
                 "title": {
                     "description": "模糊",
@@ -1283,11 +1371,11 @@
                 "id": {
                     "type": "integer"
                 },
-                "rating": {
-                    "description": "0 无 / 1 初级 / 2 高级",
+                "level": {
+                    "description": "0 无 / 3 初级 / 5 高级（前端 editForm 下拉取值）",
                     "type": "integer"
                 },
-                "signature": {
+                "sign": {
                     "type": "string"
                 },
                 "title": {
