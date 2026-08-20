@@ -67,6 +67,16 @@ type ResignListResp struct {
 	} `json:"data"`
 }
 
+// AdminUserListResp 用户管理列表响应（POST /admin/user/list）
+type AdminUserListResp struct {
+	Code int    `json:"code" example:"200"`
+	Msg  string `json:"msg"  example:"success"`
+	Data struct {
+		List  []AdminUser `json:"list"`
+		Count int         `json:"count" example:"2"`
+	} `json:"data"`
+}
+
 // DiagnoseListResp 诊股列表响应（GET /diagnose/list）
 type DiagnoseListResp struct {
 	Code int    `json:"code" example:"200"`

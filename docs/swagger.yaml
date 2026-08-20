@@ -11,6 +11,102 @@ definitions:
         example: 编辑成功
         type: string
     type: object
+  model.AdminUser:
+    properties:
+      avatar:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      last_login_at:
+        type: string
+      last_login_ip:
+        type: string
+      nickname:
+        type: string
+      role:
+        type: string
+      status:
+        description: 1 启用 / 0 停用
+        type: integer
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  model.AdminUserAddReq:
+    properties:
+      password:
+        example: "123456"
+        maxLength: 64
+        minLength: 6
+        type: string
+      username:
+        example: tom
+        maxLength: 50
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  model.AdminUserDeleteReq:
+    properties:
+      id:
+        example: 2
+        type: integer
+    required:
+    - id
+    type: object
+  model.AdminUserEditReq:
+    properties:
+      id:
+        example: 2
+        type: integer
+      password:
+        example: newpass123
+        maxLength: 64
+        minLength: 6
+        type: string
+      username:
+        example: tom
+        maxLength: 50
+        type: string
+    required:
+    - id
+    - username
+    type: object
+  model.AdminUserListReq:
+    properties:
+      page_index:
+        example: 1
+        type: integer
+      page_size:
+        example: 10
+        type: integer
+      username:
+        example: tom
+        type: string
+    type: object
+  model.AdminUserListResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        properties:
+          count:
+            example: 2
+            type: integer
+          list:
+            items:
+              $ref: '#/definitions/model.AdminUser'
+            type: array
+        type: object
+      msg:
+        example: success
+        type: string
+    type: object
   model.Diagnose:
     properties:
       buy_num:
@@ -547,6 +643,142 @@ info:
   title: im系统诊股 API
   version: "1.0"
 paths:
+  /admin/user/add:
+    post:
+      consumes:
+      - application/json
+      description: 新增登录账号（仅用户名+密码；密码 bcrypt 哈希落库，nickname 取 username 兜底，role 固定 admin）
+      parameters:
+      - description: 新增用户请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AdminUserAddReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「新增成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / 用户名已存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 新增用户
+      tags:
+      - 用户管理
+  /admin/user/delete:
+    post:
+      consumes:
+      - application/json
+      description: 删除登录账号并立即踢下线（DEL Redis 白名单，该账号当前 token 立即失效）；不能删除当前登录账号
+      parameters:
+      - description: 删除用户请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AdminUserDeleteReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「删除成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / 不能删除当前登录账号
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 用户不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 删除用户
+      tags:
+      - 用户管理
+  /admin/user/edit:
+    post:
+      consumes:
+      - application/json
+      description: 编辑登录账号（password 传空串表示不修改密码；改密码且目标非操作者本人时，目标账号立即被踢下线）
+      parameters:
+      - description: 编辑用户请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AdminUserEditReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「编辑成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / 用户名已存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 用户不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 编辑用户
+      tags:
+      - 用户管理
+  /admin/user/list:
+    post:
+      consumes:
+      - application/json
+      description: 分页查询登录账号（username 模糊匹配，传空串表示未填）。密码永不返回（password 列不查，json:"-" 双保险）
+      parameters:
+      - description: 查询条件（username 模糊匹配，传空串/null 表示未填）
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AdminUserListReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AdminUserListResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 用户列表
+      tags:
+      - 用户管理
   /dxsf/diagnose/audit:
     post:
       consumes:

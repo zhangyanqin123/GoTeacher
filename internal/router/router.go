@@ -30,6 +30,7 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config) *gin.Engine {
 	rh := handler.NewResign(svc)
 	dh := handler.NewDiagnose(svc)
 	ah := handler.NewAuth(svc)
+	auh := handler.NewAdminUser(svc)
 
 	// 鉴权公开接口（login 签发 token；logout/getinfo 需登录态放 authed 组）
 	r.POST("/api/v1/login", ah.Login)
@@ -58,5 +59,12 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config) *gin.Engine {
 	diag.GET("/detail", dh.Detail)
 	diag.POST("/submitReport", dh.SubmitReport)
 	diag.POST("/audit", dh.Audit)
+
+	// 用户管理（登录账号 CRUD，见 PLAN-admin-user.md；admin_user 是系统账号域，不挂 /dxsf）
+	admin := r.Group("/api/v1/admin", Auth(svc))
+	admin.POST("/user/list", auh.List)
+	admin.POST("/user/add", auh.Add)
+	admin.POST("/user/edit", auh.Edit)
+	admin.POST("/user/delete", auh.Delete)
 	return r
 }

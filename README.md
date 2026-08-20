@@ -259,6 +259,52 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/diagnose/audit' \
 
 设计决策与实施记录见 [PLAN-diagnose.md](PLAN-diagnose.md)。
 
+## 用户管理接口（登录账号）
+
+管理 `admin_user` 表登录账号（admin/admin123 种子之外的手工开户入口），用户信息仅用户名+密码。前端 gyz-admin 右上角头像下拉菜单「用户管理」进入（页面 `views/dxData/chatSys/userManage.vue`，静态 hidden 路由 `/userManage/index`）。`admin_user` 是系统账号域，路由前缀 `/api/v1/admin` 不挂 `/dxsf`。
+
+| # | 方法 | 路径 | 说明 |
+| --- | --- | --- | --- |
+| 1 | POST | `/api/v1/admin/user/list` | 用户列表（分页 + username 模糊；密码永不返回） |
+| 2 | POST | `/api/v1/admin/user/add` | 新增用户（username 6-64 位 password） |
+| 3 | POST | `/api/v1/admin/user/edit` | 编辑用户（password 留空=不修改） |
+| 4 | POST | `/api/v1/admin/user/delete` | 删除用户（立即踢下线；不能删自己） |
+
+### 响应约定
+
+- 成功 msg：`success` / `新增成功` / `编辑成功` / `删除成功`
+- 密码永不输出：列表 SELECT 不查 password 列 + model `json:"-"` 双保险
+- 编辑时 `password` 传空串表示不修改密码；改密码且目标非操作者本人时，目标账号被立即踢下线（DEL Redis 白名单）
+- 删除必踢下线（否则已删账号 JWT 在 TTL 内仍有效）；不能删除当前登录账号（400）
+- 用户名唯一：重名 400「用户名已存在」（库内 `uk_username` 兜底并发）；用户不存在 404
+- 新增落库默认值：nickname 取 username 兜底、role 固定 `admin`、status=1 启用；last_login_* 保持 NULL（列表显示空）
+
+### curl 示例
+
+```bash
+# 列表（username 模糊，空串表示未填）
+curl -s -X POST 'http://localhost:8080/api/v1/admin/user/list' \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"username":"","page_index":1,"page_size":10}'
+
+# 新增用户
+curl -s -X POST 'http://localhost:8080/api/v1/admin/user/add' \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"username":"tester1","password":"123456"}'
+
+# 编辑用户（password 留空=不修改密码；改用户名不踢人，token 以 userID 为准）
+curl -s -X POST 'http://localhost:8080/api/v1/admin/user/edit' \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"id":2,"username":"tester1b","password":""}'
+
+# 删除用户（该账号当前 token 立即失效；删自己 400）
+curl -s -X POST 'http://localhost:8080/api/v1/admin/user/delete' \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"id":2}'
+```
+
+设计决策与实施记录见 [PLAN-admin-user.md](PLAN-admin-user.md)。
+
 ## 目录结构（对应 Spring Boot 分层）
 
 ```
