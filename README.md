@@ -145,7 +145,7 @@ curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/users'
 - 原老师无绑定业务员时 400（无可转移内容，不再落 group_count=0 的空记录）
 - `transfer_content` 为转移内容自由文本（2026-08-19 由原 `remark` 改名），≤200 字符
 - `group_count` 由后端计算（=原老师绑定业务员数，一个绑定业务员对应一个客户群），请求体不接收该字段；旧客户端多传的 `group_count`/`friend_count`/`remark` 会被 gin 静默忽略
-- `operator` 无登录态固定 `admin`；`operate_ip` 取 `c.ClientIP()`；`transfer_time` 库端 NOW()
+- `operator` 无登录态固定 `admin`；`operate_ip` 取 `c.ClientIP()` 仅落库审计（列表接口不返回，2026-08-20 移除展示，DB 列与数据保留）；`transfer_time` 库端 NOW()
 
 ### 响应约定
 

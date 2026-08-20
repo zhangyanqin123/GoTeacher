@@ -1152,9 +1152,6 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "operate_ip": {
-                    "type": "string"
-                },
                 "operator": {
                     "type": "string"
                 },

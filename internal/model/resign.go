@@ -1,12 +1,13 @@
 package model
 
-// Resign 离职转移记录行（对应前端 resign.js mock 的字段，全量输出）
+// Resign 离职转移记录行（对应前端 resign.js mock 的字段，除审计列外全量输出）
 //
 // 兼容约定（前端 teacherQuery.vue 直接展示，勿改）：
 //   - 姓名/部门为冗余快照（离职后老师可能被改/删，记录保留转移当时值）
 //   - SalesmanName/SalesmanDept 为原老师全部绑定业务员，多个逗号分隔
 //   - TransferContent 为转移内容自由文本（2026-08-19 由 remark 改名，如「首席投顾」）
 //   - TransferTime 等用 DateTimeString：扫描点格式化为 "2006-01-02 15:04:05"
+//   - operate_ip 仅审计落库不查询返回（2026-08-20 列表移除「操作ip」展示，见 ResignInsert.OperateIP）
 type Resign struct {
 	ID                    int64          `json:"id"                      db:"id"`
 	OriginalTeacherID     int64          `json:"original_teacher_id"      db:"original_teacher_id"`
@@ -20,7 +21,6 @@ type Resign struct {
 	SalesmanDept          string         `json:"salesman_dept"            db:"salesman_dept"`
 	GroupCount            int            `json:"group_count"              db:"group_count"` // 原老师绑定业务员数（一业务员一群，后端计算）
 	Operator              string         `json:"operator"                 db:"operator"`
-	OperateIP             string         `json:"operate_ip"               db:"operate_ip"`
 	TransferTime          DateTimeString `json:"transfer_time"            db:"transfer_time"`
 	TransferContent       string         `json:"transfer_content"         db:"transfer_content"`
 	CreatedAt             DateTimeString `json:"created_at"               db:"created_at"`
@@ -40,7 +40,7 @@ type ResignInsert struct {
 	SalesmanDept          string
 	GroupCount            int
 	Operator              string
-	OperateIP             string
+	OperateIP             string // 审计留痕：handler 取 c.ClientIP() 落库，列表接口不返回（2026-08-20 移除展示，列与数据保留）
 	TransferContent       string
 }
 

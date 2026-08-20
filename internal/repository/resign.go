@@ -27,7 +27,7 @@ func (r *Repository) ListResigns(ctx context.Context, f model.ResignListFilter) 
 	const query = `SELECT r.id, r.original_teacher_id, r.original_teacher_name, r.original_teacher_dept_id, r.original_teacher_dept,
 	                      r.replace_teacher_id, r.replace_teacher_name, r.replace_teacher_dept,
 	                      r.salesman_name, r.salesman_dept, r.group_count,
-	                      r.operator, r.operate_ip, r.transfer_time, r.transfer_content, r.created_at, r.updated_at
+	                      r.operator, r.transfer_time, r.transfer_content, r.created_at, r.updated_at
 	               FROM teacher_resign r
 	               WHERE %s
 	               ORDER BY r.id DESC
@@ -48,7 +48,7 @@ func (r *Repository) ListResigns(ctx context.Context, f model.ResignListFilter) 
 			&it.ID, &it.OriginalTeacherID, &it.OriginalTeacherName, &it.OriginalTeacherDeptID, &it.OriginalTeacherDept,
 			&it.ReplaceTeacherID, &it.ReplaceTeacherName, &it.ReplaceTeacherDept,
 			&it.SalesmanName, &it.SalesmanDept, &it.GroupCount,
-			&it.Operator, &it.OperateIP, &it.TransferTime, &it.TransferContent, &it.CreatedAt, &it.UpdatedAt,
+			&it.Operator, &it.TransferTime, &it.TransferContent, &it.CreatedAt, &it.UpdatedAt,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan teacher_resign row: %w", err)
 		}

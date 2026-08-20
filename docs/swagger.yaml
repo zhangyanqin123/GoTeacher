@@ -192,8 +192,6 @@ definitions:
         type: integer
       id:
         type: integer
-      operate_ip:
-        type: string
       operator:
         type: string
       original_teacher_dept:
