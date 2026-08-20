@@ -65,6 +65,10 @@ func resignWhere(f model.ResignListFilter) (string, []any) {
 	var conds []string
 	var args []any
 
+	if f.DeptID != 0 {
+		conds = append(conds, "r.original_teacher_dept_id = ?")
+		args = append(args, f.DeptID)
+	}
 	if f.OriginalTeacher != "" {
 		conds = append(conds, "r.original_teacher_name LIKE CONCAT('%', ?, '%')")
 		args = append(args, f.OriginalTeacher)

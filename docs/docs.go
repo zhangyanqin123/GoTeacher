@@ -722,7 +722,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "分页查询离职转移记录（筛选条件走 JSON body，姓名类为模糊匹配，空串表示未填）",
+                "description": "分页查询离职转移记录（筛选条件走 JSON body，姓名类为模糊匹配，dept_id 精确匹配原老师部门快照，空值表示未填）",
                 "consumes": [
                     "application/json"
                 ],
@@ -735,7 +735,7 @@ const docTemplate = `{
                 "summary": "离职转移列表",
                 "parameters": [
                     {
-                        "description": "查询条件（姓名类模糊匹配，传空串表示未填）",
+                        "description": "查询条件（姓名类模糊匹配，dept_id 精确，传空串/null 表示未填）",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -1214,6 +1214,10 @@ const docTemplate = `{
         "model.ResignListReq": {
             "type": "object",
             "properties": {
+                "dept_id": {
+                    "description": "精确，匹配 original_teacher_dept_id 快照，''/null/缺省不过滤",
+                    "type": "integer"
+                },
                 "original_teacher": {
                     "description": "模糊，匹配 original_teacher_name",
                     "type": "string"

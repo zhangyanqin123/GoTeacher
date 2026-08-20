@@ -130,6 +130,7 @@ curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/users'
 
 | 参数 | 匹配 | 说明 |
 | --- | --- | --- |
+| dept_id | 精确 | 匹配原老师部门快照列 original_teacher_dept_id，传空串/null 表示未填 |
 | original_teacher / replace_teacher / salesman | 模糊 | 姓名类，分别匹配 original_teacher_name / replace_teacher_name / salesman_name 快照列，LIKE %val% |
 | transfer_begin_time + transfer_end_time | 范围 | yyyy-MM-dd，按 transfer_time 闭区间，成对生效 |
 | page_index / page_size | 分页 | 默认 1 / 10，page_size 上限 100，id 倒序（最新在前） |
@@ -154,10 +155,10 @@ curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/users'
 ### curl 示例
 
 ```bash
-# 列表（姓名模糊 + 时间范围；筛选条件走 JSON body，姓名类传空串表示未填）
+# 列表（部门 + 姓名模糊 + 时间范围；筛选条件走 JSON body，空串/null 表示未填）
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/list' \
   -H 'Content-Type: application/json' \
-  -d '{"original_teacher":"张三","transfer_begin_time":"2025-08-01","transfer_end_time":"2025-08-31","page_index":1,"page_size":10}'
+  -d '{"dept_id":3,"original_teacher":"张三","transfer_begin_time":"2025-08-01","transfer_end_time":"2025-08-31","page_index":1,"page_size":10}'
 
 # 新增离职转移
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/add' \
@@ -169,7 +170,7 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/add' \
 
 | 表 | 说明 |
 | --- | --- |
-| `teacher_resign` | 离职转移记录；`salesman_name/dept` 存原老师全部绑定业务员逗号串；`original_teacher_dept_id` 为部门快照（接口已无 dept_id 筛选，列保留备查）；`group_count` = 原老师绑定业务员数（后端计算入库）；`transfer_content` 为转移内容自由文本（原 `remark` 改名，存量库由启动迁移 CHANGE 幂等改名）；`friend_count` 列已移除（存量库由启动迁移幂等 DROP） |
+| `teacher_resign` | 离职转移记录；`salesman_name/dept` 存原老师全部绑定业务员逗号串；`original_teacher_dept_id` 供列表 dept_id 筛选；`group_count` = 原老师绑定业务员数（后端计算入库）；`transfer_content` 为转移内容自由文本（原 `remark` 改名，存量库由启动迁移 CHANGE 幂等改名）；`friend_count` 列已移除（存量库由启动迁移幂等 DROP） |
 
 种子数据照抄 mock 的 6 条（id 101-106），仅在表为空时写入，重灌方式：`TRUNCATE TABLE teacher_resign;` 后重启。
 

@@ -25,11 +25,11 @@ func NewResign(svc *service.Service) *ResignHandler {
 // 错误映射：body 绑定失败/数值字段非法串 → 400；其他 → 500（真实原因只进日志）
 //
 //	@Summary		离职转移列表
-//	@Description	分页查询离职转移记录（筛选条件走 JSON body，姓名类为模糊匹配，空串表示未填）
+//	@Description	分页查询离职转移记录（筛选条件走 JSON body，姓名类为模糊匹配，dept_id 精确匹配原老师部门快照，空值表示未填）
 //	@Tags			离职转移
 //	@Accept			json
 //	@Produce		json
-//	@Param			body body model.ResignListReq true "查询条件（姓名类模糊匹配，传空串表示未填）"
+//	@Param			body body model.ResignListReq true "查询条件（姓名类模糊匹配，dept_id 精确，传空串/null 表示未填）"
 //	@Success		200 {object} model.ResignListResp
 //	@Failure		400 {object} response.Response "请求体非法"
 //	@Failure		500 {object} response.Response "服务器内部错误"
@@ -44,6 +44,7 @@ func (h *ResignHandler) List(c *gin.Context) {
 	}
 
 	var f model.ResignListFilter
+	f.DeptID = derefOrZero(req.DeptID.Ptr())
 	f.OriginalTeacher = req.OriginalTeacher
 	f.ReplaceTeacher = req.ReplaceTeacher
 	f.Salesman = req.Salesman
