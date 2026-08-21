@@ -107,7 +107,7 @@ authed := r.Group("/api/v1", Auth(svc))
 authed.POST("/logout", ah.Logout)
 authed.GET("/getinfo", ah.GetInfo)
 dxsf := r.Group("/api/v1/dxsf", Auth(svc))           // 业务组挂中间件
-diag := r.Group("/api/v1/dxsf/diagnose", Auth(svc))
+diag := r.Group("/api/v1/dxsf/teacher/diagnose", Auth(svc))
 ```
 
 - `cmd/server/main.go`：MySQL 之后 `ConnectRedis(cfg)`（失败 exit(1)，defer Close）→ `router.New(db, rdb, cfg)`；`@BasePath` 改 `/api/v1`

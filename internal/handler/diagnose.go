@@ -21,89 +21,44 @@ func NewDiagnose(svc *service.Service) *DiagnoseHandler {
 	return &DiagnoseHandler{svc: svc}
 }
 
-// List GET /api/v1/dxsf/diagnose/list
+// List POST /api/v1/dxsf/teacher/diagnose/list
 //
-// 错误映射：数值参数格式错误 → 400；status 越界 → 400；其他 → 500（真实原因只进日志）
+// 错误映射：body 绑定失败（含数值字段非法串）/status 越界 → 400；其他 → 500（真实原因只进日志）
 //
 //	@Summary		诊股记录列表
-//	@Description	分页查询诊股记录，零值/未传筛选字段不参与过滤；昵称/姓名/股票代码/股票名/老师模糊匹配，ID/买入价/持仓数/状态精确匹配
+//	@Description	分页查询诊股记录（筛选条件走 JSON body），零值/未传筛选字段不参与过滤；昵称/姓名/股票代码/股票名/老师模糊匹配，ID/买入价/持仓数/状态精确匹配
 //	@Tags			诊股记录
 //	@Accept			json
 //	@Produce		json
-//	@Param			id query integer false "诊股记录 ID（精确）"
-//	@Param			user_nick_name query string false "用户昵称（模糊）"
-//	@Param			user_name query string false "用户姓名（模糊）"
-//	@Param			stock_code query string false "股票代码（模糊）"
-//	@Param			stock_name query string false "股票名称（模糊）"
-//	@Param			buy_price query number false "买入价（精确，DECIMAL 等值匹配）"
-//	@Param			buy_num query integer false "持仓数（精确）"
-//	@Param			teacher_name query string false "老师姓名（模糊）"
-//	@Param			status query integer false "状态（精确 1-6：1 待提交 2 待审核 3 已驳回 4 待合规 5 合规驳回 6 已通过）" Enums(1,2,3,4,5,6)
-//	@Param			submit_begin_time query string false "提交时间起（yyyy-MM-dd，与 submit_end_time 成对生效，闭合区间）"
-//	@Param			submit_end_time query string false "提交时间止（yyyy-MM-dd）"
-//	@Param			report_begin_time query string false "报告提交时间起（yyyy-MM-dd，与 report_end_time 成对生效）"
-//	@Param			report_end_time query string false "报告提交时间止（yyyy-MM-dd）"
-//	@Param			page_index query integer false "页码（默认 1）"
-//	@Param			page_size query integer false "页大小（默认 10，上限 100）"
+//	@Param			body body model.DiagnoseListReq true "查询条件（姓名/股票类模糊匹配，ID/买入价/持仓数/状态精确；数值字段必须是 JSON number，传字符串/空串一律 400，未填传 null 或缺省）"
 //	@Success		200 {object} model.DiagnoseListResp
-//	@Failure		400 {object} response.Response "数值参数格式错误 / status 越界（非 1-6）"
+//	@Failure		400 {object} response.Response "请求体非法 / status 越界（非 1-6）"
 //	@Failure		500 {object} response.Response "服务器内部错误"
 //	@Security		ApiKeyAuth
-//	@Router			/dxsf/diagnose/list [get]
+//	@Router			/dxsf/teacher/diagnose/list [post]
 func (h *DiagnoseHandler) List(c *gin.Context) {
+	var req model.DiagnoseListReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Error("bind diagnose list request failed", "err", err)
+		response.Fail(c, 400, 400, "请求体非法")
+		return
+	}
+
 	var f model.DiagnoseListFilter
-
-	// 整数类筛选：非空才解析，失败即 400
-	for _, num := range []struct {
-		key   string
-		dst   **int64
-		label string
-	}{
-		{"id", &f.ID, "id"},
-		{"buy_num", &f.BuyNum, "buy_num"},
-	} {
-		s := c.Query(num.key)
-		if s == "" {
-			continue
-		}
-		v, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			response.Fail(c, 400, 400, "参数 "+num.label+" 必须是整数")
-			return
-		}
-		*num.dst = &v
-	}
-
-	// buy_price → DECIMAL 精确匹配
-	if s := c.Query("buy_price"); s != "" {
-		v, err := strconv.ParseFloat(s, 64)
-		if err != nil {
-			response.Fail(c, 400, 400, "参数 buy_price 必须是数字")
-			return
-		}
-		f.BuyPrice = &v
-	}
-
-	// status → 1-6 枚举（越界在 service 白名单兜底，这里只管格式）
-	if s := c.Query("status"); s != "" {
-		v, err := strconv.Atoi(s)
-		if err != nil {
-			response.Fail(c, 400, 400, "参数 status 必须是整数")
-			return
-		}
-		f.Status = &v
-	}
-
-	f.UserNickName = c.Query("user_nick_name")
-	f.UserName = c.Query("user_name")
-	f.StockCode = c.Query("stock_code")
-	f.StockName = c.Query("stock_name")
-	f.TeacherName = c.Query("teacher_name")
-	f.SubmitBeginTime = c.Query("submit_begin_time")
-	f.SubmitEndTime = c.Query("submit_end_time")
-	f.ReportBeginTime = c.Query("report_begin_time")
-	f.ReportEndTime = c.Query("report_end_time")
-	f.PageIndex, f.PageSize = queryPage(c) // 默认在 service 层兜底
+	f.ID = req.ID
+	f.UserNickName = req.UserNickName
+	f.UserName = req.UserName
+	f.StockCode = req.StockCode
+	f.StockName = req.StockName
+	f.BuyPrice = req.BuyPrice
+	f.BuyNum = req.BuyNum
+	f.TeacherName = req.TeacherName
+	f.Status = req.Status
+	f.SubmitBeginTime = req.SubmitBeginTime
+	f.SubmitEndTime = req.SubmitEndTime
+	f.ReportBeginTime = req.ReportBeginTime
+	f.ReportEndTime = req.ReportEndTime
+	f.PageIndex, f.PageSize = req.PageIndex, req.PageSize // 默认在 service 层兜底
 
 	switch result, err := h.svc.ListDiagnoses(c.Request.Context(), f); {
 	case err == nil:
@@ -116,7 +71,7 @@ func (h *DiagnoseHandler) List(c *gin.Context) {
 	}
 }
 
-// Detail GET /api/v1/dxsf/diagnose/detail
+// Detail GET /api/v1/dxsf/teacher/diagnose/detail
 //
 // 错误映射：缺 id/格式错误 → 400；记录不存在 → 404；其他 → 500
 //
@@ -130,7 +85,7 @@ func (h *DiagnoseHandler) List(c *gin.Context) {
 //	@Failure		404 {object} response.Response "诊股记录不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
 //	@Security		ApiKeyAuth
-//	@Router			/dxsf/diagnose/detail [get]
+//	@Router			/dxsf/teacher/diagnose/detail [get]
 func (h *DiagnoseHandler) Detail(c *gin.Context) {
 	s := c.Query("id")
 	if s == "" {
@@ -154,7 +109,7 @@ func (h *DiagnoseHandler) Detail(c *gin.Context) {
 	}
 }
 
-// SubmitReport POST /api/v1/dxsf/diagnose/submitReport
+// SubmitReport POST /api/v1/dxsf/teacher/diagnose/submitReport
 //
 // 错误映射：body 绑定失败/空内容/状态不允许 → 400；记录不存在 → 404；其他 → 500
 //
@@ -169,7 +124,7 @@ func (h *DiagnoseHandler) Detail(c *gin.Context) {
 //	@Failure		404 {object} response.Response "诊股记录不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
 //	@Security		ApiKeyAuth
-//	@Router			/dxsf/diagnose/submitReport [post]
+//	@Router			/dxsf/teacher/diagnose/submitReport [post]
 func (h *DiagnoseHandler) SubmitReport(c *gin.Context) {
 	var req model.DiagnoseSubmitReportReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -192,7 +147,7 @@ func (h *DiagnoseHandler) SubmitReport(c *gin.Context) {
 	}
 }
 
-// Audit POST /api/v1/dxsf/diagnose/audit
+// Audit POST /api/v1/dxsf/teacher/diagnose/audit
 //
 // 错误映射：body 绑定失败/白名单/驳回原因必填/状态不允许 → 400；记录不存在 → 404；其他 → 500
 //
@@ -207,7 +162,7 @@ func (h *DiagnoseHandler) SubmitReport(c *gin.Context) {
 //	@Failure		404 {object} response.Response "诊股记录不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
 //	@Security		ApiKeyAuth
-//	@Router			/dxsf/diagnose/audit [post]
+//	@Router			/dxsf/teacher/diagnose/audit [post]
 func (h *DiagnoseHandler) Audit(c *gin.Context) {
 	var req model.DiagnoseAuditReq
 	if err := c.ShouldBindJSON(&req); err != nil {

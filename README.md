@@ -182,10 +182,10 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/add' \
 
 | # | 方法 | 路径 | 说明 |
 | --- | --- | --- | --- |
-| 1 | GET | `/api/v1/dxsf/diagnose/list` | 诊股记录列表（分页 + 12 条件筛选） |
-| 2 | GET | `/api/v1/dxsf/diagnose/detail` | 诊股详情（主表全字段 + 审核流程记录） |
-| 3 | POST | `/api/v1/dxsf/diagnose/submitReport` | 提交诊股报告（首次编写 / 重新提审 → 状态 2） |
-| 4 | POST | `/api/v1/dxsf/diagnose/audit` | 审核诊股报告（通过 / 驳回） |
+| 1 | POST | `/api/v1/dxsf/teacher/diagnose/list` | 诊股记录列表（分页 + 12 条件筛选，条件走 JSON body） |
+| 2 | GET | `/api/v1/dxsf/teacher/diagnose/detail` | 诊股详情（主表全字段 + 审核流程记录） |
+| 3 | POST | `/api/v1/dxsf/teacher/diagnose/submitReport` | 提交诊股报告（首次编写 / 重新提审 → 状态 2） |
+| 4 | POST | `/api/v1/dxsf/teacher/diagnose/audit` | 审核诊股报告（通过 / 驳回） |
 
 ### 状态机
 
@@ -199,11 +199,11 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/add' \
 - submitReport 仅允许状态 1/3/5（在途重提使审核对象错位、审计链断裂，2/4/6 严格拒绝；6 为终态）
 - professional 审核仅允许状态 2；compliance 审核仅允许状态 4（顺序错位拒绝）
 
-### 列表筛选参数
+### 列表筛选参数（POST JSON body）
 
 | 参数 | 匹配 | 说明 |
 | --- | --- | --- |
-| id / buy_price / buy_num / status | 精确 | 数值格式错误 400；status 白名单 1-6；传 `0` 亦为有效过滤值（指针区分未传） |
+| id / buy_price / buy_num / status | 精确 | 只接受 JSON 数值，传数值字符串/空串一律 400（前端负责把 el-input 产出转数字再发）；status 白名单 1-6；传 `0` 亦为有效过滤值（null/缺省区分未传） |
 | user_nick_name / user_name / stock_code / stock_name / teacher_name | 模糊 | LIKE %val% |
 | submit_begin_time + submit_end_time | 范围 | yyyy-MM-dd，按 submit_time 闭区间，成对生效 |
 | report_begin_time + report_end_time | 范围 | yyyy-MM-dd，按 report_submit_time 闭区间（未提审的天然排除） |
@@ -231,19 +231,21 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/add' \
 ### curl 示例
 
 ```bash
-# 列表（状态 + 股票名模糊）
-curl -s 'http://localhost:8080/api/v1/dxsf/diagnose/list?status=2&stockName=%E4%BA%94%E7%B2%AE&page_index=1&page_size=10'
+# 列表（状态 + 股票名模糊，筛选条件走 JSON body）
+curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/diagnose/list' \
+  -H 'Content-Type: application/json' \
+  -d '{"status":2,"stock_name":"五粮","page_index":1,"page_size":10}'
 
 # 详情（含审核流程日志，按时间正序）
-curl -s 'http://localhost:8080/api/v1/dxsf/diagnose/detail?id=5'
+curl -s 'http://localhost:8080/api/v1/dxsf/teacher/diagnose/detail?id=5'
 
 # 提交诊股报告（状态 1/3/5 → 2）
-curl -s -X POST 'http://localhost:8080/api/v1/dxsf/diagnose/submitReport' \
+curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/diagnose/submitReport' \
   -H 'Content-Type: application/json' \
   -d '{"id":1,"report_content":"<p>诊股结论：持股待涨</p>"}'
 
 # 专业审核通过（2 → 4）；驳回把 result 换成 reject 并带 reject_reason
-curl -s -X POST 'http://localhost:8080/api/v1/dxsf/diagnose/audit' \
+curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/diagnose/audit' \
   -H 'Content-Type: application/json' \
   -d '{"id":1,"audit_type":"professional","result":"pass"}'
 ```

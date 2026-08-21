@@ -8,10 +8,10 @@
 
 | # | 方法 | 路径 | 说明 |
 | --- | --- | --- | --- |
-| 1 | GET | `/api/v1/dxsf/diagnose/list` | 诊股记录列表（分页 + 12 条件筛选） |
-| 2 | GET | `/api/v1/dxsf/diagnose/detail` | 诊股详情（主表全字段 + 审核流程记录） |
-| 3 | POST | `/api/v1/dxsf/diagnose/submitReport` | 提交诊股报告（首次编写 / 重新提审 → 状态 2） |
-| 4 | POST | `/api/v1/dxsf/diagnose/audit` | 审核诊股报告（通过 / 驳回） |
+| 1 | POST | `/api/v1/dxsf/teacher/diagnose/list` | 诊股记录列表（分页 + 12 条件筛选，条件走 JSON body，2026-08-21 由 GET 改 POST 对齐 resign/list） |
+| 2 | GET | `/api/v1/dxsf/teacher/diagnose/detail` | 诊股详情（主表全字段 + 审核流程记录） |
+| 3 | POST | `/api/v1/dxsf/teacher/diagnose/submitReport` | 提交诊股报告（首次编写 / 重新提审 → 状态 2） |
+| 4 | POST | `/api/v1/dxsf/teacher/diagnose/audit` | 审核诊股报告（通过 / 驳回） |
 
 ## 状态机
 
@@ -122,8 +122,9 @@ mock 原为 200 + data:null；收紧为 404 对齐 teacher/resign 先例。前�
 | `internal/model/diagnose.go` | 新增 | Diagnose / Filter / 请求体 / AuditLog / Detail |
 | `internal/repository/diagnose.go` | 新增 | 列表/详情/条件 UPDATE + 事务写日志 |
 | `internal/service/diagnose.go` | 新增 | 状态机 / 白名单 / 哨兵错误 / 富文本判空 |
-| `internal/handler/diagnose.go` | 新增 | 4 个入口，query 解析 + errors.Is 映射 |
-| `internal/router/router.go` | 修改 | 注册 `/api/v1/dxsf/diagnose` 路由组 |
+| `internal/handler/diagnose.go` | 新增 | 4 个入口，list 走 JSON body，errors.Is 映射 |
+| `internal/model/flexint.go` | 修改 | 曾加 FlexFloat64 供 buy_price 宽容解析，2026-08-21 契约收紧为只收 JSON 数值后删除（唯一使用者消失） |
+| `internal/router/router.go` | 修改 | 注册 `/api/v1/dxsf/teacher/diagnose` 路由组 |
 | gyz-admin `src/api/dxData/diagnoseSys/diagnose.js` | 修改 | 删 mock，启用 LOCAL baseURL 真实调用 |
 
 ### 第二期（XSS 加固 + remark 富文本化）

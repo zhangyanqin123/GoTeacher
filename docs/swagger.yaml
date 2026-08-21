@@ -207,6 +207,51 @@ definitions:
         example: success
         type: string
     type: object
+  model.DiagnoseListReq:
+    properties:
+      buy_num:
+        description: 精确
+        type: integer
+      buy_price:
+        description: 精确，DECIMAL 等值匹配
+        type: number
+      id:
+        description: 精确
+        type: integer
+      page_index:
+        description: 默认 1（service 层兜底）
+        type: integer
+      page_size:
+        description: 默认 10，上限 100
+        type: integer
+      report_begin_time:
+        type: string
+      report_end_time:
+        type: string
+      status:
+        description: 精确 1-6
+        type: integer
+      stock_code:
+        description: 模糊
+        type: string
+      stock_name:
+        description: 模糊
+        type: string
+      submit_begin_time:
+        description: yyyy-MM-dd，与 EndTime 成对生效（闭合区间）
+        type: string
+      submit_end_time:
+        type: string
+      teacher_name:
+        description: 模糊
+        type: string
+      user_name:
+        description: 模糊
+        type: string
+      user_nick_name:
+        description: 模糊
+        type: string
+    type: object
   model.DiagnoseListResp:
     properties:
       code:
@@ -779,205 +824,6 @@ paths:
       summary: 用户列表
       tags:
       - 用户管理
-  /dxsf/diagnose/audit:
-    post:
-      consumes:
-      - application/json
-      description: professional 专业审核（状态 2）/ compliance 合规审核（状态 4）；通过 → 3/6，驳回 → 5/4（驳回时
-        reject_reason 必填，富文本 HTML）
-      parameters:
-      - description: 审核请求体
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/model.DiagnoseAuditReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: msg 为「审核通过」或「已驳回」，data 恒为 null
-          schema:
-            $ref: '#/definitions/model.ActionResp'
-        "400":
-          description: 请求体非法 / audit_type 或 result 非法 / 驳回时原因必填 / 当前状态不允许审核
-          schema:
-            $ref: '#/definitions/response.Response'
-        "404":
-          description: 诊股记录不存在
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
-      security:
-      - ApiKeyAuth: []
-      summary: 审核诊股报告
-      tags:
-      - 诊股记录
-  /dxsf/diagnose/detail:
-    get:
-      description: 诊股记录全字段 + 审核流程日志（audit_logs）
-      parameters:
-      - description: 诊股记录 ID
-        in: query
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.DiagnoseDetailResp'
-        "400":
-          description: id 缺失或非整数
-          schema:
-            $ref: '#/definitions/response.Response'
-        "404":
-          description: 诊股记录不存在
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
-      security:
-      - ApiKeyAuth: []
-      summary: 诊股记录详情
-      tags:
-      - 诊股记录
-  /dxsf/diagnose/list:
-    get:
-      consumes:
-      - application/json
-      description: 分页查询诊股记录，零值/未传筛选字段不参与过滤；昵称/姓名/股票代码/股票名/老师模糊匹配，ID/买入价/持仓数/状态精确匹配
-      parameters:
-      - description: 诊股记录 ID（精确）
-        in: query
-        name: id
-        type: integer
-      - description: 用户昵称（模糊）
-        in: query
-        name: user_nick_name
-        type: string
-      - description: 用户姓名（模糊）
-        in: query
-        name: user_name
-        type: string
-      - description: 股票代码（模糊）
-        in: query
-        name: stock_code
-        type: string
-      - description: 股票名称（模糊）
-        in: query
-        name: stock_name
-        type: string
-      - description: 买入价（精确，DECIMAL 等值匹配）
-        in: query
-        name: buy_price
-        type: number
-      - description: 持仓数（精确）
-        in: query
-        name: buy_num
-        type: integer
-      - description: 老师姓名（模糊）
-        in: query
-        name: teacher_name
-        type: string
-      - description: 状态（精确 1-6：1 待提交 2 待审核 3 已驳回 4 待合规 5 合规驳回 6 已通过）
-        enum:
-        - 1
-        - 2
-        - 3
-        - 4
-        - 5
-        - 6
-        in: query
-        name: status
-        type: integer
-      - description: 提交时间起（yyyy-MM-dd，与 submit_end_time 成对生效，闭合区间）
-        in: query
-        name: submit_begin_time
-        type: string
-      - description: 提交时间止（yyyy-MM-dd）
-        in: query
-        name: submit_end_time
-        type: string
-      - description: 报告提交时间起（yyyy-MM-dd，与 report_end_time 成对生效）
-        in: query
-        name: report_begin_time
-        type: string
-      - description: 报告提交时间止（yyyy-MM-dd）
-        in: query
-        name: report_end_time
-        type: string
-      - description: 页码（默认 1）
-        in: query
-        name: page_index
-        type: integer
-      - description: 页大小（默认 10，上限 100）
-        in: query
-        name: page_size
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.DiagnoseListResp'
-        "400":
-          description: 数值参数格式错误 / status 越界（非 1-6）
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
-      security:
-      - ApiKeyAuth: []
-      summary: 诊股记录列表
-      tags:
-      - 诊股记录
-  /dxsf/diagnose/submitReport:
-    post:
-      consumes:
-      - application/json
-      description: 状态 1/3/5 可提交（首次编写 / 重新提审），提交后状态统一回落 2；report_content 为富文本 HTML
-      parameters:
-      - description: 提交报告请求体
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/model.DiagnoseSubmitReportReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: msg 固定「提交成功」，data 恒为 null
-          schema:
-            $ref: '#/definitions/model.ActionResp'
-        "400":
-          description: 请求体非法 / 报告内容为空 / 当前状态不允许提交
-          schema:
-            $ref: '#/definitions/response.Response'
-        "404":
-          description: 诊股记录不存在
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
-      security:
-      - ApiKeyAuth: []
-      summary: 提交诊股报告
-      tags:
-      - 诊股记录
   /dxsf/teacher/bind/salesman:
     post:
       consumes:
@@ -1103,6 +949,145 @@ paths:
       summary: 老师详情
       tags:
       - 老师管理
+  /dxsf/teacher/diagnose/audit:
+    post:
+      consumes:
+      - application/json
+      description: professional 专业审核（状态 2）/ compliance 合规审核（状态 4）；通过 → 3/6，驳回 → 5/4（驳回时
+        reject_reason 必填，富文本 HTML）
+      parameters:
+      - description: 审核请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.DiagnoseAuditReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 为「审核通过」或「已驳回」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / audit_type 或 result 非法 / 驳回时原因必填 / 当前状态不允许审核
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 诊股记录不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 审核诊股报告
+      tags:
+      - 诊股记录
+  /dxsf/teacher/diagnose/detail:
+    get:
+      description: 诊股记录全字段 + 审核流程日志（audit_logs）
+      parameters:
+      - description: 诊股记录 ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.DiagnoseDetailResp'
+        "400":
+          description: id 缺失或非整数
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 诊股记录不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 诊股记录详情
+      tags:
+      - 诊股记录
+  /dxsf/teacher/diagnose/list:
+    post:
+      consumes:
+      - application/json
+      description: 分页查询诊股记录（筛选条件走 JSON body），零值/未传筛选字段不参与过滤；昵称/姓名/股票代码/股票名/老师模糊匹配，ID/买入价/持仓数/状态精确匹配
+      parameters:
+      - description: 查询条件（姓名/股票类模糊匹配，ID/买入价/持仓数/状态精确；数值字段必须是 JSON number，传字符串/空串一律
+          400，未填传 null 或缺省）
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.DiagnoseListReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.DiagnoseListResp'
+        "400":
+          description: 请求体非法 / status 越界（非 1-6）
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 诊股记录列表
+      tags:
+      - 诊股记录
+  /dxsf/teacher/diagnose/submitReport:
+    post:
+      consumes:
+      - application/json
+      description: 状态 1/3/5 可提交（首次编写 / 重新提审），提交后状态统一回落 2；report_content 为富文本 HTML
+      parameters:
+      - description: 提交报告请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.DiagnoseSubmitReportReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「提交成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / 报告内容为空 / 当前状态不允许提交
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 诊股记录不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 提交诊股报告
+      tags:
+      - 诊股记录
   /dxsf/teacher/edit:
     post:
       consumes:

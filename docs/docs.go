@@ -231,312 +231,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/dxsf/diagnose/audit": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "professional 专业审核（状态 2）/ compliance 合规审核（状态 4）；通过 → 3/6，驳回 → 5/4（驳回时 reject_reason 必填，富文本 HTML）",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "诊股记录"
-                ],
-                "summary": "审核诊股报告",
-                "parameters": [
-                    {
-                        "description": "审核请求体",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.DiagnoseAuditReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "msg 为「审核通过」或「已驳回」，data 恒为 null",
-                        "schema": {
-                            "$ref": "#/definitions/model.ActionResp"
-                        }
-                    },
-                    "400": {
-                        "description": "请求体非法 / audit_type 或 result 非法 / 驳回时原因必填 / 当前状态不允许审核",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "诊股记录不存在",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/dxsf/diagnose/detail": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "诊股记录全字段 + 审核流程日志（audit_logs）",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "诊股记录"
-                ],
-                "summary": "诊股记录详情",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "诊股记录 ID",
-                        "name": "id",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.DiagnoseDetailResp"
-                        }
-                    },
-                    "400": {
-                        "description": "id 缺失或非整数",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "诊股记录不存在",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/dxsf/diagnose/list": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "分页查询诊股记录，零值/未传筛选字段不参与过滤；昵称/姓名/股票代码/股票名/老师模糊匹配，ID/买入价/持仓数/状态精确匹配",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "诊股记录"
-                ],
-                "summary": "诊股记录列表",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "诊股记录 ID（精确）",
-                        "name": "id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "用户昵称（模糊）",
-                        "name": "user_nick_name",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "用户姓名（模糊）",
-                        "name": "user_name",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "股票代码（模糊）",
-                        "name": "stock_code",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "股票名称（模糊）",
-                        "name": "stock_name",
-                        "in": "query"
-                    },
-                    {
-                        "type": "number",
-                        "description": "买入价（精确，DECIMAL 等值匹配）",
-                        "name": "buy_price",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "持仓数（精确）",
-                        "name": "buy_num",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "老师姓名（模糊）",
-                        "name": "teacher_name",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            1,
-                            2,
-                            3,
-                            4,
-                            5,
-                            6
-                        ],
-                        "type": "integer",
-                        "description": "状态（精确 1-6：1 待提交 2 待审核 3 已驳回 4 待合规 5 合规驳回 6 已通过）",
-                        "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "提交时间起（yyyy-MM-dd，与 submit_end_time 成对生效，闭合区间）",
-                        "name": "submit_begin_time",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "提交时间止（yyyy-MM-dd）",
-                        "name": "submit_end_time",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "报告提交时间起（yyyy-MM-dd，与 report_end_time 成对生效）",
-                        "name": "report_begin_time",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "报告提交时间止（yyyy-MM-dd）",
-                        "name": "report_end_time",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "页码（默认 1）",
-                        "name": "page_index",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "页大小（默认 10，上限 100）",
-                        "name": "page_size",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.DiagnoseListResp"
-                        }
-                    },
-                    "400": {
-                        "description": "数值参数格式错误 / status 越界（非 1-6）",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/dxsf/diagnose/submitReport": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "状态 1/3/5 可提交（首次编写 / 重新提审），提交后状态统一回落 2；report_content 为富文本 HTML",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "诊股记录"
-                ],
-                "summary": "提交诊股报告",
-                "parameters": [
-                    {
-                        "description": "提交报告请求体",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.DiagnoseSubmitReportReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "msg 固定「提交成功」，data 恒为 null",
-                        "schema": {
-                            "$ref": "#/definitions/model.ActionResp"
-                        }
-                    },
-                    "400": {
-                        "description": "请求体非法 / 报告内容为空 / 当前状态不允许提交",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "诊股记录不存在",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
         "/dxsf/teacher/bind/salesman": {
             "post": {
                 "security": [
@@ -722,6 +416,223 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "老师不存在",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/dxsf/teacher/diagnose/audit": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "professional 专业审核（状态 2）/ compliance 合规审核（状态 4）；通过 → 3/6，驳回 → 5/4（驳回时 reject_reason 必填，富文本 HTML）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "诊股记录"
+                ],
+                "summary": "审核诊股报告",
+                "parameters": [
+                    {
+                        "description": "审核请求体",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.DiagnoseAuditReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "msg 为「审核通过」或「已驳回」，data 恒为 null",
+                        "schema": {
+                            "$ref": "#/definitions/model.ActionResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法 / audit_type 或 result 非法 / 驳回时原因必填 / 当前状态不允许审核",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "诊股记录不存在",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/dxsf/teacher/diagnose/detail": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "诊股记录全字段 + 审核流程日志（audit_logs）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "诊股记录"
+                ],
+                "summary": "诊股记录详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "诊股记录 ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.DiagnoseDetailResp"
+                        }
+                    },
+                    "400": {
+                        "description": "id 缺失或非整数",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "诊股记录不存在",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/dxsf/teacher/diagnose/list": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "分页查询诊股记录（筛选条件走 JSON body），零值/未传筛选字段不参与过滤；昵称/姓名/股票代码/股票名/老师模糊匹配，ID/买入价/持仓数/状态精确匹配",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "诊股记录"
+                ],
+                "summary": "诊股记录列表",
+                "parameters": [
+                    {
+                        "description": "查询条件（姓名/股票类模糊匹配，ID/买入价/持仓数/状态精确；数值字段必须是 JSON number，传字符串/空串一律 400，未填传 null 或缺省）",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.DiagnoseListReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.DiagnoseListResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法 / status 越界（非 1-6）",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/dxsf/teacher/diagnose/submitReport": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "状态 1/3/5 可提交（首次编写 / 重新提审），提交后状态统一回落 2；report_content 为富文本 HTML",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "诊股记录"
+                ],
+                "summary": "提交诊股报告",
+                "parameters": [
+                    {
+                        "description": "提交报告请求体",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.DiagnoseSubmitReportReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "msg 固定「提交成功」，data 恒为 null",
+                        "schema": {
+                            "$ref": "#/definitions/model.ActionResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法 / 报告内容为空 / 当前状态不允许提交",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "诊股记录不存在",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -1386,6 +1297,68 @@ const docTemplate = `{
                 "msg": {
                     "type": "string",
                     "example": "success"
+                }
+            }
+        },
+        "model.DiagnoseListReq": {
+            "type": "object",
+            "properties": {
+                "buy_num": {
+                    "description": "精确",
+                    "type": "integer"
+                },
+                "buy_price": {
+                    "description": "精确，DECIMAL 等值匹配",
+                    "type": "number"
+                },
+                "id": {
+                    "description": "精确",
+                    "type": "integer"
+                },
+                "page_index": {
+                    "description": "默认 1（service 层兜底）",
+                    "type": "integer"
+                },
+                "page_size": {
+                    "description": "默认 10，上限 100",
+                    "type": "integer"
+                },
+                "report_begin_time": {
+                    "type": "string"
+                },
+                "report_end_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "精确 1-6",
+                    "type": "integer"
+                },
+                "stock_code": {
+                    "description": "模糊",
+                    "type": "string"
+                },
+                "stock_name": {
+                    "description": "模糊",
+                    "type": "string"
+                },
+                "submit_begin_time": {
+                    "description": "yyyy-MM-dd，与 EndTime 成对生效（闭合区间）",
+                    "type": "string"
+                },
+                "submit_end_time": {
+                    "type": "string"
+                },
+                "teacher_name": {
+                    "description": "模糊",
+                    "type": "string"
+                },
+                "user_name": {
+                    "description": "模糊",
+                    "type": "string"
+                },
+                "user_nick_name": {
+                    "description": "模糊",
+                    "type": "string"
                 }
             }
         },

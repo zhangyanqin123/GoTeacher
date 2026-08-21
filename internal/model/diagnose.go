@@ -43,6 +43,29 @@ type DiagnoseListFilter struct {
 	PageSize     int
 }
 
+// DiagnoseListReq 诊股列表查询请求体（POST /teacher/diagnose/list）。
+// id/buy_price/buy_num/status 只接受 JSON 数值（2026-08-21 收紧：数值字符串 "6" 一律 400，
+// 与 resign 的 FlexInt64 宽容策略相反，前端负责把 el-input 产出转成数字再发）；
+// 指针 + null/缺省 = 不过滤，传 0 是有效过滤值；昵称/姓名/股票代码/股票名/老师模糊匹配；
+// status 1-6 白名单校验在 service 层兜底。
+type DiagnoseListReq struct {
+	ID               *int64  `json:"id" swaggertype:"integer"` // 精确
+	UserNickName     string  `json:"user_nick_name"`           // 模糊
+	UserName         string  `json:"user_name"`                // 模糊
+	StockCode        string  `json:"stock_code"`               // 模糊
+	StockName        string  `json:"stock_name"`               // 模糊
+	BuyPrice         *float64 `json:"buy_price"`               // 精确，DECIMAL 等值匹配
+	BuyNum           *int64  `json:"buy_num" swaggertype:"integer"` // 精确
+	TeacherName      string  `json:"teacher_name"`             // 模糊
+	Status           *int    `json:"status" swaggertype:"integer"`  // 精确 1-6
+	SubmitBeginTime  string  `json:"submit_begin_time"`        // yyyy-MM-dd，与 EndTime 成对生效（闭合区间）
+	SubmitEndTime    string  `json:"submit_end_time"`
+	ReportBeginTime  string  `json:"report_begin_time"`
+	ReportEndTime    string  `json:"report_end_time"`
+	PageIndex        int     `json:"page_index"` // 默认 1（service 层兜底）
+	PageSize         int     `json:"page_size"`  // 默认 10，上限 100
+}
+
 // DiagnoseSubmitReportReq 提交诊股报告请求体（POST /diagnose/submitReport）。
 // 状态 1/3/5 可提交（首次编写 / 重新提审），提交后统一回落状态 2。
 type DiagnoseSubmitReportReq struct {
