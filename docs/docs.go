@@ -436,7 +436,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "professional 专业审核（状态 2）/ compliance 合规审核（状态 4）；通过 → 3/6，驳回 → 5/4（驳回时 reject_reason 必填，富文本 HTML）",
+                "description": "status 为前端按状态机换算的目标状态，后端白名单校验后直接落库：2→3 专业驳回 / 2→4 专业通过转待合规 / 4→5 合规驳回 / 4→6 合规通过（终态）；status 为 3/5（驳回）时 reject_reason 必填，富文本 HTML",
                 "consumes": [
                     "application/json"
                 ],
@@ -449,7 +449,7 @@ const docTemplate = `{
                 "summary": "审核诊股报告",
                 "parameters": [
                     {
-                        "description": "审核请求体",
+                        "description": "审核请求体（status 为目标状态 3/4/5/6，前端换算）",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -460,13 +460,13 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "msg 为「审核通过」或「已驳回」，data 恒为 null",
+                        "description": "msg 为「审核通过」（status 4/6）或「已驳回」（status 3/5），data 恒为 null",
                         "schema": {
                             "$ref": "#/definitions/model.ActionResp"
                         }
                     },
                     "400": {
-                        "description": "请求体非法 / audit_type 或 result 非法 / 驳回时原因必填 / 当前状态不允许审核",
+                        "description": "请求体非法 / status 非 3-6 / 驳回时原因必填 / 当前状态不允许审核",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -1218,18 +1218,16 @@ const docTemplate = `{
         "model.DiagnoseAuditReq": {
             "type": "object",
             "properties": {
-                "audit_type": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "integer"
                 },
                 "reject_reason": {
+                    "description": "富文本 HTML，驳回（3/5）必填",
                     "type": "string"
                 },
-                "result": {
-                    "description": "pass / reject",
-                    "type": "string"
+                "status": {
+                    "description": "目标状态，白名单 3/4/5/6",
+                    "type": "integer"
                 }
             }
         },

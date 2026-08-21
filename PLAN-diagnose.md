@@ -201,3 +201,5 @@ mock 原为 200 + data:null；收紧为 404 对齐 teacher/resign 先例。前�
 
 
 > **2026-08-18 字段命名整体迁移 snake_case**：本文中的驼峰字段名（userNickName/reportContent/auditLogs 等）已全部改为蛇形（user_nick_name/report_content/audit_logs），以 [PLAN-api-snake-case.md](PLAN-api-snake-case.md) 为准。
+
+> **2026-08-21 audit 入参改 status 直传**：`audit_type`+`result` 两字段删除，前端按状态机换算目标状态直传（2→3 专业驳回 / 2→4 专业通过 / 4→5 合规驳回 / 4→6 合规通过），后端白名单 {3,4,5,6} 校验后直接落库；fromStatus / 审核日志素材（log_type、operator、固定通过 remark）改由目标状态反推，日志与操作人契约不变；驳回必填（3/5）、富文本净化判空、条件 UPDATE 并发守卫均保持。`ErrInvalidAuditType`/`ErrInvalidAuditResult` 及 `contains` 辅助、`validAuditTypes`/`validAuditResults` 枚举随唯一使用者删除，新增 `ErrInvalidAuditStatus`。另：handler 注释原「通过 → 3/6，驳回 → 5/4」与实现相反（实现为 pass→4/6、reject→3/5），本次一并修正。

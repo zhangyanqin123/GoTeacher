@@ -149,16 +149,16 @@ func (h *DiagnoseHandler) SubmitReport(c *gin.Context) {
 
 // Audit POST /api/v1/dxsf/teacher/diagnose/audit
 //
-// 错误映射：body 绑定失败/白名单/驳回原因必填/状态不允许 → 400；记录不存在 → 404；其他 → 500
+// 错误映射：body 绑定失败/status 白名单/驳回原因必填/状态不允许 → 400；记录不存在 → 404；其他 → 500
 //
 //	@Summary		审核诊股报告
-//	@Description	professional 专业审核（状态 2）/ compliance 合规审核（状态 4）；通过 → 3/6，驳回 → 5/4（驳回时 reject_reason 必填，富文本 HTML）
+//	@Description	status 为前端按状态机换算的目标状态，后端白名单校验后直接落库：2→3 专业驳回 / 2→4 专业通过转待合规 / 4→5 合规驳回 / 4→6 合规通过（终态）；status 为 3/5（驳回）时 reject_reason 必填，富文本 HTML
 //	@Tags			诊股记录
 //	@Accept			json
 //	@Produce		json
-//	@Param			body body model.DiagnoseAuditReq true "审核请求体"
-//	@Success		200 {object} model.ActionResp "msg 为「审核通过」或「已驳回」，data 恒为 null"
-//	@Failure		400 {object} response.Response "请求体非法 / audit_type 或 result 非法 / 驳回时原因必填 / 当前状态不允许审核"
+//	@Param			body body model.DiagnoseAuditReq true "审核请求体（status 为目标状态 3/4/5/6，前端换算）"
+//	@Success		200 {object} model.ActionResp "msg 为「审核通过」（status 4/6）或「已驳回」（status 3/5），data 恒为 null"
+//	@Failure		400 {object} response.Response "请求体非法 / status 非 3-6 / 驳回时原因必填 / 当前状态不允许审核"
 //	@Failure		404 {object} response.Response "诊股记录不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
 //	@Security		ApiKeyAuth
@@ -174,19 +174,18 @@ func (h *DiagnoseHandler) Audit(c *gin.Context) {
 	switch err := h.svc.AuditDiagnose(c.Request.Context(), req); {
 	case err == nil:
 		msg := "审核通过"
-		if req.Result == "reject" {
+		if req.Status == service.DiagnoseStatusProRejected || req.Status == service.DiagnoseStatusCompRejected {
 			msg = "已驳回" // mock 约定 msg
 		}
 		response.OKMsg(c, msg, nil)
 	case errors.Is(err, service.ErrDiagnoseNotFound):
 		response.Fail(c, 404, 404, err.Error())
-	case errors.Is(err, service.ErrInvalidAuditType),
-		errors.Is(err, service.ErrInvalidAuditResult),
+	case errors.Is(err, service.ErrInvalidAuditStatus),
 		errors.Is(err, service.ErrRejectReasonRequired),
 		errors.Is(err, service.ErrInvalidStatusTransition):
 		response.Fail(c, 400, 400, err.Error())
 	default:
-		slog.Error("audit diagnose failed", "id", req.ID, "audit_type", req.AuditType, "err", err)
+		slog.Error("audit diagnose failed", "id", req.ID, "status", req.Status, "err", err)
 		response.Fail(c, 500, 500, "服务器内部错误")
 	}
 }

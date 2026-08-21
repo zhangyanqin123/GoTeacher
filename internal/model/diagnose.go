@@ -74,13 +74,14 @@ type DiagnoseSubmitReportReq struct {
 }
 
 // DiagnoseAuditReq 审核诊股报告请求体（POST /diagnose/audit）。
-// AuditType: professional 专业审核（状态 2）/ compliance 合规审核（状态 4）；
-// RejectReason 仅 result=reject 时必填，富文本 HTML。
+// status 为前端按状态机换算的目标状态，后端校验白名单后直接落库
+// （2026-08-21 由 audit_type+result 后端推导改为前端直传，换算逻辑迁至前端）：
+// 3 专业驳回 / 4 专业通过转待合规 / 5 合规驳回 / 6 合规通过（终态）；
+// RejectReason 仅 status 为 3/5（驳回）时必填，富文本 HTML。
 type DiagnoseAuditReq struct {
 	ID           int64  `json:"id"`
-	AuditType    string `json:"audit_type"`
-	Result       string `json:"result"` // pass / reject
-	RejectReason string `json:"reject_reason"`
+	Status       int    `json:"status"` // 目标状态，白名单 3/4/5/6
+	RejectReason string `json:"reject_reason"` // 富文本 HTML，驳回（3/5）必填
 }
 
 // DiagnoseAuditLog 审核流程日志行（详情弹窗表格直接展示）。

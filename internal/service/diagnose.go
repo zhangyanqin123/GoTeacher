@@ -16,8 +16,7 @@ var (
 	ErrInvalidStatusFilter     = errors.New("状态筛选必须是 1-6")
 	ErrReportContentRequired   = errors.New("报告内容不能为空")
 	ErrInvalidStatusTransition = errors.New("当前状态不允许此操作")
-	ErrInvalidAuditType        = errors.New("审核类型必须是 professional 或 compliance")
-	ErrInvalidAuditResult      = errors.New("审核结果必须是 pass 或 reject")
+	ErrInvalidAuditStatus      = errors.New("审核状态必须是 3/4/5/6")
 	ErrRejectReasonRequired    = errors.New("驳回时必须填写驳回原因")
 )
 
@@ -29,12 +28,6 @@ const (
 	DiagnoseStatusAwaitCompAudit = 4 // 待合规审核
 	DiagnoseStatusCompRejected  = 5 // 合规审核不通过
 	DiagnoseStatusCompPassed    = 6 // 合规审核通过（终态）
-)
-
-// auditType/result 枚举（前端 diagnose.js 约定）
-var (
-	validAuditTypes  = []string{"professional", "compliance"}
-	validAuditResults = []string{"pass", "reject"}
 )
 
 // 审核操作人固定串（无登录态，对齐 resign operator="admin" 先例）
@@ -144,17 +137,17 @@ func (s *Service) SubmitDiagnoseReport(ctx context.Context, req model.DiagnoseSu
 	return nil
 }
 
-// AuditDiagnose 审核诊股报告：professional 管 2→4/3，compliance 管 4→6/5。
-// 白名单拒绝而非静默纠正（对齐 rating/transferContent 风格）。
+// AuditDiagnose 审核诊股报告：status 为前端按状态机换算的目标状态，白名单校验后直接落库
+// （2026-08-21 由 audit_type+result 后端推导改为前端直传）：2→3 专业驳回 / 2→4 专业通过 /
+// 4→5 合规驳回 / 4→6 合规通过（终态）。白名单拒绝而非静默纠正（对齐 rating/transferContent 风格）。
 func (s *Service) AuditDiagnose(ctx context.Context, req model.DiagnoseAuditReq) error {
-	// 1. 参数白名单与必填校验
-	if !contains(validAuditTypes, req.AuditType) {
-		return ErrInvalidAuditType
+	// 1. 目标状态白名单与驳回必填校验
+	reject := req.Status == DiagnoseStatusProRejected || req.Status == DiagnoseStatusCompRejected
+	switch req.Status {
+	case DiagnoseStatusProRejected, DiagnoseStatusAwaitCompAudit, DiagnoseStatusCompRejected, DiagnoseStatusCompPassed:
+	default:
+		return ErrInvalidAuditStatus
 	}
-	if !contains(validAuditResults, req.Result) {
-		return ErrInvalidAuditResult
-	}
-	reject := req.Result == "reject"
 	if reject {
 		// 驳回原因是富文本，落库前白名单净化（先于判空，同 submitReport）
 		req.RejectReason = sanitize.RichText(req.RejectReason)
@@ -163,7 +156,7 @@ func (s *Service) AuditDiagnose(ctx context.Context, req model.DiagnoseAuditReq)
 		}
 	}
 
-	// 2. 写前查询：判 404；顺带校验当前状态与审核类型匹配（终判仍由条件 UPDATE 保证）
+	// 2. 写前查询：判 404（迁移合法性终判仍由条件 UPDATE 保证）
 	it, err := s.repo.GetDiagnose(ctx, req.ID)
 	if err != nil {
 		return err
@@ -172,29 +165,22 @@ func (s *Service) AuditDiagnose(ctx context.Context, req model.DiagnoseAuditReq)
 		return ErrDiagnoseNotFound
 	}
 
-	var fromStatus, toStatus int
+	// 3. 按目标状态推导来源状态与日志素材（审核日志/操作人契约不变，仅换算入口前移）
+	var fromStatus int
 	var logType, operator, remark string
-	if req.AuditType == "professional" {
-		fromStatus, toStatus, logType, operator = DiagnoseStatusAwaitProAudit, 0, logTypeProAudit, proAuditOperator
-		if reject {
-			toStatus, remark = DiagnoseStatusProRejected, req.RejectReason
-		} else {
-			toStatus, remark = DiagnoseStatusAwaitCompAudit, proPassRemark
-		}
-	} else {
-		fromStatus, toStatus, logType, operator = DiagnoseStatusAwaitCompAudit, 0, logTypeCompAudit, compAuditOperator
-		if reject {
-			toStatus, remark = DiagnoseStatusCompRejected, req.RejectReason
-		} else {
-			toStatus, remark = DiagnoseStatusCompPassed, compPassRemark
-		}
-	}
 	result := logResultPassed
-	if reject {
-		result = logResultRejected
+	switch req.Status {
+	case DiagnoseStatusProRejected: // 2→3 专业驳回
+		fromStatus, logType, operator, remark, result = DiagnoseStatusAwaitProAudit, logTypeProAudit, proAuditOperator, req.RejectReason, logResultRejected
+	case DiagnoseStatusAwaitCompAudit: // 2→4 专业通过
+		fromStatus, logType, operator, remark = DiagnoseStatusAwaitProAudit, logTypeProAudit, proAuditOperator, proPassRemark
+	case DiagnoseStatusCompRejected: // 4→5 合规驳回
+		fromStatus, logType, operator, remark, result = DiagnoseStatusAwaitCompAudit, logTypeCompAudit, compAuditOperator, req.RejectReason, logResultRejected
+	default: // 4→6 合规通过（终态）
+		fromStatus, logType, operator, remark = DiagnoseStatusAwaitCompAudit, logTypeCompAudit, compAuditOperator, compPassRemark
 	}
 
-	ok, err := s.repo.AuditDiagnose(ctx, req.ID, fromStatus, toStatus, model.DiagnoseAuditLogInsert{
+	ok, err := s.repo.AuditDiagnose(ctx, req.ID, fromStatus, req.Status, model.DiagnoseAuditLogInsert{
 		DiagnoseID: req.ID,
 		LogType:    logType,
 		Operator:   operator,
@@ -208,16 +194,6 @@ func (s *Service) AuditDiagnose(ctx context.Context, req model.DiagnoseAuditReq)
 		return ErrInvalidStatusTransition // 状态非 fromStatus（顺序错位/已审/未提审）
 	}
 	return nil
-}
-
-// contains 切片包含判断（slices.Contains 的薄封装，语义更贴业务）
-func contains(list []string, v string) bool {
-	for _, it := range list {
-		if it == v {
-			return true
-		}
-	}
-	return false
 }
 
 // stripHTML 去除富文本 HTML 标签与常见空白实体，用于内容判空（前端 isRichEmpty 同构）

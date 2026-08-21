@@ -185,7 +185,7 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/add' \
 | 1 | POST | `/api/v1/dxsf/teacher/diagnose/list` | 诊股记录列表（分页 + 12 条件筛选，条件走 JSON body） |
 | 2 | GET | `/api/v1/dxsf/teacher/diagnose/detail` | 诊股详情（主表全字段 + 审核流程记录） |
 | 3 | POST | `/api/v1/dxsf/teacher/diagnose/submitReport` | 提交诊股报告（首次编写 / 重新提审 → 状态 2） |
-| 4 | POST | `/api/v1/dxsf/teacher/diagnose/audit` | 审核诊股报告（通过 / 驳回） |
+| 4 | POST | `/api/v1/dxsf/teacher/diagnose/audit` | 审核诊股报告（status 直传目标状态 3/4/5/6，前端换算） |
 
 ### 状态机
 
@@ -215,9 +215,10 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/add' \
 // POST /diagnose/submitReport：report_content 为富文本 HTML，去标签全空白视为未填写（400）
 { "id": 1, "report_content": "<p>诊股结论：持股待涨</p>" }
 
-// POST /diagnose/audit：audit_type 白名单 professional / compliance，result 白名单 pass / reject；
-// reject 时 reject_reason 必填（富文本，同样判空）
-{ "id": 1, "audit_type": "professional", "result": "reject", "reject_reason": "<p>结论依据不足</p>" }
+// POST /diagnose/audit：status 为前端按状态机换算的目标状态，后端白名单校验后直接落库
+// （2026-08-21 由 audit_type+result 改直传）：2→3 专业驳回 / 2→4 专业通过 / 4→5 合规驳回 / 4→6 合规通过；
+// status 为 3/5（驳回）时 reject_reason 必填（富文本，同样判空）
+{ "id": 1, "status": 3, "reject_reason": "<p>结论依据不足</p>" }
 ```
 
 ### 响应约定
@@ -244,10 +245,10 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/diagnose/submitReport
   -H 'Content-Type: application/json' \
   -d '{"id":1,"report_content":"<p>诊股结论：持股待涨</p>"}'
 
-# 专业审核通过（2 → 4）；驳回把 result 换成 reject 并带 reject_reason
+# 专业审核通过（2 → 4，status 由前端换算直传）；驳回传 status:3 并带 reject_reason
 curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/diagnose/audit' \
   -H 'Content-Type: application/json' \
-  -d '{"id":1,"audit_type":"professional","result":"pass"}'
+  -d '{"id":1,"status":4}'
 ```
 
 ### 表设计
