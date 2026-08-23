@@ -589,7 +589,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/dxsf/teacher/diagnose/submitReport": {
+        "/dxsf/teacher/diagnose/submit/report": {
             "post": {
                 "security": [
                     {

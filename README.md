@@ -184,7 +184,7 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/add' \
 | --- | --- | --- | --- |
 | 1 | POST | `/api/v1/dxsf/teacher/diagnose/list` | 诊股记录列表（分页 + 12 条件筛选，条件走 JSON body） |
 | 2 | GET | `/api/v1/dxsf/teacher/diagnose/detail` | 诊股详情（主表全字段 + 审核流程记录） |
-| 3 | POST | `/api/v1/dxsf/teacher/diagnose/submitReport` | 提交诊股报告（首次编写 / 重新提审 → 状态 2） |
+| 3 | POST | `/api/v1/dxsf/teacher/diagnose/submit/report` | 提交诊股报告（首次编写 / 重新提审 → 状态 2） |
 | 4 | POST | `/api/v1/dxsf/teacher/diagnose/audit` | 审核诊股报告（status 直传目标状态 3/4/5/6，前端换算） |
 
 ### 状态机
@@ -212,7 +212,7 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/add' \
 ### 请求体
 
 ```json
-// POST /diagnose/submitReport：report_content 为富文本 HTML，去标签全空白视为未填写（400）
+// POST /diagnose/submit/report：report_content 为富文本 HTML，去标签全空白视为未填写（400）
 { "id": 1, "report_content": "<p>诊股结论：持股待涨</p>" }
 
 // POST /diagnose/audit：status 为前端按状态机换算的目标状态，后端白名单校验后直接落库
@@ -241,7 +241,7 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/diagnose/list' \
 curl -s 'http://localhost:8080/api/v1/dxsf/teacher/diagnose/detail?id=5'
 
 # 提交诊股报告（状态 1/3/5 → 2）
-curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/diagnose/submitReport' \
+curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/diagnose/submit/report' \
   -H 'Content-Type: application/json' \
   -d '{"id":1,"report_content":"<p>诊股结论：持股待涨</p>"}'
 

@@ -57,7 +57,7 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config) *gin.Engine {
 	diag := r.Group("/api/v1/dxsf/teacher/diagnose", Auth(svc))
 	diag.POST("/list", dh.List)
 	diag.GET("/detail", dh.Detail)
-	diag.POST("/submitReport", dh.SubmitReport)
+	diag.POST("/submit/report", dh.SubmitReport)
 	diag.POST("/audit", dh.Audit)
 
 	// 用户管理（登录账号 CRUD，见 PLAN-admin-user.md；admin_user 是系统账号域，不挂 /dxsf）

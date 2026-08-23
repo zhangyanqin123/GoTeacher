@@ -109,7 +109,7 @@ func (h *DiagnoseHandler) Detail(c *gin.Context) {
 	}
 }
 
-// SubmitReport POST /api/v1/dxsf/teacher/diagnose/submitReport
+// SubmitReport POST /api/v1/dxsf/teacher/diagnose/submit/report
 //
 // 错误映射：body 绑定失败/空内容/状态不允许 → 400；记录不存在 → 404；其他 → 500
 //
@@ -124,7 +124,7 @@ func (h *DiagnoseHandler) Detail(c *gin.Context) {
 //	@Failure		404 {object} response.Response "诊股记录不存在"
 //	@Failure		500 {object} response.Response "服务器内部错误"
 //	@Security		ApiKeyAuth
-//	@Router			/dxsf/teacher/diagnose/submitReport [post]
+//	@Router			/dxsf/teacher/diagnose/submit/report [post]
 func (h *DiagnoseHandler) SubmitReport(c *gin.Context) {
 	var req model.DiagnoseSubmitReportReq
 	if err := c.ShouldBindJSON(&req); err != nil {

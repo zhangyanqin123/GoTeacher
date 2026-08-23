@@ -1051,7 +1051,7 @@ paths:
       summary: 诊股记录列表
       tags:
       - 诊股记录
-  /dxsf/teacher/diagnose/submitReport:
+  /dxsf/teacher/diagnose/submit/report:
     post:
       consumes:
       - application/json

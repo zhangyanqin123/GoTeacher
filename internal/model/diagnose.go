@@ -66,7 +66,7 @@ type DiagnoseListReq struct {
 	PageSize         int     `json:"page_size"`  // 默认 10，上限 100
 }
 
-// DiagnoseSubmitReportReq 提交诊股报告请求体（POST /diagnose/submitReport）。
+// DiagnoseSubmitReportReq 提交诊股报告请求体（POST /diagnose/submit/report）。
 // 状态 1/3/5 可提交（首次编写 / 重新提审），提交后统一回落状态 2。
 type DiagnoseSubmitReportReq struct {
 	ID            int64  `json:"id"`

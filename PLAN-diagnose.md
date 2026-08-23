@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | 1 | POST | `/api/v1/dxsf/teacher/diagnose/list` | 诊股记录列表（分页 + 12 条件筛选，条件走 JSON body，2026-08-21 由 GET 改 POST 对齐 resign/list） |
 | 2 | GET | `/api/v1/dxsf/teacher/diagnose/detail` | 诊股详情（主表全字段 + 审核流程记录） |
-| 3 | POST | `/api/v1/dxsf/teacher/diagnose/submitReport` | 提交诊股报告（首次编写 / 重新提审 → 状态 2） |
+| 3 | POST | `/api/v1/dxsf/teacher/diagnose/submit/report` | 提交诊股报告（首次编写 / 重新提审 → 状态 2） |
 | 4 | POST | `/api/v1/dxsf/teacher/diagnose/audit` | 审核诊股报告（通过 / 驳回） |
 
 ## 状态机
