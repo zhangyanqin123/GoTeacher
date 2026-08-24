@@ -25,6 +25,8 @@ type Config struct {
 	RedisDB       int
 	JWTSecret     string // JWT HS256 签发密钥（必填，空值启动退出）
 	JWTTTLHours   int    // JWT 有效期（小时），同时是 Redis 白名单 TTL
+
+	XiaoeAPIBase string // 小鹅通开放平台 API 域名（直播登录链接透传的上游 base，见 PLAN-live.md）
 }
 
 // Load 加载配置并组装 DSN。
@@ -47,6 +49,8 @@ func Load() *Config {
 		RedisDB:       getEnvInt("REDIS_DB", 0),
 		JWTSecret:     getEnv("JWT_SECRET", ""),
 		JWTTTLHours:   getEnvInt("JWT_TTL_HOURS", 24),
+
+		XiaoeAPIBase: getEnv("XIAOE_API_BASE", "https://api.xiaoe-tech.com"),
 	}
 
 	mc := mysql.Config{

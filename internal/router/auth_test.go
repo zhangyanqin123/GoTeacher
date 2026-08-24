@@ -35,7 +35,7 @@ func newAuthTestEnv(t *testing.T) (*gin.Engine, *redis.Client, *service.Service)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = rdb.Close() })
 
-	svc := service.New(nil, rdb, testSecret, time.Hour)
+	svc := service.New(nil, rdb, testSecret, time.Hour, "")
 
 	r := gin.New()
 	r.GET("/probe", Auth(svc), func(c *gin.Context) {

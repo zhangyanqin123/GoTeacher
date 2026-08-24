@@ -670,6 +670,24 @@ definitions:
           type: string
         type: array
     type: object
+  model.XeLoginURLResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        properties:
+          login_url:
+            example: https://h5.xiaoe-tech.com/platform/login_cooperate/h5_login?token=xxx&app_id=appxxx
+            type: string
+          permission_denied_url:
+            example: ""
+            type: string
+        type: object
+      msg:
+        example: success
+        type: string
+    type: object
   response.Response:
     properties:
       code:
@@ -1262,6 +1280,53 @@ paths:
       summary: 当前用户信息
       tags:
       - 鉴权
+  /guyuzhoudb/live/get_login_url:
+    get:
+      description: 透传小鹅通 xe.login.url/1.0.0：拼装 {access_token, user_id, data:{login_type,
+        redirect_uri}} 调上游，成功返回 login_url（有效期仅 1 分钟，即取即跳勿缓存）与 permission_denied_url。公开无鉴权。注意：全局
+        @BasePath 为 /api/v1，Swagger UI 显示路径会多出 /api/v1 前缀，实际路径以本注解为准
+      parameters:
+      - description: 小鹅通 access_token（get_access_token 接口取得，有效性由小鹅通校验）
+        in: query
+        name: access_token
+        required: true
+        type: string
+      - description: 商家侧用户唯一标识（透传）
+        in: query
+        name: user_id
+        required: true
+        type: string
+      - description: 登录类型：1=PC 2=H5 3=App
+        enum:
+        - 1
+        - 2
+        - 3
+        in: query
+        name: login_type
+        required: true
+        type: integer
+      - description: 登录成功后跳转的小鹅通页面完整链接（http(s):// 开头；不传由小鹅通默认跳转）
+        in: query
+        name: redirect_uri
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.XeLoginURLResp'
+        "400":
+          description: 参数缺失或格式非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "502":
+          description: 小鹅通上游失败（业务错/网络错）
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 获取小鹅通登录链接
+      tags:
+      - 直播（小鹅通透传）
   /login:
     post:
       consumes:

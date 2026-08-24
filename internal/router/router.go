@@ -16,7 +16,8 @@ import (
 )
 
 // New 组装依赖（repo → service → handler）并注册路由。
-// 鉴权：JWT + Redis 白名单（见 PLAN-auth.md），除 login 与 swagger 外全部挂 Auth 中间件。
+// 鉴权：JWT + Redis 白名单（见 PLAN-auth.md），除 login、swagger 与 /guyuzhoudb/live/**（小鹅通透传，
+// 公开，见 PLAN-live.md）外全部挂 Auth 中间件。
 func New(db *sql.DB, rdb *redis.Client, cfg *config.Config) *gin.Engine {
 	r := gin.Default()
 	r.Use(CORS())
@@ -25,15 +26,20 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config) *gin.Engine {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	repo := repository.New(db)
-	svc := service.New(repo, rdb, cfg.JWTSecret, time.Duration(cfg.JWTTTLHours)*time.Hour)
+	svc := service.New(repo, rdb, cfg.JWTSecret, time.Duration(cfg.JWTTTLHours)*time.Hour, cfg.XiaoeAPIBase)
 	th := handler.NewTeacher(svc)
 	rh := handler.NewResign(svc)
 	dh := handler.NewDiagnose(svc)
 	ah := handler.NewAuth(svc)
 	auh := handler.NewAdminUser(svc)
+	lh := handler.NewLive(svc)
 
 	// 鉴权公开接口（login 签发 token；logout/getinfo 需登录态放 authed 组）
 	r.POST("/api/v1/login", ah.Login)
+
+	// 直播（小鹅通透传，mofang C 端，见 PLAN-live.md）：公开不挂 Auth——
+	// mofang 是另一 token 体系本服务验不了，/guyuzhoudb 前缀独立于 /api/v1，凭证即入参 access_token 由小鹅通校验
+	r.GET("/guyuzhoudb/live/get_login_url", lh.GetXeLoginURL)
 
 	authed := r.Group("/api/v1", Auth(svc))
 	authed.POST("/logout", ah.Logout)

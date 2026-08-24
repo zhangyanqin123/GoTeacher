@@ -920,6 +920,72 @@
                 }
             }
         },
+        "/guyuzhoudb/live/get_login_url": {
+            "get": {
+                "description": "透传小鹅通 xe.login.url/1.0.0：拼装 {access_token, user_id, data:{login_type, redirect_uri}} 调上游，成功返回 login_url（有效期仅 1 分钟，即取即跳勿缓存）与 permission_denied_url。公开无鉴权。注意：全局 @BasePath 为 /api/v1，Swagger UI 显示路径会多出 /api/v1 前缀，实际路径以本注解为准",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "直播（小鹅通透传）"
+                ],
+                "summary": "获取小鹅通登录链接",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "小鹅通 access_token（get_access_token 接口取得，有效性由小鹅通校验）",
+                        "name": "access_token",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "商家侧用户唯一标识（透传）",
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            1,
+                            2,
+                            3
+                        ],
+                        "type": "integer",
+                        "description": "登录类型：1=PC 2=H5 3=App",
+                        "name": "login_type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "登录成功后跳转的小鹅通页面完整链接（http(s):// 开头；不传由小鹅通默认跳转）",
+                        "name": "redirect_uri",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.XeLoginURLResp"
+                        }
+                    },
+                    "400": {
+                        "description": "参数缺失或格式非法",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "502": {
+                        "description": "小鹅通上游失败（业务错/网络错）",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "description": "账号密码登录，签发 Bearer token（Redis 白名单单设备模式：重新登录即互踢旧设备）。phone_code/uuid 等多余字段忽略不校验",
@@ -1962,6 +2028,32 @@
                     "example": [
                         "admin"
                     ]
+                }
+            }
+        },
+        "model.XeLoginURLResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "login_url": {
+                            "type": "string",
+                            "example": "https://h5.xiaoe-tech.com/platform/login_cooperate/h5_login?token=xxx\u0026app_id=appxxx"
+                        },
+                        "permission_denied_url": {
+                            "type": "string",
+                            "example": ""
+                        }
+                    }
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "success"
                 }
             }
         },

@@ -16,7 +16,7 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 
 ## 鉴权（JWT + Redis 白名单）
 
-设计决策详见 `PLAN-auth.md`。除 `POST /api/v1/login` 与 `/swagger/**` 外，全部接口需带 `Authorization: Bearer {token}`；未授权统一 HTTP 401 + `{"code":401,"msg":"登录已过期，请重新登录"}`。
+设计决策详见 `PLAN-auth.md`。除 `POST /api/v1/login`、`/swagger/**` 与 `/guyuzhoudb/**`（直播小鹅通透传，凭证由上游校验，见下文「直播接口」与 [PLAN-live.md](PLAN-live.md)）外，全部接口需带 `Authorization: Bearer {token}`；未授权统一 HTTP 401 + `{"code":401,"msg":"登录已过期，请重新登录"}`。
 
 | # | 方法 | 路径 | 说明 |
 | --- | --- | --- | --- |
@@ -307,6 +307,28 @@ curl -s -X POST 'http://localhost:8080/api/v1/admin/user/delete' \
 ```
 
 设计决策与实施记录见 [PLAN-admin-user.md](PLAN-admin-user.md)。
+
+## 直播接口（小鹅通透传，mofang C 端）
+
+对应 mofang 前端 `src/services/live/index.ts`（直播间中转页账号打通）。真实环境该路径走远程网关 guyuzhoudb 域，本服务为本地复刻：纯透传小鹅通开放平台 `xe.login.url/1.0.0`，**不持有小鹅通 secret**（access_token 由前端从远程网关 `get_access_token` 取得后透传）。公开无鉴权——mofang 是 C 端另一 token 体系本服务验不了，凭证有效性由小鹅通侧校验，决策见 [PLAN-live.md](PLAN-live.md)。
+
+| # | 方法 | 路径 | 说明 |
+| --- | --- | --- | --- |
+| 1 | GET | `/guyuzhoudb/live/get_login_url` | 透传小鹅通取登录链接（webview 打开后在小鹅通域名注入登录态再 302 到 redirect_uri） |
+
+- query 参数：`access_token`（必填）、`user_id`（必填，商家侧用户标识透传）、`login_type`（必填：1=PC 2=H5 3=App）、`redirect_uri`（可选，http(s):// 开头，登录成功后跳转的小鹅通页面链接）
+- 返回 `data.login_url` / `data.permission_denied_url`；**login_url 有效期仅 1 分钟，即取即跳、禁止缓存**
+- 失败映射：参数形状非法 400（中文文案）；上游业务错（access_token 无效等）/网络错 502（上游 code/msg 只进服务端日志）
+- 上游域名可配：`XIAOE_API_BASE`（默认 `https://api.xiaoe-tech.com`）
+
+```bash
+# 假 token 走上游校验路径（期望 502，服务端 slog.Warn 打出小鹅通真实 code/msg；redirect_uri 需 URL 编码）
+curl -i 'http://localhost:8080/guyuzhoudb/live/get_login_url?access_token=fake&user_id=u_1&login_type=1&redirect_uri=https%3A%2F%2Fapp1.pc.xiaoe-tech.com%2Flive_pc%2Fl_1'
+
+# 缺参 400 示例
+curl -s 'http://localhost:8080/guyuzhoudb/live/get_login_url?user_id=u_1&login_type=1'
+# → {"code":400,"msg":"参数 access_token 不能为空"}
+```
 
 ## 目录结构（对应 Spring Boot 分层）
 

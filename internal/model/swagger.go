@@ -93,3 +93,14 @@ type DiagnoseDetailResp struct {
 	Msg  string         `json:"msg"  example:"success"`
 	Data DiagnoseDetail `json:"data"`
 }
+
+// XeLoginURLResp 小鹅通登录链接响应（GET /guyuzhoudb/live/get_login_url，透传 xe.login.url/1.0.0）。
+// 注意：该接口路径不在 /api/v1 下，Swagger UI 因全局 BasePath 会显示成 /api/v1/guyuzhoudb/...（已知瑕疵，见 PLAN-live.md）。
+type XeLoginURLResp struct {
+	Code int    `json:"code" example:"200"`
+	Msg  string `json:"msg"  example:"success"`
+	Data struct {
+		LoginURL            string `json:"login_url" example:"https://h5.xiaoe-tech.com/platform/login_cooperate/h5_login?token=xxx&app_id=appxxx"`
+		PermissionDeniedURL string `json:"permission_denied_url" example:""`
+	} `json:"data"`
+}
