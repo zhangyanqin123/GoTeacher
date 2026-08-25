@@ -104,3 +104,14 @@ type XeLoginURLResp struct {
 		PermissionDeniedURL string `json:"permission_denied_url" example:""`
 	} `json:"data"`
 }
+
+// XeRegisterUserResp 注册小鹅通用户响应（GET /guyuzhoudb/live/register_user，透传 xe.user.register/1.0.0）。
+// 同 XeLoginURLResp 的 BasePath 显示瑕疵（实际路径 /guyuzhoudb/live/register_user）。
+type XeRegisterUserResp struct {
+	Code int    `json:"code" example:"200"`
+	Msg  string `json:"msg"  example:"success"`
+	Data struct {
+		UserID     string `json:"user_id" example:"u_api_6a8beb36e8fc5_AhdVFUMFJQ"`
+		UserExists int    `json:"user_exists" example:"1"`
+	} `json:"data"`
+}

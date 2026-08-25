@@ -89,3 +89,55 @@ func (h *LiveHandler) GetXeLoginURL(c *gin.Context) {
 		response.Fail(c, 502, 502, "小鹅通服务暂不可用，请稍后重试")
 	}
 }
+
+// RegisterXeUser GET /guyuzhoudb/live/register_user
+//
+// 公开接口不挂 Auth（同 GetXeLoginURL，凭证即入参 access_token）。phone 不落日志（PII）。
+// 上游幂等：已存在用户（user_exists=1）也返回 user_id，可重复调用。
+//
+// 错误映射：参数形状校验失败 → 400；上游失败 → 502。
+//
+//	@Summary		注册小鹅通用户换取 user_id
+//	@Description	透传 xe.user.register/1.0.0：按手机号注册（幂等，已存在直接返回）换回小鹅通 user_id，供 get_login_url 指定登录账号。公开无鉴权。注意：全局 @BasePath 为 /api/v1，Swagger UI 显示路径会多出 /api/v1 前缀，实际路径以本注解为准
+//	@Tags			直播（小鹅通透传）
+//	@Produce		json
+//	@Param			access_token query string true "小鹅通 access_token（get_access_token 取得，有效性由小鹅通校验）"
+//	@Param			phone query string true "用户手机号（11 位数字）"
+//	@Success		200 {object} model.XeRegisterUserResp
+//	@Failure		400 {object} response.Response "参数缺失或格式非法"
+//	@Failure		502 {object} response.Response "小鹅通上游失败（业务错/网络错）"
+//	@Router			/guyuzhoudb/live/register_user [get]
+func (h *LiveHandler) RegisterXeUser(c *gin.Context) {
+	accessToken := c.Query("access_token")
+	phone := c.Query("phone")
+
+	// 形状校验同 GetXeLoginURL：凭证有效性交上游；phone 限定 11 位数字（国内手机号）
+	switch {
+	case accessToken == "":
+		response.Fail(c, 400, 400, "参数 access_token 不能为空")
+		return
+	case len(accessToken) > 512:
+		response.Fail(c, 400, 400, "参数 access_token 长度超限")
+		return
+	case len(phone) != 11:
+		response.Fail(c, 400, 400, "参数 phone 必须是 11 位手机号")
+		return
+	}
+	for _, r := range phone {
+		if r < '0' || r > '9' {
+			response.Fail(c, 400, 400, "参数 phone 必须是 11 位手机号")
+			return
+		}
+	}
+
+	userID, userExists, err := h.svc.RegisterXeUser(c.Request.Context(), accessToken, phone)
+	switch {
+	case err == nil:
+		response.OKMsg(c, "success", gin.H{"user_id": userID, "user_exists": userExists})
+	case errors.Is(err, service.ErrXeUserRegister), errors.Is(err, service.ErrXeEmptyUserID):
+		response.Fail(c, 502, 502, err.Error()) // 哨兵文本即对外文案
+	default:
+		slog.Error("xe register user failed", "err", err)
+		response.Fail(c, 502, 502, "小鹅通服务暂不可用，请稍后重试")
+	}
+}

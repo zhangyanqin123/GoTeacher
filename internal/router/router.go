@@ -40,6 +40,7 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config) *gin.Engine {
 	// 直播（小鹅通透传，mofang C 端，见 PLAN-live.md）：公开不挂 Auth——
 	// mofang 是另一 token 体系本服务验不了，/guyuzhoudb 前缀独立于 /api/v1，凭证即入参 access_token 由小鹅通校验
 	r.GET("/guyuzhoudb/live/get_login_url", lh.GetXeLoginURL)
+	r.GET("/guyuzhoudb/live/register_user", lh.RegisterXeUser)
 
 	authed := r.Group("/api/v1", Auth(svc))
 	authed.POST("/logout", ah.Logout)

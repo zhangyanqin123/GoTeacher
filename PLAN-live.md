@@ -20,6 +20,16 @@ mofang 中转页流程：拼 PC 直播间页 `redirect_uri` → 调本接口取 
   - `code=0` 成功；**`login_url` 有效期仅 1 分钟**（前端即取即跳，后端禁止任何缓存）
   - `permission_denied_url`：店铺无 SDK 权益包时的跳转链接（透传给前端备用）
 
+### register_user（xe.user.register/1.0.0，2026-08-24 增补）
+
+- `POST https://api.xiaoe-tech.com/xe.user.register/1.0.0`，body `{"access_token":"...","data":{"phone":"..."}}`
+  - `data.phone` 与 `data.wx_union_id` 二选一不可同传（官方更新日志约束），本服务只透传 phone
+- 响应：`{"code":0,"msg":"ok","data":{"user_exists":1,"user_id":"u_api_..."}}`
+  - `user_exists`：0=新建 1=已存在；**幂等**（已存在也返回 user_id），每次进直播间现取、不缓存
+- 背景：xe.login.url 只做形状校验不查用户，login_url 的消费端（登录跳转第二跳）会校验 user_id 在店铺的存在性——
+  无效 user_id 会在登录页报 8500「获取用户信息失败」（xet.dexunzhenggu.cn 自建登录中转返回，非小鹅通开放平台 2xxx 码系）。
+  因此 get_login_url 的 user_id 必须先经 register_user 换取（官方 WebSDK 接入文档同款要求）
+
 ## 决策
 
 | # | 决策 | 理由 |
@@ -32,6 +42,7 @@ mofang 中转页流程：拼 PC 直播间页 `redirect_uri` → 调本接口取 
 | 6 | handler 只做形状校验：access_token/user_id 非空+长度上限（512/64）、login_type ∈{1,2,3}、redirect_uri 非空须 http(s):// 且 ≤2048 | 凭证语义校验交给上游（本服务无判定能力）；长度上限挡滥用；透传字符串不做 HTML 净化——json.Marshal 天然转义、无存储回显面，与 diagnose 富文本 XSS 场景不同 |
 | 7 | access_token 不落日志（只落 user_id） | 凭证不进日志文件/控制台 |
 | 8 | wire 类型（xeLoginReq/xeLoginResp）定义在 service/live.go；model 只放 Swagger 文档类型 XeLoginURLResp | 请求/响应结构仅本域使用不跨层，对齐「model/swagger.go 运行时不使用」惯例 |
+| 9 | register_user 的 phone 不落日志（校验限 11 位数字） | 手机号是 PII；上游幂等保证前端可每次现取 user_id 不缓存 |
 
 ## 实施记录
 
@@ -41,8 +52,8 @@ mofang 中转页流程：拼 PC 直播间页 `redirect_uri` → 调本接口取 
 - `internal/handler/live.go`：`GetXeLoginURL`（query 蛇形取参、400/502 映射、Swagger 注释）
 - `internal/model/swagger.go`：`XeLoginURLResp` 文档类型
 - `internal/router/router.go`：`r.GET("/guyuzhoudb/live/get_login_url", lh.GetXeLoginURL)`（login 之后，公开区）
-- `internal/service/live_test.go`：httptest 模拟上游，6 个 case（成功四字段全透传/业务错/空 login_url/500/坏 JSON/网络错）
-- README：鉴权例外句 + 直播接口章节；docs 由 `swag init` 重新生成
+- `internal/service/live_test.go`：httptest 模拟上游，get_login_url 6 个 case（成功四字段全透传/业务错/空 login_url/500/坏 JSON/网络错）+ register_user 4 个 case（成功两字段透传/业务错/空 user_id/网络错）
+- README：鉴权例外句 + 直播接口章节（两接口）；docs 由 `swag init` 重新生成
 
 ## 已知瑕疵
 
@@ -54,5 +65,5 @@ mofang 中转页流程：拼 PC 直播间页 `redirect_uri` → 调本接口取 
 
 ## 后续（本期不做）
 
-- user_id 真实来源：mofang 前端暂调试写死（`DEBUG_XE_USER_ID`，TODO 标注），待用户体系明确后接入
 - `get_access_token`（含小鹅通 HS256 签名、secret 托管）是否迁入本服务：另立项
+- ~~user_id 真实来源~~：已解决——register_user 按 phone（localStorage mobile 优先 /dx/user/info 兜底）动态换取

@@ -315,15 +315,21 @@ curl -s -X POST 'http://localhost:8080/api/v1/admin/user/delete' \
 | # | 方法 | 路径 | 说明 |
 | --- | --- | --- | --- |
 | 1 | GET | `/guyuzhoudb/live/get_login_url` | 透传小鹅通取登录链接（webview 打开后在小鹅通域名注入登录态再 302 到 redirect_uri） |
+| 2 | GET | `/guyuzhoudb/live/register_user` | 透传 xe.user.register：按手机号幂等注册换小鹅通 user_id（get_login_url 的前置，user_id 须在该店铺存在，否则登录页报「获取用户信息失败」） |
 
-- query 参数：`access_token`（必填）、`user_id`（必填，商家侧用户标识透传）、`login_type`（必填：1=PC 2=H5 3=App）、`redirect_uri`（可选，http(s):// 开头，登录成功后跳转的小鹅通页面链接）
-- 返回 `data.login_url` / `data.permission_denied_url`；**login_url 有效期仅 1 分钟，即取即跳、禁止缓存**
-- 失败映射：参数形状非法 400（中文文案）；上游业务错（access_token 无效等）/网络错 502（上游 code/msg 只进服务端日志）
+- get_login_url query：`access_token`（必填）、`user_id`（必填，**须为该店铺已存在的小鹅通用户 id**，用 register_user 换取）、`login_type`（必填：1=PC 2=H5 3=App）、`redirect_uri`（可选，http(s):// 开头，登录成功后跳转的小鹅通页面链接）
+- register_user query：`access_token`（必填）、`phone`（必填，11 位数字手机号）；返回 `data.user_id` + `data.user_exists`（0=新建 1=已存在，幂等可重复调）
+- 返回 get_login_url 的 `data.login_url` / `data.permission_denied_url`；**login_url 有效期仅 1 分钟，即取即跳、禁止缓存**
+- 失败映射：参数形状非法 400（中文文案）；上游业务错（access_token 无效等）/网络错 502（上游 code/msg 只进服务端日志；phone 不落日志）
 - 上游域名可配：`XIAOE_API_BASE`（默认 `https://api.xiaoe-tech.com`）
 
 ```bash
-# 假 token 走上游校验路径（期望 502，服务端 slog.Warn 打出小鹅通真实 code/msg；redirect_uri 需 URL 编码）
-curl -i 'http://localhost:8080/guyuzhoudb/live/get_login_url?access_token=fake&user_id=u_1&login_type=1&redirect_uri=https%3A%2F%2Fapp1.pc.xiaoe-tech.com%2Flive_pc%2Fl_1'
+# 注册换 user_id（幂等：已存在用户也返回 user_id）
+curl -i 'http://localhost:8080/guyuzhoudb/live/register_user?access_token=<token>&phone=18820205724'
+# → {"code":200,"msg":"success","data":{"user_id":"u_api_xxx","user_exists":1}}
+
+# 登录链接（user_id 用上一步返回值；redirect_uri 需 URL 编码）
+curl -i 'http://localhost:8080/guyuzhoudb/live/get_login_url?access_token=<token>&user_id=u_api_xxx&login_type=1&redirect_uri=https%3A%2F%2Fapp1.pc.xiaoe-tech.com%2Flive_pc%2Fl_1'
 
 # 缺参 400 示例
 curl -s 'http://localhost:8080/guyuzhoudb/live/get_login_url?user_id=u_1&login_type=1'

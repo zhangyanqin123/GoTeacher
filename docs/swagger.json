@@ -986,6 +986,54 @@
                 }
             }
         },
+        "/guyuzhoudb/live/register_user": {
+            "get": {
+                "description": "透传 xe.user.register/1.0.0：按手机号注册（幂等，已存在直接返回）换回小鹅通 user_id，供 get_login_url 指定登录账号。公开无鉴权。注意：全局 @BasePath 为 /api/v1，Swagger UI 显示路径会多出 /api/v1 前缀，实际路径以本注解为准",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "直播（小鹅通透传）"
+                ],
+                "summary": "注册小鹅通用户换取 user_id",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "小鹅通 access_token（get_access_token 取得，有效性由小鹅通校验）",
+                        "name": "access_token",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "用户手机号（11 位数字）",
+                        "name": "phone",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.XeRegisterUserResp"
+                        }
+                    },
+                    "400": {
+                        "description": "参数缺失或格式非法",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "502": {
+                        "description": "小鹅通上游失败（业务错/网络错）",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "description": "账号密码登录，签发 Bearer token（Redis 白名单单设备模式：重新登录即互踢旧设备）。phone_code/uuid 等多余字段忽略不校验",
@@ -2048,6 +2096,32 @@
                         "permission_denied_url": {
                             "type": "string",
                             "example": ""
+                        }
+                    }
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "model.XeRegisterUserResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "user_exists": {
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "user_id": {
+                            "type": "string",
+                            "example": "u_api_6a8beb36e8fc5_AhdVFUMFJQ"
                         }
                     }
                 },

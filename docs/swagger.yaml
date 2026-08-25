@@ -688,6 +688,24 @@ definitions:
         example: success
         type: string
     type: object
+  model.XeRegisterUserResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        properties:
+          user_exists:
+            example: 1
+            type: integer
+          user_id:
+            example: u_api_6a8beb36e8fc5_AhdVFUMFJQ
+            type: string
+        type: object
+      msg:
+        example: success
+        type: string
+    type: object
   response.Response:
     properties:
       code:
@@ -1325,6 +1343,39 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: 获取小鹅通登录链接
+      tags:
+      - 直播（小鹅通透传）
+  /guyuzhoudb/live/register_user:
+    get:
+      description: 透传 xe.user.register/1.0.0：按手机号注册（幂等，已存在直接返回）换回小鹅通 user_id，供 get_login_url
+        指定登录账号。公开无鉴权。注意：全局 @BasePath 为 /api/v1，Swagger UI 显示路径会多出 /api/v1 前缀，实际路径以本注解为准
+      parameters:
+      - description: 小鹅通 access_token（get_access_token 取得，有效性由小鹅通校验）
+        in: query
+        name: access_token
+        required: true
+        type: string
+      - description: 用户手机号（11 位数字）
+        in: query
+        name: phone
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.XeRegisterUserResp'
+        "400":
+          description: 参数缺失或格式非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "502":
+          description: 小鹅通上游失败（业务错/网络错）
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 注册小鹅通用户换取 user_id
       tags:
       - 直播（小鹅通透传）
   /login:
