@@ -11,6 +11,7 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 | 数据访问 | database/sql + [go-sql-driver/mysql](https://github.com/go-sql-driver/mysql) | Go 官方标准库，无 ORM |
 | 数据库 | MySQL 8 | Homebrew 安装 |
 | 缓存 | [go-redis/v9](https://github.com/redis/go-redis) | 鉴权白名单（token 主动失效） |
+| 消息队列 | [RabbitMQ](https://www.rabbitmq.com/) + [amqp091-go](https://github.com/rabbitmq/amqp091-go) | 订单事件 order.created fanout 广播（订单 Demo，见 PLAN-order.md） |
 | 鉴权 | [golang-jwt/jwt/v5](https://github.com/golang-jwt/jwt) + bcrypt | JWT HS256 签发 + Redis 白名单 |
 | 环境变量 | [godotenv](https://github.com/joho/godotenv) | 支持 `.env` 文件 |
 
@@ -336,15 +337,71 @@ curl -s 'http://localhost:8080/guyuzhoudb/live/get_login_url?user_id=u_1&login_t
 # → {"code":400,"msg":"参数 access_token 不能为空"}
 ```
 
+## 订单系统 Demo 接口（MQ 异步链路，设计决策见 PLAN-order.md）
+
+创建订单：Gin → MySQL 落库 → 发布 `order.created`（RabbitMQ fanout）→ 库存/积分/通知三消费者（独立进程 `cmd/consumer`）异步处理。
+
+订单状态：`1` 处理中 → `2` 已完成（stock/points/notify 三步骤列全 1）/ `3` 已取消（库存不足，补偿回滚积分与通知）；
+步骤列：`0` 待处理 / `1` 成功 / `2` 失败。幂等：积分/通知表 `order_id` 唯一键 + INSERT IGNORE（库端 `WHERE status=1` 原子判取消），扣库存条件 UPDATE。
+
+### 启动（两个进程）
+
+```bash
+# 依赖 RabbitMQ（Docker，管理台 :15672 guest/guest）：
+docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+# 弱网可经镜像加速拉取：docker pull docker.m.daocloud.io/library/rabbitmq:3-management
+go run ./cmd/server     # HTTP 发布端（:8080）
+go run ./cmd/consumer   # 三个消费者（独立进程，可单独重启观察积压/重投）
+```
+
+### curl 示例
+
+```bash
+TOKEN=<登录返回的 token>
+
+# 创建订单（user_id 取登录态；金额后端按 price×quantity 计算；商品见 GET /orders/products）
+curl -s -X POST 'http://localhost:8080/api/v1/orders' \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"product_id":1,"quantity":2}'
+# → {"code":200,"msg":"下单成功","data":{"id":1,"order_no":"202608281830121234","product_name":"智能手表 Pro","quantity":2,"amount":3998,"status":"1","stock_status":"0","points_status":"0","notify_status":"0",...}}
+
+# 商品下拉（含价格/库存）
+curl -s 'http://localhost:8080/api/v1/orders/products' -H "Authorization: Bearer $TOKEN"
+
+# 订单列表（观察 status 翻转与三步骤列点亮；status 精确 1/2/3，传 null 不过滤）
+curl -s -X POST 'http://localhost:8080/api/v1/orders/list' \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"page_index":1,"page_size":10,"order_no":"","product_name":"手表","status":null}'
+
+# 积分列表 / 通知列表（消费者异步写入）
+curl -s -X POST 'http://localhost:8080/api/v1/points/list' \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"page_index":1,"page_size":10}'
+curl -s -X POST 'http://localhost:8080/api/v1/notifications/list' \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"page_index":1,"page_size":10}'
+```
+
+### 表设计
+
+| 表 | 说明 |
+| --- | --- |
+| `product` | 商品（含库存，种子 4 个，其一库存仅 3 演示取消路径） |
+| `orders` | 订单（order 为保留字故复数；status + stock/points/notify 三步骤列，冗余商品名快照） |
+| `points_record` | 积分流水（`uk_order` 唯一键 = 消息幂等；1 元 1 分向下取整） |
+| `notification` | 通知记录（`uk_order` 唯一键 = 消息幂等；Demo 为站内表不接真实推送） |
+
 ## 目录结构（对应 Spring Boot 分层）
 
 ```
 .
-├── cmd/server/main.go        # 入口：加载配置 → 连库 → 建表/种子 → 路由 → 启动
+├── cmd/server/main.go        # HTTP 入口：加载配置 → 连库/MQ → 建表/种子 → 路由 → 启动
+├── cmd/consumer/main.go      # 消费者入口：库存/积分/通知三队列（订单 Demo，见 PLAN-order.md）
 └── internal/
     ├── config/               # 配置：环境变量 + 默认值，组装 MySQL DSN
     ├── database/             # 连接池 + 迁移（schema.sql）+ 种子（teacher_seed.sql / resign_seed.sql / diagnose_seed.sql）
     ├── model/                # Entity/DTO：Teacher、Resign、Diagnose、DateTimeString、StringSlice
+    ├── mq/                   # RabbitMQ：拓扑声明 + 发布 + 消费骨架（订单 Demo）
     ├── repository/           # DAO/Mapper：teacher・resign・diagnose CRUD
     ├── service/              # Service：参数校验、默认值、白名单、诊股状态机
     ├── handler/              # Controller：参数绑定、错误 → HTTP 状态码
@@ -402,6 +459,8 @@ curl -s 'http://localhost:8080/api/v1/dxsf/teacher/options'
 | 连接报 `error 1045` | 密码错误，检查 `.env` 的 `DB_PASSWORD` |
 | 连接报 `error 2002` | MySQL 未启动：`brew services start mysql` |
 | 认证失败（caching_sha2_password） | 兜底改回旧插件：`ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '<密码>';` |
+| server 启动报 `dial rabbitmq` | RabbitMQ 容器未起：`docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management`；连接串在 `.env` 的 `RABBITMQ_URL`（订单 Demo 对 MQ fail-fast） |
+| 下了单但订单一直「处理中」 | 消费者进程没起：另开终端 `go run ./cmd/consumer`（消费与 HTTP 是两个独立进程） |
 
 ## 进阶方向（本期未实现）
 

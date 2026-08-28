@@ -11,6 +11,7 @@ import (
 
 	"handicap-service/internal/config"
 	"handicap-service/internal/handler"
+	"handicap-service/internal/mq"
 	"handicap-service/internal/repository"
 	"handicap-service/internal/service"
 )
@@ -18,7 +19,8 @@ import (
 // New 组装依赖（repo → service → handler）并注册路由。
 // 鉴权：JWT + Redis 白名单（见 PLAN-auth.md），除 login、swagger 与 /guyuzhoudb/live/**（小鹅通透传，
 // 公开，见 PLAN-live.md）外全部挂 Auth 中间件。
-func New(db *sql.DB, rdb *redis.Client, cfg *config.Config) *gin.Engine {
+// publisher：订单事件 order.created 的发布端（连接由 main 持有，见 PLAN-order.md）。
+func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publisher) *gin.Engine {
 	r := gin.Default()
 	r.Use(CORS())
 
@@ -26,13 +28,14 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config) *gin.Engine {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	repo := repository.New(db)
-	svc := service.New(repo, rdb, cfg.JWTSecret, time.Duration(cfg.JWTTTLHours)*time.Hour, cfg.XiaoeAPIBase)
+	svc := service.New(repo, rdb, cfg.JWTSecret, time.Duration(cfg.JWTTTLHours)*time.Hour, cfg.XiaoeAPIBase, publisher)
 	th := handler.NewTeacher(svc)
 	rh := handler.NewResign(svc)
 	dh := handler.NewDiagnose(svc)
 	ah := handler.NewAuth(svc)
 	auh := handler.NewAdminUser(svc)
 	lh := handler.NewLive(svc)
+	oh := handler.NewOrder(svc)
 
 	// 鉴权公开接口（login 签发 token；logout/getinfo 需登录态放 authed 组）
 	r.POST("/api/v1/login", ah.Login)
@@ -73,5 +76,13 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config) *gin.Engine {
 	admin.POST("/user/add", auh.Add)
 	admin.POST("/user/edit", auh.Edit)
 	admin.POST("/user/delete", auh.Delete)
+
+	// 订单系统 Demo（Gin → MySQL → RabbitMQ 异步链路，见 PLAN-order.md）：
+	// 创建后发 order.created 广播给库存/积分/通知三队列，消费者为独立进程 cmd/consumer
+	authed.POST("/orders", oh.Create)
+	authed.POST("/orders/list", oh.List)
+	authed.GET("/orders/products", oh.Products)
+	authed.POST("/points/list", oh.PointsList)
+	authed.POST("/notifications/list", oh.NotificationsList)
 	return r
 }

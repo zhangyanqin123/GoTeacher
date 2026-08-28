@@ -323,6 +323,222 @@ definitions:
         example: eyJhbGciOiJIUzI1NiIs...
         type: string
     type: object
+  model.Notification:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      is_read:
+        description: '"1"/"0"'
+        type: string
+      order_id:
+        type: integer
+      title:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  model.NotificationListReq:
+    properties:
+      page_index:
+        description: 默认 1
+        type: integer
+      page_size:
+        description: 默认 10，上限 100
+        type: integer
+      title:
+        description: 模糊
+        type: string
+    type: object
+  model.NotificationListResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        properties:
+          count:
+            example: 42
+            type: integer
+          list:
+            items:
+              $ref: '#/definitions/model.Notification'
+            type: array
+        type: object
+      msg:
+        example: success
+        type: string
+    type: object
+  model.Order:
+    properties:
+      amount:
+        type: number
+      created_at:
+        type: string
+      id:
+        type: integer
+      notify_status:
+        description: 0待处理 1成功 2失败（order.notify 消费者回写）
+        type: string
+      order_no:
+        type: string
+      points_status:
+        description: 0待处理 1成功 2失败（order.points 消费者回写）
+        type: string
+      product_id:
+        type: integer
+      product_name:
+        type: string
+      quantity:
+        type: integer
+      status:
+        description: 1处理中 2已完成 3已取消（库存不足）
+        type: string
+      stock_status:
+        description: 0待处理 1成功 2失败（order.stock 消费者回写）
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  model.OrderCreateReq:
+    properties:
+      product_id:
+        description: 商品ID
+        type: integer
+      quantity:
+        description: 购买数量 1-999
+        type: integer
+    type: object
+  model.OrderCreateResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        $ref: '#/definitions/model.Order'
+      msg:
+        example: 下单成功
+        type: string
+    type: object
+  model.OrderListReq:
+    properties:
+      order_no:
+        description: 精确
+        type: string
+      page_index:
+        description: 默认 1（service 层兜底）
+        type: integer
+      page_size:
+        description: 默认 10，上限 100
+        type: integer
+      product_name:
+        description: 模糊，匹配快照列
+        type: string
+      status:
+        description: 精确 1/2/3
+        type: integer
+    type: object
+  model.OrderListResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        properties:
+          count:
+            example: 42
+            type: integer
+          list:
+            items:
+              $ref: '#/definitions/model.Order'
+            type: array
+        type: object
+      msg:
+        example: success
+        type: string
+    type: object
+  model.PointsListReq:
+    properties:
+      order_no:
+        description: 精确，匹配快照列
+        type: string
+      page_index:
+        description: 默认 1
+        type: integer
+      page_size:
+        description: 默认 10，上限 100
+        type: integer
+    type: object
+  model.PointsListResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        properties:
+          count:
+            example: 42
+            type: integer
+          list:
+            items:
+              $ref: '#/definitions/model.PointsRecord'
+            type: array
+        type: object
+      msg:
+        example: success
+        type: string
+    type: object
+  model.PointsRecord:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      order_id:
+        type: integer
+      order_no:
+        type: string
+      points:
+        type: integer
+      remark:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  model.Product:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      price:
+        description: DECIMAL(10,2) 扫 float64
+        type: number
+      product_name:
+        type: string
+      stock:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  model.ProductListResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/model.Product'
+        type: array
+      msg:
+        example: success
+        type: string
+    type: object
   model.Resign:
     properties:
       created_at:
@@ -1424,6 +1640,158 @@ paths:
       summary: 退出登录
       tags:
       - 鉴权
+  /notifications/list:
+    post:
+      consumes:
+      - application/json
+      description: 分页查询通知记录（order.notify 消费者异步写入；title 模糊匹配）
+      parameters:
+      - description: 查询条件（空值表示未填）
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.NotificationListReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询类 msg 为 success
+          schema:
+            $ref: '#/definitions/model.NotificationListResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 通知列表
+      tags:
+      - 订单
+  /orders:
+    post:
+      consumes:
+      - application/json
+      description: 下单落库后发布 order.created 事件（RabbitMQ fanout），库存/积分/通知由消费者异步处理；商品快照与金额由后端回查计算，user_id
+        取登录态
+      parameters:
+      - description: 创建订单请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.OrderCreateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「下单成功」，data 为订单（status=1 处理中，三个 *_status=0 待处理）
+          schema:
+            $ref: '#/definitions/model.OrderCreateResp'
+        "400":
+          description: 请求体非法 / 购买数量必须为 1-999 / 库存不足
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 商品不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 创建订单
+      tags:
+      - 订单
+  /orders/list:
+    post:
+      consumes:
+      - application/json
+      description: 分页查询订单（order_no 精确、product_name 模糊、status 精确 1/2/3；含三个异步处理步骤的状态列）
+      parameters:
+      - description: 查询条件（空值表示未填，status 传 null 不过滤）
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.OrderListReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询类 msg 为 success
+          schema:
+            $ref: '#/definitions/model.OrderListResp'
+        "400":
+          description: 请求体非法 / 状态必须是 1/2/3
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 订单列表
+      tags:
+      - 订单
+  /orders/products:
+    get:
+      description: 全量商品（含价格/库存），创建订单页选择用；data 直接为数组不分页
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询类 msg 为 success
+          schema:
+            $ref: '#/definitions/model.ProductListResp'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 商品下拉
+      tags:
+      - 订单
+  /points/list:
+    post:
+      consumes:
+      - application/json
+      description: 分页查询积分流水（order.points 消费者异步写入；order_no 精确匹配快照）
+      parameters:
+      - description: 查询条件（空值表示未填）
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.PointsListReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 查询类 msg 为 success
+          schema:
+            $ref: '#/definitions/model.PointsListResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 积分列表
+      tags:
+      - 订单
 schemes:
 - http
 securityDefinitions:

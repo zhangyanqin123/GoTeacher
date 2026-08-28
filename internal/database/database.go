@@ -31,6 +31,10 @@ var resignSeedSQL string
 //go:embed diagnose_seed.sql
 var diagnoseSeedSQL string
 
+//
+//go:embed order_seed.sql
+var orderSeedSQL string
+
 // Connect 建立 MySQL 连接池并探活。
 // 经 sqllog 包装 connector：所有 SQL（含事务与 Migrate/Seed）打 slog.Debug 日志，LOG_LEVEL=debug 可见。
 func Connect(cfg *config.Config) (*sql.DB, error) {
@@ -179,6 +183,9 @@ func Seed(db *sql.DB) error {
 	if err := seedDiagnose(db); err != nil {
 		return err
 	}
+	if err := seedProduct(db); err != nil {
+		return err
+	}
 	return seedAdminUser(db)
 }
 
@@ -207,6 +214,15 @@ func seedDiagnose(db *sql.DB) error {
 		return fmt.Errorf("seed diagnose count: %w", err)
 	}
 	return seedIfEmpty(db, count, diagnoseSeedSQL)
+}
+
+// seedProduct product 空表种子（订单系统 Demo，4 个商品，见 order_seed.sql）
+func seedProduct(db *sql.DB) error {
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM product").Scan(&count); err != nil {
+		return fmt.Errorf("seed product count: %w", err)
+	}
+	return seedIfEmpty(db, count, orderSeedSQL)
 }
 
 // seedAdminUser admin_user 空表种子（初始账号 admin/admin123，见 PLAN-auth.md）。

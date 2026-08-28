@@ -156,3 +156,75 @@ CREATE TABLE IF NOT EXISTS admin_user (
   PRIMARY KEY (id),
   UNIQUE KEY uk_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='管理员账号';
+
+-- ============================================================
+-- 订单系统 Demo（Gin → MySQL → RabbitMQ 异步链路，见 PLAN-order.md）
+-- 兼容约定（与前端 gyz-admin orderDemo 页面同构）：
+--   amount DECIMAL(10,2)，接口输出浮点（对齐 diagnose.buy_price）
+--   status：1 处理中 / 2 已完成 / 3 已取消（库存不足）
+--   stock_status/points_status/notify_status：0 待处理 / 1 成功 / 2 失败，
+--     分别由 order.stock/order.points/order.notify 三个消费者回写，
+--     三列全 1 时最后一个回写者将 status 置 2（条件 UPDATE，无竞态）
+--   points_record.order_id / notification.order_id 唯一键 = MQ 消息幂等：
+--     fanout 重投时 INSERT IGNORE 不重复落库
+-- ============================================================
+
+-- 商品（含库存）
+CREATE TABLE IF NOT EXISTS product (
+  id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  product_name VARCHAR(100)    NOT NULL                COMMENT '商品名称',
+  price        DECIMAL(10,2)   NOT NULL DEFAULT 0.00   COMMENT '单价（元，两位小数）',
+  stock        INT UNSIGNED    NOT NULL DEFAULT 0      COMMENT '库存',
+  created_at   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='商品';
+
+-- 订单（order 是 SQL 保留字，表名用复数）
+CREATE TABLE IF NOT EXISTS orders (
+  id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  order_no      VARCHAR(32)     NOT NULL                COMMENT '订单号（时间戳+随机后缀，后端生成）',
+  user_id       BIGINT UNSIGNED NOT NULL                COMMENT '下单用户ID（admin_user.id，取登录态）',
+  product_id    BIGINT UNSIGNED NOT NULL                COMMENT '商品ID（product.id）',
+  product_name  VARCHAR(100)    NOT NULL DEFAULT ''     COMMENT '商品名称（冗余快照，商品可能被改/删，记录保留当时值）',
+  quantity      INT UNSIGNED    NOT NULL DEFAULT 1      COMMENT '购买数量',
+  amount        DECIMAL(10,2)   NOT NULL DEFAULT 0.00   COMMENT '订单金额（price*quantity，后端计算）',
+  status        TINYINT         NOT NULL DEFAULT 1      COMMENT '状态：1处理中 2已完成 3已取消（库存不足）',
+  stock_status  TINYINT         NOT NULL DEFAULT 0      COMMENT '扣库存：0待处理 1成功 2失败（order.stock 消费者回写）',
+  points_status TINYINT         NOT NULL DEFAULT 0      COMMENT '加积分：0待处理 1成功 2失败（order.points 消费者回写）',
+  notify_status TINYINT         NOT NULL DEFAULT 0      COMMENT '发通知：0待处理 1成功 2失败（order.notify 消费者回写）',
+  created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_order_no (order_no),
+  KEY idx_user (user_id),
+  KEY idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='订单';
+
+-- 积分流水（order_id 唯一键 = MQ 消息幂等：重投不重复加分）
+CREATE TABLE IF NOT EXISTS points_record (
+  id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  user_id    BIGINT UNSIGNED NOT NULL                COMMENT '用户ID（订单下单人）',
+  order_id   BIGINT UNSIGNED NOT NULL                COMMENT '订单ID（唯一，幂等键）',
+  order_no   VARCHAR(32)     NOT NULL DEFAULT ''     COMMENT '订单号（冗余快照）',
+  points     INT             NOT NULL DEFAULT 0      COMMENT '积分（1 元 1 分，按订单金额向下取整）',
+  remark     VARCHAR(200)    NOT NULL DEFAULT ''     COMMENT '备注',
+  created_at DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_order (order_id),
+  KEY idx_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='积分流水';
+
+-- 通知记录（order_id 唯一键 = MQ 消息幂等：重投不重复发通知）
+CREATE TABLE IF NOT EXISTS notification (
+  id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  user_id    BIGINT UNSIGNED NOT NULL                COMMENT '用户ID（订单下单人）',
+  order_id   BIGINT UNSIGNED NOT NULL                COMMENT '订单ID（唯一，幂等键）',
+  title      VARCHAR(100)    NOT NULL DEFAULT ''     COMMENT '标题',
+  content    VARCHAR(500)    NOT NULL DEFAULT ''     COMMENT '内容',
+  is_read    TINYINT         NOT NULL DEFAULT 0      COMMENT '已读：1 是 / 0 否',
+  created_at DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_order (order_id),
+  KEY idx_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='通知记录';

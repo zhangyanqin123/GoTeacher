@@ -17,6 +17,7 @@ import (
 
 	"handicap-service/internal/config"
 	"handicap-service/internal/database"
+	"handicap-service/internal/mq"
 	"handicap-service/internal/router"
 
 	_ "handicap-service/docs" // swag 生成物（swag init -g cmd/server/main.go -o docs）
@@ -60,20 +61,34 @@ func main() {
 	}
 	defer rdb.Close()
 
-	// 3. 自动建表（幂等）
+	// 3. 连接 RabbitMQ（订单事件 order.created 发布端，见 PLAN-order.md）——
+	//    fail-fast 对齐 MySQL/Redis：MQ 不可用时创建订单必丢事件，起服务无意义
+	mqConn, err := mq.Connect(cfg.RabbitMQURL)
+	if err != nil {
+		slog.Error("connect rabbitmq failed", "url", cfg.RabbitMQURL, "err", err)
+		os.Exit(1)
+	}
+	defer mqConn.Close()
+	mqCh, err := mq.Channel(mqConn)
+	if err != nil {
+		slog.Error("open rabbitmq channel failed", "err", err)
+		os.Exit(1)
+	}
+
+	// 4. 自动建表（幂等）
 	if err := database.Migrate(db); err != nil {
 		slog.Error("migrate failed", "err", err)
 		os.Exit(1)
 	}
 
-	// 4. 表空时插入种子数据
+	// 5. 表空时插入种子数据
 	if err := database.Seed(db); err != nil {
 		slog.Error("seed failed", "err", err)
 		os.Exit(1)
 	}
 
-	// 5. 启动 HTTP 服务
-	r := router.New(db, rdb, cfg)
+	// 6. 启动 HTTP 服务
+	r := router.New(db, rdb, cfg, mq.NewPublisher(mqCh))
 	slog.Info("server started", "port", cfg.ServerPort, "jwt_ttl_hours", cfg.JWTTTLHours)
 	if err := r.Run(":" + cfg.ServerPort); err != nil {
 		slog.Error("server exit", "err", err)

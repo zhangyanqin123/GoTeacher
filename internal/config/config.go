@@ -27,6 +27,8 @@ type Config struct {
 	JWTTTLHours   int    // JWT 有效期（小时），同时是 Redis 白名单 TTL
 
 	XiaoeAPIBase string // 小鹅通开放平台 API 域名（直播登录链接透传的上游 base，见 PLAN-live.md）
+
+	RabbitMQURL string // RabbitMQ 连接串（订单事件 order.created 发布/消费，见 PLAN-order.md）
 }
 
 // Load 加载配置并组装 DSN。
@@ -51,6 +53,8 @@ func Load() *Config {
 		JWTTTLHours:   getEnvInt("JWT_TTL_HOURS", 24),
 
 		XiaoeAPIBase: getEnv("XIAOE_API_BASE", "https://api.xiaoe-tech.com"),
+
+		RabbitMQURL: getEnv("RABBITMQ_URL", "amqp://guest:guest@127.0.0.1:5672/"),
 	}
 
 	mc := mysql.Config{

@@ -11,9 +11,10 @@ import (
 
 const testSecret = "test-secret-32-bytes-xxxxxxxxxxxx"
 
-// newTestService 不依赖 DB/Redis 的最小构造（Login 走不到，仅测签发/验签纯函数路径；xiaoeAPIBase 空串，不触达直播域）
+// newTestService 不依赖 DB/Redis 的最小构造（Login 走不到，仅测签发/验签纯函数路径；
+// xiaoeAPIBase 空串不触达直播域，publisher nil 跳过订单事件发布）
 func newTestService(ttl time.Duration) *Service {
-	return New(nil, nil, testSecret, ttl, "")
+	return New(nil, nil, testSecret, ttl, "", nil)
 }
 
 // signTestToken 用测试密钥签一个白名单外的裸 token（不走 Redis）

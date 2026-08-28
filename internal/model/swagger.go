@@ -115,3 +115,47 @@ type XeRegisterUserResp struct {
 		UserExists int    `json:"user_exists" example:"1"`
 	} `json:"data"`
 }
+
+// OrderCreateResp 创建订单响应（POST /orders）。data 为订单（status=1 处理中，三步骤 0 待处理）
+type OrderCreateResp struct {
+	Code int    `json:"code" example:"200"`
+	Msg  string `json:"msg"  example:"下单成功"`
+	Data Order  `json:"data"`
+}
+
+// OrderListResp 订单列表响应（POST /orders/list）
+type OrderListResp struct {
+	Code int    `json:"code" example:"200"`
+	Msg  string `json:"msg"  example:"success"`
+	Data struct {
+		List  []Order `json:"list"`
+		Count int     `json:"count" example:"42"`
+	} `json:"data"`
+}
+
+// ProductListResp 商品下拉响应（GET /orders/products，data 直接为数组不分页）
+type ProductListResp struct {
+	Code int       `json:"code" example:"200"`
+	Msg  string    `json:"msg"  example:"success"`
+	Data []Product `json:"data"`
+}
+
+// PointsListResp 积分列表响应（POST /points/list）
+type PointsListResp struct {
+	Code int    `json:"code" example:"200"`
+	Msg  string `json:"msg"  example:"success"`
+	Data struct {
+		List  []PointsRecord `json:"list"`
+		Count int            `json:"count" example:"42"`
+	} `json:"data"`
+}
+
+// NotificationListResp 通知列表响应（POST /notifications/list）
+type NotificationListResp struct {
+	Code int    `json:"code" example:"200"`
+	Msg  string `json:"msg"  example:"success"`
+	Data struct {
+		List  []Notification `json:"list"`
+		Count int            `json:"count" example:"42"`
+	} `json:"data"`
+}

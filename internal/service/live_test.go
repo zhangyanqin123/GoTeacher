@@ -50,9 +50,9 @@ func newXeUpstream(t *testing.T, status int, respBody string) (*httptest.Server,
 	return srv, call
 }
 
-// newXeSvc 用模拟上游地址构造 Service（repo/rdb 传 nil：直播域方法不触达 DB/Redis）
+// newXeSvc 用模拟上游地址构造 Service（repo/rdb/publisher 传 nil：直播域方法不触达 DB/Redis/MQ）
 func newXeSvc(srv *httptest.Server) *Service {
-	return New(nil, nil, "test", time.Hour, srv.URL)
+	return New(nil, nil, "test", time.Hour, srv.URL, nil)
 }
 
 // TestGetXeLoginURLOK 成功路径：请求打到固定路径、Content-Type 为 JSON、四字段全透传，返回两个 URL

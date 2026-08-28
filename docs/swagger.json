@@ -1104,6 +1104,247 @@
                     }
                 }
             }
+        },
+        "/notifications/list": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "分页查询通知记录（order.notify 消费者异步写入；title 模糊匹配）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "订单"
+                ],
+                "summary": "通知列表",
+                "parameters": [
+                    {
+                        "description": "查询条件（空值表示未填）",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.NotificationListReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询类 msg 为 success",
+                        "schema": {
+                            "$ref": "#/definitions/model.NotificationListResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "下单落库后发布 order.created 事件（RabbitMQ fanout），库存/积分/通知由消费者异步处理；商品快照与金额由后端回查计算，user_id 取登录态",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "订单"
+                ],
+                "summary": "创建订单",
+                "parameters": [
+                    {
+                        "description": "创建订单请求体",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.OrderCreateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "msg 固定「下单成功」，data 为订单（status=1 处理中，三个 *_status=0 待处理）",
+                        "schema": {
+                            "$ref": "#/definitions/model.OrderCreateResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法 / 购买数量必须为 1-999 / 库存不足",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "商品不存在",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/list": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "分页查询订单（order_no 精确、product_name 模糊、status 精确 1/2/3；含三个异步处理步骤的状态列）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "订单"
+                ],
+                "summary": "订单列表",
+                "parameters": [
+                    {
+                        "description": "查询条件（空值表示未填，status 传 null 不过滤）",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.OrderListReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询类 msg 为 success",
+                        "schema": {
+                            "$ref": "#/definitions/model.OrderListResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法 / 状态必须是 1/2/3",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/products": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "全量商品（含价格/库存），创建订单页选择用；data 直接为数组不分页",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "订单"
+                ],
+                "summary": "商品下拉",
+                "responses": {
+                    "200": {
+                        "description": "查询类 msg 为 success",
+                        "schema": {
+                            "$ref": "#/definitions/model.ProductListResp"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/points/list": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "分页查询积分流水（order.points 消费者异步写入；order_no 精确匹配快照）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "订单"
+                ],
+                "summary": "积分列表",
+                "parameters": [
+                    {
+                        "description": "查询条件（空值表示未填）",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.PointsListReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "查询类 msg 为 success",
+                        "schema": {
+                            "$ref": "#/definitions/model.PointsListResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1570,6 +1811,322 @@
                 "token": {
                     "type": "string",
                     "example": "eyJhbGciOiJIUzI1NiIs..."
+                }
+            }
+        },
+        "model.Notification": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_read": {
+                    "description": "\"1\"/\"0\"",
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.NotificationListReq": {
+            "type": "object",
+            "properties": {
+                "page_index": {
+                    "description": "默认 1",
+                    "type": "integer"
+                },
+                "page_size": {
+                    "description": "默认 10，上限 100",
+                    "type": "integer"
+                },
+                "title": {
+                    "description": "模糊",
+                    "type": "string"
+                }
+            }
+        },
+        "model.NotificationListResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "count": {
+                            "type": "integer",
+                            "example": 42
+                        },
+                        "list": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Notification"
+                            }
+                        }
+                    }
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "model.Order": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "notify_status": {
+                    "description": "0待处理 1成功 2失败（order.notify 消费者回写）",
+                    "type": "string"
+                },
+                "order_no": {
+                    "type": "string"
+                },
+                "points_status": {
+                    "description": "0待处理 1成功 2失败（order.points 消费者回写）",
+                    "type": "string"
+                },
+                "product_id": {
+                    "type": "integer"
+                },
+                "product_name": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "1处理中 2已完成 3已取消（库存不足）",
+                    "type": "string"
+                },
+                "stock_status": {
+                    "description": "0待处理 1成功 2失败（order.stock 消费者回写）",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.OrderCreateReq": {
+            "type": "object",
+            "properties": {
+                "product_id": {
+                    "description": "商品ID",
+                    "type": "integer"
+                },
+                "quantity": {
+                    "description": "购买数量 1-999",
+                    "type": "integer"
+                }
+            }
+        },
+        "model.OrderCreateResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "$ref": "#/definitions/model.Order"
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "下单成功"
+                }
+            }
+        },
+        "model.OrderListReq": {
+            "type": "object",
+            "properties": {
+                "order_no": {
+                    "description": "精确",
+                    "type": "string"
+                },
+                "page_index": {
+                    "description": "默认 1（service 层兜底）",
+                    "type": "integer"
+                },
+                "page_size": {
+                    "description": "默认 10，上限 100",
+                    "type": "integer"
+                },
+                "product_name": {
+                    "description": "模糊，匹配快照列",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "精确 1/2/3",
+                    "type": "integer"
+                }
+            }
+        },
+        "model.OrderListResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "count": {
+                            "type": "integer",
+                            "example": 42
+                        },
+                        "list": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Order"
+                            }
+                        }
+                    }
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "model.PointsListReq": {
+            "type": "object",
+            "properties": {
+                "order_no": {
+                    "description": "精确，匹配快照列",
+                    "type": "string"
+                },
+                "page_index": {
+                    "description": "默认 1",
+                    "type": "integer"
+                },
+                "page_size": {
+                    "description": "默认 10，上限 100",
+                    "type": "integer"
+                }
+            }
+        },
+        "model.PointsListResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "count": {
+                            "type": "integer",
+                            "example": 42
+                        },
+                        "list": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.PointsRecord"
+                            }
+                        }
+                    }
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "model.PointsRecord": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "order_id": {
+                    "type": "integer"
+                },
+                "order_no": {
+                    "type": "string"
+                },
+                "points": {
+                    "type": "integer"
+                },
+                "remark": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.Product": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "price": {
+                    "description": "DECIMAL(10,2) 扫 float64",
+                    "type": "number"
+                },
+                "product_name": {
+                    "type": "string"
+                },
+                "stock": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ProductListResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Product"
+                    }
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "success"
                 }
             }
         },
