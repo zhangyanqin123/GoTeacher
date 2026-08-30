@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目定位
 
-Go 学习项目 `handicap-service`：chatSys（老师管理/离职转移）+ 诊股记录接口。**核心约束：chatSys 与诊股接口的 JSON 键名全链路 snake_case（`page_index`/`dept_id`/`original_teacher_id`），与前端 gyz-admin 对接页面的键名严格一致**（2026-08-18 由 camelCase 整体迁移，决策见 PLAN-api-snake-case.md）。新增字段一律蛇形；URL 路径段（如 `bindSales`）不在此约束内。新增/修改接口前先读对应 `PLAN-*.md` 了解设计决策。
+Go 学习项目 `handicap-service`：chatSys（老师管理/离职转移）+ 诊股记录接口。**核心约束：chatSys 与诊股接口的 JSON 键名全链路 snake_case（`page_index`/`dept_id`/`original_teacher_id`），与前端 gyz-admin 对接页面的键名严格一致**（2026-08-18 由 camelCase 整体迁移，决策见 plans/PLAN-api-snake-case.md）。新增字段一律蛇形；URL 路径段（如 `bindSales`）不在此约束内。新增/修改接口前先读对应 `plans/PLAN-*.md` 了解设计决策（设计文档统一在 `plans/`，`docs/` 仅放 swag 生成物）。
 
 ## 常用命令
 
@@ -17,8 +17,8 @@ go vet ./...
 swag init -g cmd/server/main.go -o docs   # 接口注释改动后重新生成 Swagger 文档
 ```
 
-- 依赖 MySQL/Redis/RabbitMQ 统一由 Docker Compose 起：`docker compose up -d`（健康状态 `docker compose ps`，决策见 PLAN-docker.md）。容器映射 **3307/6380** 避让本机 dmg MySQL（3306）与 brew redis@6.2（6379），与本机服务并存互不影响
-- 库无需手工建：compose 的 `MYSQL_DATABASE=handicap_db` 自动建库，`MYSQL_USER/MYSQL_PASSWORD` 插值自 `.env` 的 DB_USER/DB_PASSWORD（app_user）；空库首启 go 服务自动建表+种子；`JWT_SECRET` 必填（空值启动退出），见 PLAN-auth.md
+- 依赖 MySQL/Redis/RabbitMQ 统一由 Docker Compose 起：`docker compose up -d`（健康状态 `docker compose ps`，决策见 plans/PLAN-docker.md）。容器映射 **3307/6380** 避让本机 dmg MySQL（3306）与 brew redis@6.2（6379），与本机服务并存互不影响
+- 库无需手工建：compose 的 `MYSQL_DATABASE=handicap_db` 自动建库，`MYSQL_USER/MYSQL_PASSWORD` 插值自 `.env` 的 DB_USER/DB_PASSWORD（app_user）；空库首启 go 服务自动建表+种子；`JWT_SECRET` 必填（空值启动退出），见 plans/PLAN-auth.md
 - 配置走 `.env`（模板 `.env.example`；本仓库实际 `.env` 端口已指容器 3307/6380）
 - 重灌种子：`TRUNCATE TABLE <表>;` 后重启（种子仅在表空时写入，schema/seed SQL 均 go:embed 随二进制发布；admin_user 种子为 Go 代码 bcrypt 动态生成 admin/admin123，不走 seed SQL）
 - 无 lint 工具链，无 Makefile
@@ -36,7 +36,7 @@ handler → service → repository → model
 - `cmd/server/main.go`：加载配置 → 连 MySQL/Redis → `Migrate`（幂等建表 + 存量列型升级）→ `Seed` → 路由启动
 - 数据访问是裸 `database/sql`（无 ORM）：动态 WHERE 靠拼 SQL 片段 + args；模糊查询用 `LIKE CONCAT('%',?,'%')`；LIMIT/OFFSET 只能拼常量，参数放最后
 
-### 鉴权约定（JWT + Redis 白名单，设计决策见 PLAN-auth.md）
+### 鉴权约定（JWT + Redis 白名单，设计决策见 plans/PLAN-auth.md）
 
 - 除 `POST /api/v1/login` 与 `/swagger/**` 外全部挂 `Auth` 中间件（`internal/router/auth.go`）：解析 `Authorization: Bearer` → `service.VerifyAccessToken` 验签 + 白名单比对 → `c.Set` 用户信息（key 常量在 `internal/model/auth.go`）。**新增业务接口默认进鉴权组**（挂 `Auth(svc)` 或放 `authed` 组内）
 - 单设备模式：Redis `auth:token:{user_id}` 存当前有效 jti，TTL=JWT 有效期；重新登录覆盖即互踢，`DEL` 即踢人；登出/logout 幂等

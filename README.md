@@ -2,7 +2,7 @@
 
 Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + 诊股记录接口。数据从 MySQL 查询返回（非硬编码），首次启动自动建表并写入种子数据。业务接口统一 Bearer token 鉴权（见下文「鉴权」）。
 
-配套管理台前端在 `web/`（React + Vite + TypeScript + antd 5，承载本服务全部接口，见 [PLAN-web.md](PLAN-web.md) 与下文「前端管理台」）。
+配套管理台前端在 `web/`（React + Vite + TypeScript + antd 5，承载本服务全部接口，见 [plans/PLAN-web.md](plans/PLAN-web.md) 与下文「前端管理台」）。
 
 ## 技术栈
 
@@ -11,15 +11,15 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 | 语言 | Go 1.24+ | |
 | Web 框架 | [Gin](https://github.com/gin-gonic/gin) | 路由、中间件、JSON 渲染 |
 | 数据访问 | database/sql + [go-sql-driver/mysql](https://github.com/go-sql-driver/mysql) | Go 官方标准库，无 ORM |
-| 数据库 | MySQL 8 | Docker 容器（docker-compose 统一编排 MySQL/Redis/RabbitMQ，见 PLAN-docker.md） |
+| 数据库 | MySQL 8 | Docker 容器（docker-compose 统一编排 MySQL/Redis/RabbitMQ，见 plans/PLAN-docker.md） |
 | 缓存 | [go-redis/v9](https://github.com/redis/go-redis) | 鉴权白名单（token 主动失效） |
-| 消息队列 | [RabbitMQ](https://www.rabbitmq.com/) + [amqp091-go](https://github.com/rabbitmq/amqp091-go) | 订单事件 order.created fanout 广播（订单 Demo，见 PLAN-order.md） |
+| 消息队列 | [RabbitMQ](https://www.rabbitmq.com/) + [amqp091-go](https://github.com/rabbitmq/amqp091-go) | 订单事件 order.created fanout 广播（订单 Demo，见 plans/PLAN-order.md） |
 | 鉴权 | [golang-jwt/jwt/v5](https://github.com/golang-jwt/jwt) + bcrypt | JWT HS256 签发 + Redis 白名单 |
 | 环境变量 | [godotenv](https://github.com/joho/godotenv) | 支持 `.env` 文件 |
 
 ## 鉴权（JWT + Redis 白名单）
 
-设计决策详见 `PLAN-auth.md`。除 `POST /api/v1/login`、`/swagger/**` 与 `/guyuzhoudb/**`（直播小鹅通透传，凭证由上游校验，见下文「直播接口」与 [PLAN-live.md](PLAN-live.md)）外，全部接口需带 `Authorization: Bearer {token}`；未授权统一 HTTP 401 + `{"code":401,"msg":"登录已过期，请重新登录"}`。
+设计决策详见 `plans/PLAN-auth.md`。除 `POST /api/v1/login`、`/swagger/**` 与 `/guyuzhoudb/**`（直播小鹅通透传，凭证由上游校验，见下文「直播接口」与 [plans/PLAN-live.md](plans/PLAN-live.md)）外，全部接口需带 `Authorization: Bearer {token}`；未授权统一 HTTP 401 + `{"code":401,"msg":"登录已过期，请重新登录"}`。
 
 | # | 方法 | 路径 | 说明 |
 | --- | --- | --- | --- |
@@ -123,7 +123,7 @@ curl -s 'http://localhost:8080/api/v1/dxsf/teacher/bind/salesman/users'
 
 种子数据照抄 mock（12 老师 / 25 业务员 / 143 条绑定），仅在表为空时写入，重灌方式：`TRUNCATE TABLE teacher; TRUNCATE TABLE sales_user; TRUNCATE TABLE teacher_sales;` 后重启。
 
-设计决策与实施记录见 [PLAN-teacher.md](PLAN-teacher.md)。
+设计决策与实施记录见 [plans/PLAN-teacher.md](plans/PLAN-teacher.md)。
 
 ## 老师离职转移接口（chatSys）
 
@@ -177,7 +177,7 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/resign/add' \
 
 种子数据照抄 mock 的 6 条（id 101-106），仅在表为空时写入，重灌方式：`TRUNCATE TABLE teacher_resign;` 后重启。
 
-设计决策与实施记录见 [PLAN-resign.md](PLAN-resign.md)。
+设计决策与实施记录见 [plans/PLAN-resign.md](plans/PLAN-resign.md)。
 
 ## 诊股记录接口（diagnoseSys）
 
@@ -263,7 +263,7 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/diagnose/audit' \
 
 种子数据照抄 mock 的 6 条主表（状态 1-6 各一）+ 17 条日志，仅在表为空时写入，重灌方式：`TRUNCATE TABLE diagnose; TRUNCATE TABLE diagnose_audit_log;` 后重启。
 
-设计决策与实施记录见 [PLAN-diagnose.md](PLAN-diagnose.md)。
+设计决策与实施记录见 [plans/PLAN-diagnose.md](plans/PLAN-diagnose.md)。
 
 ## 用户管理接口（登录账号）
 
@@ -309,11 +309,11 @@ curl -s -X POST 'http://localhost:8080/api/v1/admin/user/delete' \
   -d '{"id":2}'
 ```
 
-设计决策与实施记录见 [PLAN-admin-user.md](PLAN-admin-user.md)。
+设计决策与实施记录见 [plans/PLAN-admin-user.md](plans/PLAN-admin-user.md)。
 
 ## 直播接口（小鹅通透传，mofang C 端）
 
-对应 mofang 前端 `src/services/live/index.ts`（直播间中转页账号打通）。真实环境该路径走远程网关 guyuzhoudb 域，本服务为本地复刻：纯透传小鹅通开放平台 `xe.login.url/1.0.0`，**不持有小鹅通 secret**（access_token 由前端从远程网关 `get_access_token` 取得后透传）。公开无鉴权——mofang 是 C 端另一 token 体系本服务验不了，凭证有效性由小鹅通侧校验，决策见 [PLAN-live.md](PLAN-live.md)。
+对应 mofang 前端 `src/services/live/index.ts`（直播间中转页账号打通）。真实环境该路径走远程网关 guyuzhoudb 域，本服务为本地复刻：纯透传小鹅通开放平台 `xe.login.url/1.0.0`，**不持有小鹅通 secret**（access_token 由前端从远程网关 `get_access_token` 取得后透传）。公开无鉴权——mofang 是 C 端另一 token 体系本服务验不了，凭证有效性由小鹅通侧校验，决策见 [plans/PLAN-live.md](plans/PLAN-live.md)。
 
 | # | 方法 | 路径 | 说明 |
 | --- | --- | --- | --- |
@@ -339,7 +339,7 @@ curl -s 'http://localhost:8080/guyuzhoudb/live/get_login_url?user_id=u_1&login_t
 # → {"code":400,"msg":"参数 access_token 不能为空"}
 ```
 
-## 订单系统 Demo 接口（MQ 异步链路，设计决策见 PLAN-order.md）
+## 订单系统 Demo 接口（MQ 异步链路，设计决策见 plans/PLAN-order.md）
 
 创建订单：Gin → MySQL 落库 → 发布 `order.created`（RabbitMQ fanout）→ 库存/积分/通知三消费者（独立进程 `cmd/consumer`）异步处理。
 
@@ -397,7 +397,9 @@ curl -s -X POST 'http://localhost:8080/api/v1/notifications/list' \
 ```
 .
 ├── cmd/server/main.go        # HTTP 入口：加载配置 → 连库/MQ → 建表/种子 → 路由 → 启动
-├── cmd/consumer/main.go      # 消费者入口：库存/积分/通知三队列（订单 Demo，见 PLAN-order.md）
+├── cmd/consumer/main.go      # 消费者入口：库存/积分/通知三队列（订单 Demo，见 plans/PLAN-order.md）
+├── docs/                     # swag 生成物（docs.go/json/yaml），swag init 输出目录
+├── plans/                    # 设计决策与实施记录（PLAN-*.md + 早期 API/调试文档）
 └── internal/
     ├── config/               # 配置：环境变量 + 默认值，组装 MySQL DSN
     ├── database/             # 连接池 + 迁移（schema.sql）+ 种子（teacher_seed.sql / resign_seed.sql / diagnose_seed.sql）
@@ -418,7 +420,7 @@ curl -s -X POST 'http://localhost:8080/api/v1/notifications/list' \
 
 - Go 1.24+
 - Docker（MySQL/Redis/RabbitMQ 统一由 `docker-compose.yml` 编排：`docker compose up -d`，健康状态 `docker compose ps`）
-- 端口避让：本机已装 MySQL（3306）/Redis（6379）时容器映射 **3307/6380**，`.env` 填容器端口，与本机服务并存互不影响（决策见 PLAN-docker.md）
+- 端口避让：本机已装 MySQL（3306）/Redis（6379）时容器映射 **3307/6380**，`.env` 填容器端口，与本机服务并存互不影响（决策见 plans/PLAN-docker.md）
 
 ### 2. 初始化数据库
 
@@ -453,7 +455,7 @@ curl -s 'http://localhost:8080/api/v1/dxsf/teacher/options'
 
 ## 前端管理台（web/）
 
-本仓库自带配套管理台（设计决策与实测记录见 [PLAN-web.md](PLAN-web.md)）：React 18 + Vite + TypeScript(strict) + antd 5，承载本服务全部接口——登录鉴权、用户管理、老师管理（编辑/详情/绑定业务员）、离职转移、诊股记录（状态机 + 富文本）、订单四页（创建/订单/积分/通知）、直播工具调试页。替代旧 Vue2 前端 gyz-admin 的本地联调流（旧项目仍可独立运行，无耦合）。
+本仓库自带配套管理台（设计决策与实测记录见 [plans/PLAN-web.md](plans/PLAN-web.md)）：React 18 + Vite + TypeScript(strict) + antd 5，承载本服务全部接口——登录鉴权、用户管理、老师管理（编辑/详情/绑定业务员）、离职转移、诊股记录（状态机 + 富文本）、订单四页（创建/订单/积分/通知）、直播工具调试页。替代旧 Vue2 前端 gyz-admin 的本地联调流（旧项目仍可独立运行，无耦合）。
 
 ### 启动
 

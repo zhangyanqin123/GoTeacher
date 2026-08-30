@@ -1,4 +1,4 @@
-# 中间件统一编排（MySQL / Redis / RabbitMQ）——Go 服务本身仍跑宿主机（go run），见 PLAN-docker.md
+# 中间件统一编排（MySQL / Redis / RabbitMQ）——Go 服务本身仍跑宿主机（go run），见 plans/PLAN-docker.md
 # 变量插值默认读同目录 .env（与 godotenv 同一文件双用）：DB_USER/DB_PASSWORD 即 go 服务连接凭证，一处配置两边生效
 # 端口避让本机服务：本机 dmg MySQL 占 3306、brew redis@6.2 占 6379，容器用 3307/6380 并存
 services:
@@ -11,7 +11,7 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
     environment:
-      # root 密码复用 DB_PASSWORD：学习项目取舍，不为此引入新键（见 PLAN-docker.md）
+      # root 密码复用 DB_PASSWORD：学习项目取舍，不为此引入新键（见 plans/PLAN-docker.md）
       # 密码用 :? 语法强制必填——缺失/为空即报错退出，无内置默认值，真实密码只存在于 .env（不进 git）
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?请在项目根 .env 设置 DB_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME:-handicap_db}
