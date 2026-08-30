@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目定位
 
-Go 学习项目 `handicap-service`：chatSys（老师管理/离职转移）+ 诊股记录接口 + 直播小鹅通透传。**核心约束：chatSys 与诊股接口的 JSON 键名全链路 snake_case（`page_index`/`dept_id`/`original_teacher_id`），与前端 gyz-admin 对接页面的键名严格一致**（2026-08-18 由 camelCase 整体迁移，决策见 plans/PLAN-api-snake-case.md）。新增字段一律蛇形；URL 路径段（如 `bindSales`）不在此约束内。新增/修改接口前先读对应 `plans/PLAN-*.md` 了解设计决策（设计文档统一在 `plans/`，`docs/` 仅放 swag 生成物）。配套管理台前端在与本仓库同级的 `../GoProject-web/`（React + Vite + TS + antd 5，承载本服务全部接口，见 plans/PLAN-web.md）——接口改动可能需同步其页面与 service 层。
+Go 学习项目 `handicap-service`：chatSys（老师管理/离职转移）+ 诊股记录接口 + 直播小鹅通透传。**核心约束：chatSys 与诊股接口的 JSON 键名全链路 snake_case（`page_index`/`dept_id`/`original_teacher_id`），与前端 gyz-admin 对接页面的键名严格一致**（2026-08-18 由 camelCase 整体迁移，决策见 plans/PLAN-api-snake-case.md）。新增字段一律蛇形；URL 路径段（如 `bindSales`）不在此约束内。新增/修改接口前先读对应 `plans/PLAN-*.md` 了解设计决策（设计文档统一在 `plans/`，`docs/` 仅放 swag 生成物）。**本项目的配套前端项目是 `GoProject-web`，不是 gyz-admin**。两者关系：`GoProject-web/`（与 GoProject 同级的独立目录，React + Vite + TS + antd 5）是当前承载本服务全部接口的管理台（见 plans/PLAN-web.md），接口改动需同步其页面与 service 层；gyz-admin 是仓库外的旧 Vue2 对接前端（snake_case 键名约束的历史来源，仍独立运行、与本服务无耦合）。
 
 ## 常用命令
 
@@ -48,7 +48,7 @@ handler → service → repository → model
 
 service 层定义哨兵错误（`ErrTeacherNotFound` 等），handler 用 `errors.Is` 映射 HTTP 状态码（404/400）。响应统一走 `internal/response`：`{code, msg, data}`，写操作 msg 用约定中文（`编辑成功`/`转移成功` 等，非 `ok`），查询类为 `success`。失败 msg 为中文可展示文案（前端拦截器直接弹 `error.response.data.msg`）：哨兵错误文本即文案，handler 透传 `err.Error()`；HTTP 状态码保留 4xx/5xx 语义（不切恒 200，保留监控/网关 5xx 告警）。
 
-### 响应格式约定（对接前端 gyz-admin，改动接口时勿破坏）
+### 响应格式约定（对接前端 gyz-admin 与 GoProject-web，改动接口时勿破坏）
 
 - JSON 键名全链路 snake_case：model `json:"..."` tag、handler `c.Query` 参数名、Swagger `@Param`、请求/响应体均蛇形（`db` tag 本就蛇形，两者天然同名）；分页参数 `page_index`/`page_size`
 - 时间输出 `YYYY-MM-DD HH:mm:ss`：DATETIME 列用 `model.DateTimeString`（sql.Scanner 在扫描点格式化，避免 RFC3339 带 T）；NULL 扫为空串
