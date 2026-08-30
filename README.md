@@ -2,6 +2,8 @@
 
 Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + 诊股记录接口。数据从 MySQL 查询返回（非硬编码），首次启动自动建表并写入种子数据。业务接口统一 Bearer token 鉴权（见下文「鉴权」）。
 
+配套管理台前端在 `web/`（React + Vite + TypeScript + antd 5，承载本服务全部接口，见 [PLAN-web.md](PLAN-web.md) 与下文「前端管理台」）。
+
 ## 技术栈
 
 | 组件 | 选型 | 说明 |
@@ -451,6 +453,29 @@ curl -s -X POST 'http://localhost:8080/api/v1/dxsf/teacher/list' \
 # 下拉选项
 curl -s 'http://localhost:8080/api/v1/dxsf/teacher/options'
 ```
+
+## 前端管理台（web/）
+
+本仓库自带配套管理台（设计决策与实测记录见 [PLAN-web.md](PLAN-web.md)）：React 18 + Vite + TypeScript(strict) + antd 5，承载本服务全部接口——登录鉴权、用户管理、老师管理（编辑/详情/绑定业务员）、离职转移、诊股记录（状态机 + 富文本）、订单四页（创建/订单/积分/通知）、直播工具调试页。替代旧 Vue2 前端 gyz-admin 的本地联调流（旧项目仍可独立运行，无耦合）。
+
+### 启动
+
+```bash
+cd web
+npm install
+npm run dev        # :5173，dev proxy /api 与 /guyuzhoudb → http://localhost:8080
+```
+
+- 前置：`go run ./cmd/server` 已在 :8080 运行（MySQL/Redis 依赖见「快速开始」）；订单异步链路另需 RabbitMQ + `go run ./cmd/consumer`
+- 登录账号：种子 admin/admin123
+- `npm run typecheck` 类型检查；`npm run build` 生产构建（产物在 `web/dist/`）
+
+### 契约要点（与后端严格对齐，改动接口时勿破坏）
+
+- 登录失败也 HTTP 200 + `code:400`，`token` 在 body 根；错误文案含「密码」时前端定位密码输入框
+- 分页入参 `page_index`/`page_size`，列表返回 `data.list`/`data.count`；绑定业务员列表回显驼峰 `pageIndex/pageSize` 为唯一特例
+- 诊股/订单列表数值筛选必须是 JSON number（字符串一律 400）；`status` 类字段输出字符串 `"1"/"0"`
+- 审核目标状态由前端换算直传（专业通过 4 / 驳回 3，合规通过 6 / 驳回 5），集中在 `web/src/constants/diagnose.ts`
 
 ## 常见问题
 
