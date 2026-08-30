@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目定位
 
-Go 学习项目 `handicap-service`：chatSys（老师管理/离职转移）+ 诊股记录接口。**核心约束：chatSys 与诊股接口的 JSON 键名全链路 snake_case（`page_index`/`dept_id`/`original_teacher_id`），与前端 gyz-admin 对接页面的键名严格一致**（2026-08-18 由 camelCase 整体迁移，决策见 plans/PLAN-api-snake-case.md）。新增字段一律蛇形；URL 路径段（如 `bindSales`）不在此约束内。新增/修改接口前先读对应 `plans/PLAN-*.md` 了解设计决策（设计文档统一在 `plans/`，`docs/` 仅放 swag 生成物）。
+Go 学习项目 `handicap-service`：chatSys（老师管理/离职转移）+ 诊股记录接口 + 直播小鹅通透传。**核心约束：chatSys 与诊股接口的 JSON 键名全链路 snake_case（`page_index`/`dept_id`/`original_teacher_id`），与前端 gyz-admin 对接页面的键名严格一致**（2026-08-18 由 camelCase 整体迁移，决策见 plans/PLAN-api-snake-case.md）。新增字段一律蛇形；URL 路径段（如 `bindSales`）不在此约束内。新增/修改接口前先读对应 `plans/PLAN-*.md` 了解设计决策（设计文档统一在 `plans/`，`docs/` 仅放 swag 生成物）。配套管理台前端在本仓库 `web/`（React + Vite + TS + antd 5，承载本服务全部接口，见 plans/PLAN-web.md）——接口改动可能需同步其页面与 service 层。
 
 ## 常用命令
 
@@ -32,13 +32,14 @@ swag init -g cmd/server/main.go -o docs   # 接口注释改动后重新生成 Sw
 handler → service → repository → model
 ```
 
-- `internal/router/router.go` 是唯一组装点：`repository.New(db) → service.New(repo, rdb, secret, ttl) → 各 handler`。repository 与 service 均为**单一结构体**，按业务域拆文件，不按实体建多 struct
-- `cmd/server/main.go`：加载配置 → 连 MySQL/Redis → `Migrate`（幂等建表 + 存量列型升级）→ `Seed` → 路由启动
+- `internal/router/router.go` 是唯一组装点：`repository.New(db) → service.New(repo, rdb, secret, ttl, xiaoeBase, publisher) → 各 handler`。repository 与 service 均为**单一结构体**，按业务域拆文件，不按实体建多 struct。publisher 参数为 `mq.Publisher` 接口（订单事件发布），接口定义在 service 侧、amqp 实现在 `internal/mq`，避免 mq→service 依赖环
+- `cmd/server/main.go`：加载配置 → 连 MySQL/Redis/RabbitMQ（均 fail-fast）→ `Migrate`（幂等建表 + 存量列型升级）→ `Seed` → 路由启动
+- 订单异步链路是**双进程部署**：`cmd/server`（HTTP 发布端）与 `cmd/consumer`（库存/积分/通知三队列消费者，各队列独立 channel、prefetch=1 手动 ack）完全独立，测订单链路须两个都起；MQ 拓扑由 `internal/mq` 幂等声明，消费者先于 server 启动也能建齐 exchange/queue（见 plans/PLAN-order.md）
 - 数据访问是裸 `database/sql`（无 ORM）：动态 WHERE 靠拼 SQL 片段 + args；模糊查询用 `LIKE CONCAT('%',?,'%')`；LIMIT/OFFSET 只能拼常量，参数放最后
 
 ### 鉴权约定（JWT + Redis 白名单，设计决策见 plans/PLAN-auth.md）
 
-- 除 `POST /api/v1/login` 与 `/swagger/**` 外全部挂 `Auth` 中间件（`internal/router/auth.go`）：解析 `Authorization: Bearer` → `service.VerifyAccessToken` 验签 + 白名单比对 → `c.Set` 用户信息（key 常量在 `internal/model/auth.go`）。**新增业务接口默认进鉴权组**（挂 `Auth(svc)` 或放 `authed` 组内）
+- 除 `POST /api/v1/login`、`/swagger/**` 与 `/guyuzhoudb/**`（直播小鹅通透传，mofang 是另一 token 体系本服务验不了，凭证即入参 access_token 由小鹅通侧校验）外全部挂 `Auth` 中间件（`internal/router/auth.go`）：解析 `Authorization: Bearer` → `service.VerifyAccessToken` 验签 + 白名单比对 → `c.Set` 用户信息（key 常量在 `internal/model/auth.go`）。**新增业务接口默认进鉴权组**（挂 `Auth(svc)` 或放 `authed` 组内）
 - 单设备模式：Redis `auth:token:{user_id}` 存当前有效 jti，TTL=JWT 有效期；重新登录覆盖即互踢，`DEL` 即踢人；登出/logout 幂等
 - 401 统一文案 `登录已过期，请重新登录`（哨兵错误 `service.ErrUnauthorized`，不区分失败原因防探测）；Redis 故障映 500（fail-closed）
 - **login 接口是响应约定特例**：失败也返回 HTTP 200 + `code:400`（前端登录页对 reject 值调 `error.includes('密码')`）；`token`/`expire`/`passwd_expired` 在 body 根而非 data 内；`ErrInvalidCredentials` 文案必须含「密码」关键词（前端据此定位密码输入框），勿改措辞
