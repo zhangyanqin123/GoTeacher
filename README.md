@@ -11,7 +11,7 @@ Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + �
 | 语言 | Go 1.24+ | |
 | Web 框架 | [Gin](https://github.com/gin-gonic/gin) | 路由、中间件、JSON 渲染 |
 | 数据访问 | database/sql + [go-sql-driver/mysql](https://github.com/go-sql-driver/mysql) | Go 官方标准库，无 ORM |
-| 数据库 | MySQL 8 | Homebrew 安装 |
+| 数据库 | MySQL 8 | Docker 容器（docker-compose 统一编排 MySQL/Redis/RabbitMQ，见 PLAN-docker.md） |
 | 缓存 | [go-redis/v9](https://github.com/redis/go-redis) | 鉴权白名单（token 主动失效） |
 | 消息队列 | [RabbitMQ](https://www.rabbitmq.com/) + [amqp091-go](https://github.com/rabbitmq/amqp091-go) | 订单事件 order.created fanout 广播（订单 Demo，见 PLAN-order.md） |
 | 鉴权 | [golang-jwt/jwt/v5](https://github.com/golang-jwt/jwt) + bcrypt | JWT HS256 签发 + Redis 白名单 |
@@ -349,9 +349,8 @@ curl -s 'http://localhost:8080/guyuzhoudb/live/get_login_url?user_id=u_1&login_t
 ### 启动（两个进程）
 
 ```bash
-# 依赖 RabbitMQ（Docker，管理台 :15672 guest/guest）：
-docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
-# 弱网可经镜像加速拉取：docker pull docker.m.daocloud.io/library/rabbitmq:3-management
+# 依赖已并入 docker-compose（MySQL/Redis/RabbitMQ 一条命令起齐，见「快速开始」；RabbitMQ 管理台 :15672 guest/guest）
+# 弱网可经镜像加速拉取：docker pull docker.m.daocloud.io/library/<image>:<tag> 后 docker tag 成 compose 里的目标名
 go run ./cmd/server     # HTTP 发布端（:8080）
 go run ./cmd/consumer   # 三个消费者（独立进程，可单独重启观察积压/重投）
 ```
@@ -418,19 +417,17 @@ curl -s -X POST 'http://localhost:8080/api/v1/notifications/list' \
 ### 1. 环境要求
 
 - Go 1.24+
-- MySQL 8（未安装先执行：`brew install mysql && brew services start mysql`）
-- Redis（鉴权白名单依赖。本机用版本化 formula：`brew install redis@6.2`，keg-only 不进 PATH，启动 `/usr/local/opt/redis@6.2/bin/redis-server --daemonize yes`）
+- Docker（MySQL/Redis/RabbitMQ 统一由 `docker-compose.yml` 编排：`docker compose up -d`，健康状态 `docker compose ps`）
+- 端口避让：本机已装 MySQL（3306）/Redis（6379）时容器映射 **3307/6380**，`.env` 填容器端口，与本机服务并存互不影响（决策见 PLAN-docker.md）
 
 ### 2. 初始化数据库
 
-```bash
-mysql -u root -e "CREATE DATABASE IF NOT EXISTS handicap_db CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;"
-```
+无需手工建库：容器 `MYSQL_DATABASE=handicap_db` 自动建库（utf8mb4_0900_ai_ci），首次 `docker compose up -d` 即完成；空库启动 go 服务自动建表 + 种子。
 
 ### 3. 配置环境变量
 
 ```bash
-cp .env.example .env   # 按需修改 DB_PASSWORD；JWT_SECRET 必填（openssl rand -hex 32 生成）
+cp .env.example .env   # 按需修改 DB_USER/DB_PASSWORD（对齐 compose 的 MYSQL_USER）与端口（容器 3307/6380）；JWT_SECRET 必填（openssl rand -hex 32 生成）
 ```
 
 ### 4. 启动
@@ -482,9 +479,9 @@ npm run dev        # :5173，dev proxy /api 与 /guyuzhoudb → http://localhost
 | 现象 | 原因与解决 |
 | --- | --- |
 | 连接报 `error 1045` | 密码错误，检查 `.env` 的 `DB_PASSWORD` |
-| 连接报 `error 2002` | MySQL 未启动：`brew services start mysql` |
-| 认证失败（caching_sha2_password） | 兜底改回旧插件：`ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '<密码>';` |
-| server 启动报 `dial rabbitmq` | RabbitMQ 容器未起：`docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management`；连接串在 `.env` 的 `RABBITMQ_URL`（订单 Demo 对 MQ fail-fast） |
+| 连接报 `error 2002` | MySQL 容器未就绪：`docker compose up -d mysql` 后 `docker compose ps` 看 healthy（首次初始化约 1 分钟） |
+| 认证失败（caching_sha2_password） | go-sql-driver 原生支持，容器场景基本不会遇到；本机直连老客户端时兜底 `ALTER USER ... IDENTIFIED WITH mysql_native_password ...` |
+| server 启动报 `dial rabbitmq` | RabbitMQ 容器未起：`docker compose up -d rabbitmq`；连接串在 `.env` 的 `RABBITMQ_URL`（订单 Demo 对 MQ fail-fast） |
 | 下了单但订单一直「处理中」 | 消费者进程没起：另开终端 `go run ./cmd/consumer`（消费与 HTTP 是两个独立进程） |
 
 ## 进阶方向（本期未实现）

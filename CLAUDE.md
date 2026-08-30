@@ -17,9 +17,9 @@ go vet ./...
 swag init -g cmd/server/main.go -o docs   # 接口注释改动后重新生成 Swagger 文档
 ```
 
-- 依赖 MySQL 8：`brew services start mysql`，库需先建：`CREATE DATABASE handicap_db ...utf8mb4_0900_ai_ci`
-- 依赖 Redis（鉴权白名单）：本机为版本化 formula `redis@6.2`（keg-only，二进制在 `/usr/local/opt/redis@6.2/bin/`，不进 PATH），启动：`/usr/local/opt/redis@6.2/bin/redis-server --daemonize yes`；`JWT_SECRET` 必填（空值启动退出），见 PLAN-auth.md
-- 配置走 `.env`（模板 `.env.example`），Homebrew root 初始无密码
+- 依赖 MySQL/Redis/RabbitMQ 统一由 Docker Compose 起：`docker compose up -d`（健康状态 `docker compose ps`，决策见 PLAN-docker.md）。容器映射 **3307/6380** 避让本机 dmg MySQL（3306）与 brew redis@6.2（6379），与本机服务并存互不影响
+- 库无需手工建：compose 的 `MYSQL_DATABASE=handicap_db` 自动建库，`MYSQL_USER/MYSQL_PASSWORD` 插值自 `.env` 的 DB_USER/DB_PASSWORD（app_user）；空库首启 go 服务自动建表+种子；`JWT_SECRET` 必填（空值启动退出），见 PLAN-auth.md
+- 配置走 `.env`（模板 `.env.example`；本仓库实际 `.env` 端口已指容器 3307/6380）
 - 重灌种子：`TRUNCATE TABLE <表>;` 后重启（种子仅在表空时写入，schema/seed SQL 均 go:embed 随二进制发布；admin_user 种子为 Go 代码 bcrypt 动态生成 admin/admin123，不走 seed SQL）
 - 无 lint 工具链，无 Makefile
 - Swagger：handler 注释即文档源（@Summary/@Param/@Success 等），启动后 `/swagger/index.html` 可视化；`docs/` 生成物需随代码提交（`cmd/server/main.go` blank import 依赖）；文档专用响应类型（弥补 `PageResult.List` 为 any 无法展开 schema）集中在 `internal/model/swagger.go`，运行时不使用
