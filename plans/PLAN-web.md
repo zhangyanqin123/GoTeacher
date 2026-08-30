@@ -1,5 +1,7 @@
 # PLAN-web — React 管理台（web/）
 
+> **迁移注记（2026-08-30）**：前端已从本仓库 `web/` 迁出至与 GoProject 同级的独立目录 `GoProject-web/`（历史提交仍在本仓库 git 记录中）。下文所有 `web/...` 路径按 `GoProject-web/...` 映射阅读，其余内容为当时的设计记录、原样保留。
+
 > 配套前端项目 `web/`：React + Vite + TypeScript(strict) + antd 5，承载 handicap-service 后端全部功能，替代旧 Vue2 前端 gyz-admin 的联调角色（旧项目仅参考交互形态，不复用代码与工具链）。
 > 已确认决策：直播透传接口做成「直播工具」调试页；富文本用 @wangeditor + dompurify；绑定业务员手输 user_ids（后端无业务员候选接口）；目录名 `web/`。
 

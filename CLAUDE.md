@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目定位
 
-Go 学习项目 `handicap-service`：chatSys（老师管理/离职转移）+ 诊股记录接口 + 直播小鹅通透传。**核心约束：chatSys 与诊股接口的 JSON 键名全链路 snake_case（`page_index`/`dept_id`/`original_teacher_id`），与前端 gyz-admin 对接页面的键名严格一致**（2026-08-18 由 camelCase 整体迁移，决策见 plans/PLAN-api-snake-case.md）。新增字段一律蛇形；URL 路径段（如 `bindSales`）不在此约束内。新增/修改接口前先读对应 `plans/PLAN-*.md` 了解设计决策（设计文档统一在 `plans/`，`docs/` 仅放 swag 生成物）。配套管理台前端在本仓库 `web/`（React + Vite + TS + antd 5，承载本服务全部接口，见 plans/PLAN-web.md）——接口改动可能需同步其页面与 service 层。
+Go 学习项目 `handicap-service`：chatSys（老师管理/离职转移）+ 诊股记录接口 + 直播小鹅通透传。**核心约束：chatSys 与诊股接口的 JSON 键名全链路 snake_case（`page_index`/`dept_id`/`original_teacher_id`），与前端 gyz-admin 对接页面的键名严格一致**（2026-08-18 由 camelCase 整体迁移，决策见 plans/PLAN-api-snake-case.md）。新增字段一律蛇形；URL 路径段（如 `bindSales`）不在此约束内。新增/修改接口前先读对应 `plans/PLAN-*.md` 了解设计决策（设计文档统一在 `plans/`，`docs/` 仅放 swag 生成物）。配套管理台前端在与本仓库同级的 `../GoProject-web/`（React + Vite + TS + antd 5，承载本服务全部接口，见 plans/PLAN-web.md）——接口改动可能需同步其页面与 service 层。
 
 ## 常用命令
 
