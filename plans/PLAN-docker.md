@@ -1,6 +1,6 @@
 # PLAN-docker：容器化编排（中间件 + Go 服务，MySQL / Redis / RabbitMQ / server / consumer）
 
-日期：2026-08-30（中间件三件套）；2026-08-31 追加 Go 服务容器化
+日期：2026-08-30（中间件三件套）；2026-08-31 追加 Go 服务容器化；同日三改前端镜像版本化发版
 
 ## 背景
 
@@ -42,6 +42,8 @@ server 不映射宿主机端口：8080 空闲留给 go run（与容器化全栈�
 9. **/health 探针与优雅退出（08-31，代码改动）**：`router.go` 新增公开免鉴权 `GET /health`（`response.OK` → 200，纯进程探活**不 ping 依赖**——中间件挂了重启 server 容器无意义且中断在途请求，依赖可达性由启动 fail-fast 保证；日后要 readiness 另加 /ready 不污染 liveness）；`cmd/server/main.go` 由 `r.Run` 改 `http.Server` + `signal.NotifyContext(SIGINT,SIGTERM)` + `Shutdown(10s)`（风格对齐 cmd/consumer；`errors.Is(err, http.ErrServerClosed)` 过滤正常退出，10s < compose `stop_grace_period: 15s`）。consumer 无端口不设 healthcheck：唯一进程即 PID 1，进程退出容器即退出，restart 负责拉起。
 10. **前端容器网络直连 + 撤 profile + 去端口映射（08-31 二改）**：GoProject-web 容器加入 `goproject_default` 网络（`docker run --network`，前端独立仓库、不纳入本 compose，避免跨仓编排），nginx `API_UPSTREAM` 直指 `http://handicap-server:8080`（容器名 + 容器内端口），去掉 `host.docker.internal` 绕宿主机一圈的依赖；server 随之去掉 `ports: "8080:8080"`——宿主机 8080 永远留给 go run，容器化全栈与宿主机开发流并存零冲突。app profile 的初衷就是避 8080 冲突（决策 8），端口不冲突后失去存在意义，server/consumer 撤掉 `profiles: ["app"]`，`up -d` 即全栈。代价与对策：宿主机浏览器失去 :8080 直连入口，Swagger 改走前端 nginx `/swagger` 反代（前端 template 反代正则加 `swagger`）；nginx 静态 `proxy_pass` 在启动时解析容器名，须先起后端 compose 再起前端容器，顺序颠倒靠前端 `--restart unless-stopped` 反复拉起自愈。
 
+11. **前端镜像版本化发版（08-31 三改，deploy.sh 落在前端仓库）**：此前前端发版是单 `latest` tag 重建即覆盖，零历史版本、无法回滚。改为前端仓库单脚本 `deploy.sh`（`deploy [tag]` / `rollback [tag|prev]` / `list` / `prune [-n]`），核心约定：**tag 规则 `v日期-时分秒-git短hash`**（脏工作区加 `-dirty` 不阻塞、同秒撞名加 `-2`；手动传 `v1.2.0` 覆盖）；**容器运行具体版本 tag**（`docker inspect {{.Config.Image}}` 即当前版本，零额外状态文件，事实来源=git+docker images+镜像内 `IMAGE_TAG` env 三层）；**latest 是当前运行版本的指针别名**（deploy/rollback 成功后 `docker tag` 重指，杜绝「latest 是最新构建但线上是旧版」的认知分裂）。**两段式自动回滚**：build 失败 `set -e` 退出旧容器毫发无损（最重要的安全性质）；切换后健康门禁（2s 轮询、预算 60s，unhealthy/exited 即刻失败 dump 日志）失败则自动切回上一版——**回滚用镜像 ID 不用 tag 引用**（裸名 `goproject-web` 会被重打的 latest 误导），回滚再失败打印手工恢复命令退出。配套 Dockerfile 两处：HEALTHCHECK `--interval` 30s→5s（健康门禁从 ~30s 降到秒级）；`ARG/ENV IMAGE_TAG` 版本号打进镜像（tag 被 prune 后 `docker inspect` 仍可溯源）。**prune** 保留最近 `KEEP`(默认5) 个版本：按镜像 ID 去重（latest 与版本同 ID 只算一行）、当前运行版本计入名额但永不删除、`-n` 干跑+确认。**排序按 tag 字典序不按 docker images 输出**——BuildKit 层缓存命中时连续构建的镜像 `CreatedAt` 完全相同，docker images 顺序不可靠（实测三镜像同秒），tag 含定长时间戳字典序即构建序。**否决前端 compose 化**（单服务 compose + `image: ${TAG}`）：compose 只解决 run，tag 规则/构建打标/prune 仍要脚本，等于两份 run 参数事实来源必漂移，且与决策 10「不纳入 compose」精神一致。**边界**：健康门禁只探 `/` 静态页，后端反代故障不触发回滚（nginx 静态站的合理边界）；rm→run 有 1~2s 停机窗口，自用环境接受（零停机预验换绑列后续项）。
+
 ## 实测记录（2026-08-30）
 
 - **MySQL 首启初始化约 2 分钟**：entrypoint 临时服务器阶段只走 socket 不监听 TCP（日志 `port: 0`），期间 `mysqladmin ping -h 127.0.0.1` 连不上 → healthcheck 报 unhealthy 属预期误判，等 `ready for connections ... port: 3306` 后转 healthy。
@@ -68,6 +70,15 @@ server 不映射宿主机端口：8080 空闲留给 go run（与容器化全栈�
 - 全链路验证：前端容器内 `wget http://handicap-server:8080/health` 200（容器名 DNS + 网络连通）/ 经前端 `:80` nginx 登录 200「登录成功」/ `/swagger/index.html` 经前端反代 200（去端口映射后的新文档入口）/ `lsof :8080` 空闲。
 - **并存零冲突验证（本次改动核心卖点）**：宿主机起 go 二进制占 8080（`/health` 200）的同时，前端 `:80` 登录依旧 200（走容器 server）——容器化全栈与宿主机 `go run` 开发流真正并存、互不影响，验证后进程已清理。
 
+## 实测记录（2026-08-31 三改，前端镜像版本化发版）
+
+- 全链路验证：连续 deploy 产生 `v20260831-1603xx/1606xx/1608xx` 三版本（旧版全保留）→ `rollback prev` 正确回上一版（160801→160630，排序修复前会错回更旧的 160357）→ `KEEP=2 prune -n` 干跑清单正确 → 执行后恰剩 2 版 + latest，当前运行版本不在删除清单；`curl :80` 全程 200；build 失败路径（`NODE_IMAGE=no-such-image:zzz`）退出码 1 且旧容器原样 healthy。
+- **BuildKit 层缓存导致镜像 `CreatedAt` 失真（本次最大坑）**：源码未变连续构建的三个镜像 CreatedAt 完全相同（同一秒），`docker images` 默认排序不可靠——依赖它做「保留最近 N 个」/「回滚上一版」会出错。修复：排序一律按 tag 字典序（tag 含定长时间戳，字典序即构建序）。
+- **macOS bash 3.2 的 `$var` 紧跟多字节字符吞字节**：`"$pid）"`（全角括号）被解析成变量名 `pid+括号字节`，`set -u` 报 unbound variable（报错信息变量名带乱码即此症状）。修复：后跟中文标点的变量一律 `${var}`。
+- **lsof COMMAND 列 9 字符截断**：`com.docker` 显示为 `com.docke`，前缀排除 `^(com\.docke|ControlCe)`（ControlCenter 同理）才能正确判定「80 被非 docker 进程占用」。
+- **层缓存让失败路径测试失真**：`NPM_REGISTRY=https://invalid.example.com` 未能触发 build 失败——package.json/lock 未变时 `npm ci` 层 CACHED 根本不访问 registry；验证 build 失败保护要用「拉不到基础镜像」（`NODE_IMAGE=不存在的镜像`）。
+- 耗时参考：HEALTHCHECK interval 收紧 5s 后健康门禁秒级通过（改前 ~30s）；层缓存全命中时 deploy 构建 ~2s，全量构建 ~70s（vite build 32s + npm ci）；单版本镜像 64.5MB，KEEP=5 约占 320MB。
+
 ## 常用命令
 
 ```bash
@@ -78,8 +89,10 @@ docker compose stop server     # 优雅停 server（SIGTERM，15s 宽限）
 docker compose down            # 全停（volume 保留）
 docker compose down -v         # 停并清 volume（= 清空数据库重灌种子，慎重）
 docker builder prune -f        # 清构建缓存（build 后 VM 内存紧张/告警时必做，见实测记录）
-# 前端容器（GoProject-web 仓库）：先起本 compose 再起前端（nginx 启动时解析容器名）
-docker run -d -p 80:80 --name goproject-web --network goproject_default --restart unless-stopped goproject-web
+# 前端发版/回滚（GoProject-web 仓库的 deploy.sh）：先起本 compose 再发前端（nginx 启动时解析容器名）
+./deploy.sh deploy            # 构建版本镜像并上线（旧版本保留，build 失败不动旧容器，健康门禁失败自动回滚）
+./deploy.sh rollback prev     # 回滚上一版（rollback <tag> 指定历史版；不带参数列出版本）
+./deploy.sh list              # 版本列表（标注当前运行）
 ```
 
 ## 后续项（本期不做）
@@ -90,4 +103,5 @@ docker run -d -p 80:80 --name goproject-web --network goproject_default --restar
 - `/ready` 就绪探针（ping 依赖，供滚动发布判断；与 /health 的 liveness 分离）
 - `.env` 拆分 `MYSQL_ROOT_PASSWORD` 独立键（当前复用 DB_PASSWORD）
 - 镜像加 `USER nobody` 运行时加固（app 零写盘可行，当前保留 root 便于 exec sh 调试）
+- 前端零停机发版（临时端口预验 + 换绑，消除 rm→run 的 1~2s 停机窗口；自用环境当前不值当）
 - CI 构建镜像（当前仅本机构建）
