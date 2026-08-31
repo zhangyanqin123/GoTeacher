@@ -1,6 +1,7 @@
-# 中间件 + Go 服务统一编排——app 服务挂 profiles: ["app"]，默认 up 只起三件套，见 plans/PLAN-docker.md
-#   docker compose up -d                → 只起中间件，宿主机 go run 开发流不变
-#   docker compose --profile app up -d  → 全栈（中间件 + server + consumer）
+# 中间件 + Go 服务统一编排——server/consumer 不挂 profile，up 即全栈，见 plans/PLAN-docker.md
+#   docker compose up -d --build  → 全栈（中间件 + server + consumer）
+#   server 不映射宿主机端口：前端容器 GoProject-web 经 compose 网络直连 handicap-server:8080，
+#   宿主机 8080 永远留给 go run——容器化全栈与宿主机开发流并存零冲突
 # 变量插值默认读同目录 .env（与 godotenv 同一文件双用）：DB_USER/DB_PASSWORD 即 go 服务连接凭证，一处配置两边生效
 # 端口避让本机服务：本机 dmg MySQL 占 3306、brew redis@6.2 占 6379，容器用 3307/6380 并存
 services:
@@ -60,7 +61,7 @@ services:
       timeout: 15s # rabbitmq-diagnostics 是 erlang 脚本，VM 资源紧张时冷执行 >5s（实测踩坑，5s 曾致 depends_on 误判 unhealthy）
       retries: 30 # 冷启动（节点 + management 插件初始化 >2 分钟）不够 12 次会误判 unhealthy
 
-  # ==================== app profile：Go 服务容器化（默认不激活）====================
+  # ==================== Go 服务容器化 ====================
   # 单镜像双二进制（Dockerfile 一个 builder 产出 /app/server 与 /app/consumer），
   # consumer 用 command 覆盖启动另一个，避免双镜像版本漂移（决策见 plans/PLAN-docker.md）
   server:
@@ -73,7 +74,6 @@ services:
         GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
     image: handicap-server:latest
     container_name: handicap-server
-    profiles: ["app"]
     restart: unless-stopped
     environment:
       # 容器网络内直连服务名；端口是容器内端口（3306/6379/5672），不是宿主机映射端口 3307/6380
@@ -90,8 +90,9 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       GIN_MODE: release # gin 读 GIN_MODE 关 [GIN-debug] 输出（Logger/Recovery 中间件保留）
       TZ: Asia/Shanghai # 对齐 DSN Loc: time.Local 与 mysql 容器时区，防 DATETIME 偏 8h
-    ports:
-      - "8080:8080" # 前端容器 GoProject-web 的 nginx proxy_pass host.docker.internal:8080 零改动的关键
+    # 无宿主机端口映射：前端容器 GoProject-web 经 goproject_default 网络直连
+    # handicap-server:8080（容器名 + 容器内端口）；宿主机 8080 永远留给 go run（并存零冲突），
+    # 浏览器 Swagger/接口文档改走前端 nginx 的 /swagger 反代入口
     depends_on:
       mysql: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -115,7 +116,6 @@ services:
     image: handicap-server:latest
     container_name: handicap-consumer
     command: ["/app/consumer"] # 唯一差异：起另一个二进制
-    profiles: ["app"]
     restart: unless-stopped
     environment:
       DB_HOST: mysql

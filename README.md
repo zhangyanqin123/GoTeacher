@@ -441,22 +441,22 @@ go run ./cmd/server
 
 首次启动自动执行：建表（幂等，含 admin_user）→ 表为空则插入种子数据（admin_user 种子：admin/admin123）。之后启动直接可用。
 
-### 容器化运行（全栈可选，见 plans/PLAN-docker.md）
+### 容器化运行（全栈，见 plans/PLAN-docker.md）
 
-上述流程是「中间件容器 + Go 宿主机 go run」的开发模式；server/consumer 也可容器化一键全栈：
+`docker compose up -d` 直接起全栈（中间件 + server + consumer）；server 容器不映射宿主机端口，与宿主机 `go run ./cmd/server`（:8080）并存零冲突：
 
 ```bash
-docker compose --profile app up -d --build   # 全栈：三件套中间件 + server + consumer 容器
-docker compose --profile app ps              # 看健康状态（server 有 healthcheck，consumer 无端口仅看 running）
-docker compose --profile app logs -f server consumer
-docker compose --profile app down            # 全停（不带 --profile app 的 down 停不掉 app 容器）
+docker compose up -d --build   # 全栈：三件套中间件 + server + consumer 容器
+docker compose ps              # 看健康状态（server 有 healthcheck，consumer 无端口仅看 running）
+docker compose logs -f server consumer
+docker compose down            # 全停（volume 保留）
 ```
 
-- **两种 up 语义**：默认 `docker compose up -d` 只起中间件（开发流不变）；`--profile app` 起全栈。两者都占宿主机 8080，全栈前先停宿主机 `go run ./cmd/server`
+- **端口零冲突**：server 容器不映射宿主机 8080，宿主机 `go run` 开发流不受影响（两者可同时跑）
 - 镜像：多阶段构建（`golang:1.24-alpine` → `alpine:3.21`，约 55MB），单镜像双二进制 `/app/server` 与 `/app/consumer`（consumer 服务 `command` 覆盖）；tzdata + `TZ=Asia/Shanghai` 对齐 DSN 时区、ca-certificates 支撑小鹅通 HTTPS
 - 配置：容器内直连服务名（`DB_HOST=mysql` 等），凭证/`JWT_SECRET` 从 `.env` 插值注入（`:?` 强制必填），**不进镜像层**
 - 弱网：`.env` 末段取消注释 `GO_IMAGE`/`RUNTIME_IMAGE`/`GOPROXY` 换 daocloud/goproxy 源
-- 前端联动：server 容器映射宿主机 `8080:8080`，GoProject-web 容器 nginx 反代 `host.docker.internal:8080` 零改动衔接
+- 前端联动：GoProject-web 容器经 `goproject_default` 网络直连 `handicap-server:8080`（容器名），Swagger 也走前端 `/swagger` 反代；宿主机 8080 空闲留给 go run
 - 构建后建议 `docker builder prune -f`：buildkit 缓存可达数 GB，挤爆 Docker Desktop VM 内存会触发 RabbitMQ 内存告警（AMQP 拒连，详见 PLAN-docker.md 实测记录）
 
 ### 5. 验证
