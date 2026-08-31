@@ -459,6 +459,22 @@ docker compose down            # 全停（volume 保留）
 - 前端联动：GoProject-web 容器经 `goproject_default` 网络直连 `handicap-server:8080`（容器名），Swagger 也走前端 `/swagger` 反代；宿主机 8080 空闲留给 go run
 - 构建后建议 `docker builder prune -f`：buildkit 缓存可达数 GB，挤爆 Docker Desktop VM 内存会触发 RabbitMQ 内存告警（AMQP 拒连，详见 PLAN-docker.md 实测记录）
 
+#### 版本化发版（deploy.sh，对齐前端模式，见 plans/PLAN-docker.md 决策 12）
+
+```bash
+./deploy.sh deploy            # 发版：构建语义版本镜像（缺省 patch+1；minor/major 升段位；或显式 1.2.0）
+                              #   → compose 切换 server/consumer → 双服务健康门禁（120s）→ 失败自动回滚
+./deploy.sh rollback prev     # 回滚上一版（rollback <tag> 回任意历史版；不带参数列版本）
+./deploy.sh list              # 版本列表（标注当前运行）
+./deploy.sh prune [-n]        # 清理旧版本（保留 KEEP=5；-n 干跑）
+CHECK=1 ./deploy.sh deploy    # 构建前先跑 go vet（弱网下 docker build 前快速失败）
+```
+
+- 镜像按语义三段式 tag（`handicap-server:1.0.0` 风格）保留历史版本可回滚；`latest` 只是「当前运行版本」的指针别名；`IMAGE_TAG`/`GIT_REV` 双 ENV 打进镜像溯源（compose 日常 `up -d --build` 落 `dev/unknown`，可区分手动/发版构建）
+- 发版必须走 deploy.sh；手动 `docker compose up -d --build` 仅日常调试（会覆盖 latest 指针且无版本历史），**勿带 APP_TAG**（会打出无 GIT_REV 的版本 tag 污染历史）
+- 停机窗口：容器重建期间（server 优雅停 15s + 启动 + 门禁判定，约 20~60s）前端 API 短暂 502，可 `docker restart goproject-web` 立即恢复（不重启也会 --restart 自愈）
+- 发版耗时：代码已变时 `COPY . .` 层缓存失效，VM 内 go build 全量重编译（15 分钟起，`go mod download` 层仍命中）；deploy.sh 自身已排除出构建上下文（改脚本不触发重编译）
+
 ### 5. 验证
 
 ```bash

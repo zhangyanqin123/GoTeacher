@@ -1,6 +1,6 @@
 # PLAN-docker：容器化编排（中间件 + Go 服务，MySQL / Redis / RabbitMQ / server / consumer）
 
-日期：2026-08-30（中间件三件套）；2026-08-31 追加 Go 服务容器化；同日三改前端镜像版本化发版
+日期：2026-08-30（中间件三件套）；2026-08-31 追加 Go 服务容器化；同日三改前端镜像版本化发版；同日五改后端镜像版本号管理
 
 ## 背景
 
@@ -18,9 +18,9 @@
 └─────────────┘ ─────────────► │ rabbitmq       │  rabbitmq:3-management（volume rabbitmq_data）
                                 ├────────────────┤
                                 │ handicap-server │ ┐
-                                ├────────────────┤ │ 同镜像 handicap-server:latest
-                                │ handicap-      │ │ 单镜像双二进制 /app/server、
-                                │ consumer       │ ┘ /app/consumer（command 覆盖）
+                                ├────────────────┤ │ 同镜像 handicap-server（版本化 tag x.y.z，
+                                │ handicap-      │ │ latest 是指针别名，见决策 12）；单镜像双二进制
+                                │ consumer       │ ┘ /app/server、/app/consumer（command 覆盖）
                                 └────────────────┘
 浏览器 → GoProject-web 容器 :80（nginx）→（goproject_default 网络）→ handicap-server 容器 :8080
 server 不映射宿主机端口：8080 空闲留给 go run（与容器化全栈并存）；Swagger 走前端 /swagger 反代
@@ -43,6 +43,8 @@ server 不映射宿主机端口：8080 空闲留给 go run（与容器化全栈�
 10. **前端容器网络直连 + 撤 profile + 去端口映射（08-31 二改）**：GoProject-web 容器加入 `goproject_default` 网络（`docker run --network`，前端独立仓库、不纳入本 compose，避免跨仓编排），nginx `API_UPSTREAM` 直指 `http://handicap-server:8080`（容器名 + 容器内端口），去掉 `host.docker.internal` 绕宿主机一圈的依赖；server 随之去掉 `ports: "8080:8080"`——宿主机 8080 永远留给 go run，容器化全栈与宿主机开发流并存零冲突。app profile 的初衷就是避 8080 冲突（决策 8），端口不冲突后失去存在意义，server/consumer 撤掉 `profiles: ["app"]`，`up -d` 即全栈。代价与对策：宿主机浏览器失去 :8080 直连入口，Swagger 改走前端 nginx `/swagger` 反代（前端 template 反代正则加 `swagger`）；nginx 静态 `proxy_pass` 在启动时解析容器名，须先起后端 compose 再起前端容器，顺序颠倒靠前端 `--restart unless-stopped` 反复拉起自愈。
 
 11. **前端镜像版本化发版（08-31 三改，deploy.sh 落在前端仓库）**：此前前端发版是单 `latest` tag 重建即覆盖，零历史版本、无法回滚。改为前端仓库单脚本 `deploy.sh`（`deploy [tag]` / `rollback [tag|prev]` / `list` / `prune [-n]`），核心约定：**tag 规则语义化三段式 `x.y.z`（08-31 四改；初版为 `v日期-时分秒-git短hash`，可读性差废弃）**——缺省 patch+1（1.2.3→1.2.4）、`deploy minor`/`deploy major` 升对应段位（bug 修复合新功能的语义区分靠调用者选择）、显式 `1.2.0` 可传；无历史语义版本时首版 1.0.0；版本已存在直接报错（自动 bump 场景递增 patch 避让）；git 短 hash 改由镜像内 `GIT_REV` env 记录（tag 不再含 hash，`IMAGE_TAG`+`GIT_REV` 双 env 溯源）；**容器运行具体版本 tag**（`docker inspect {{.Config.Image}}` 即当前版本，零额外状态文件，事实来源=git+docker images+镜像内 `IMAGE_TAG` env 三层）；**latest 是当前运行版本的指针别名**（deploy/rollback 成功后 `docker tag` 重指，杜绝「latest 是最新构建但线上是旧版」的认知分裂）。**两段式自动回滚**：build 失败 `set -e` 退出旧容器毫发无损（最重要的安全性质）；切换后健康门禁（2s 轮询、预算 60s，unhealthy/exited 即刻失败 dump 日志）失败则自动切回上一版——**回滚用镜像 ID 不用 tag 引用**（裸名 `goproject-web` 会被重打的 latest 误导），回滚再失败打印手工恢复命令退出。配套 Dockerfile 两处：HEALTHCHECK `--interval` 30s→5s（健康门禁从 ~30s 降到秒级）；`ARG/ENV IMAGE_TAG` 版本号打进镜像（tag 被 prune 后 `docker inspect` 仍可溯源）。**prune** 保留最近 `KEEP`(默认5) 个版本：按镜像 ID 去重（latest 与版本同 ID 只算一行）、当前运行版本计入名额但永不删除、`-n` 干跑+确认。**排序按 `sort -t. -k1,1nr -k2,2nr -k3,3nr` 分段数字降序（四改；初版 tag 含时间戳字典序即构建序，改语义版本后字典序有 `1.10.0 < 1.9.0` 的坑；macOS BSD sort 无 `-V`）**、不按 docker images 输出——BuildKit 层缓存命中时连续构建的镜像 `CreatedAt` 完全相同，docker images 顺序不可靠（实测三镜像同秒）；历史 `v2026xxx` tag 首段非数字按 0 沉底，prune 时自然先被清。**否决前端 compose 化**（单服务 compose + `image: ${TAG}`）：compose 只解决 run，tag 规则/构建打标/prune 仍要脚本，等于两份 run 参数事实来源必漂移，且与决策 10「不纳入 compose」精神一致。**边界**：健康门禁只探 `/` 静态页，后端反代故障不触发回滚（nginx 静态站的合理边界）；rm→run 有 1~2s 停机窗口，自用环境接受（零停机预验换绑列后续项）。
+
+12. **后端镜像版本号管理（08-31 五改，deploy.sh 落在本仓库根）**：移植决策 11 的前端模式——语义三段式 tag（`next_version` 从 `docker images` 取最大 bump、无历史首版 1.0.0、撞名 patch 顺延）、`sort -t. -k1,1nr -k2,2nr -k3,3nr` 版本感知降序、build 双打标 `-t repo:tag -t repo:latest`、`ARG/ENV IMAGE_TAG+GIT_REV` 溯源（compose 日常 `up -d --build` 不传版本 build-arg，落 `dev/unknown` 天然区分手动/发版构建）、健康门禁+失败自动回滚、latest 指针别名（deploy/rollback 成功后重指）、prune 按 ID 去重保 KEEP 个、bash 3.2 兼容。**与前端的必要差异（后端本就 compose 管理）**：① 切换载体 `APP_TAG=x.y.z docker compose up -d --no-build --no-deps server consumer`（非 rm+run）——保留 restart/env 插值/优雅停机既有语义，避免脚本复制 run 参数造成双份事实来源（前端否决 compose 化的理由在此反向成立：后端已是多服务 compose，server/consumer 须同镜像同切）；② 门禁覆盖双服务，预算 120s（前端 60s）：server 走 compose Health.Status，consumer 无 healthcheck 无端口（唯一进程即 PID 1）用 running + `RestartCount==0` + 10s 稳定窗 + 就绪日志 `order consumers started`（cmd/consumer/main.go 三队列订阅成功后打出）兜底；③ 回滚锚点是 **tag 而非镜像 ID**（compose `image:` 只认 tag；prune 永不删当前运行 + `require_image` 预检兜底），但**首次版本化部署失败**（无版本 tag 可回）按发版前镜像 ID 恢复：`docker tag <旧ID> latest` 后按 latest 切——build 双打标会覆盖 latest，旧内容只剩 ID 可锚定；④ preflight 增中间件三件套 healthy 检查（`--no-deps` 跳过依赖等待后，中间件门由 preflight 显式承担：任一不 healthy 零容器被动即中止）；⑤ `CHECK=1` → `go vet ./...`（对应前端 typecheck）；⑥ compose `image: handicap-server:${APP_TAG:-latest}` 两处参数化，默认行为不变；⑦ server healthcheck `interval 10s→5s` 对齐前端（最坏 unhealthy 判定 30+5×6=60s 落 120s 预算内）；⑧ deploy/rollback 成功输出前端影响提示（server 重建期间前端 nginx 静态 proxy_pass 短暂 502，可 `docker restart goproject-web` 立即恢复）。**否决项**：不回写 `.env` 的 APP_TAG（latest 指针语义已自洽：`up -d` 不带 APP_TAG = 最近一次成功发版/回滚；回写会引入「.env 指向不存在 tag」「手动 `--build` 覆盖既有版本 tag 污染历史」两类新风险）；prune 不自动 `docker builder prune`（清缓存与发版耗时代价冲突，只打印提示）；consumer 不加 compose healthcheck（无 HTTP 端点，`kill -0` 类探针是伪信号）；不做 ldflags `-X` 二进制版本注入（与前端「版本仅在镜像 ENV」同构）。**实测语义**：`APP_TAG=x up -d --no-build` 镜像缺失时 compose 原子中止（报 `No such image` 前零容器被动），`require_image` 预检只为给干净报错文案。
 
 ## 实测记录（2026-08-30）
 
@@ -88,17 +90,19 @@ server 不映射宿主机端口：8080 空闲留给 go run（与容器化全栈�
 ## 常用命令
 
 ```bash
-docker compose up -d --build   # 全栈：中间件 + server/consumer（改代码后 --build；首次 mysql 初始化约 2 分钟）
+docker compose up -d --build   # 全栈：中间件 + server/consumer（日常调试用；发版走 deploy.sh，见下）
 docker compose ps              # 看健康状态（server healthy、consumer running 才算就绪）
 docker compose logs -f server  # 看业务日志（mysql 首启看 ready for connections ... port: 3306）
 docker compose stop server     # 优雅停 server（SIGTERM，15s 宽限）
 docker compose down            # 全停（volume 保留）
 docker compose down -v         # 停并清 volume（= 清空数据库重灌种子，慎重）
 docker builder prune -f        # 清构建缓存（build 后 VM 内存紧张/告警时必做，见实测记录）
-# 前端发版/回滚（GoProject-web 仓库的 deploy.sh）：先起本 compose 再发前端（nginx 启动时解析容器名）
-./deploy.sh deploy            # 构建语义版本镜像并上线（缺省 patch+1；minor/major 升段位；旧版本保留，build 失败不动旧容器，健康门禁失败自动回滚）
+# 后端发版/回滚（本仓库的 deploy.sh，决策 12；改代码后发版=全量重编译 15 分钟起，脚本内已排除 deploy.sh 自身改动）
+./deploy.sh deploy            # 构建语义版本镜像并切换 server/consumer（缺省 patch+1；minor/major 升段位；健康门禁失败自动回滚）
 ./deploy.sh rollback prev     # 回滚上一版（rollback <tag> 指定历史版；不带参数列出版本）
 ./deploy.sh list              # 版本列表（标注当前运行）
+./deploy.sh prune [-n]        # 清理旧版本（保留 KEEP=5；-n 干跑）
+# 前端发版/回滚（GoProject-web 仓库的 deploy.sh）：先起本 compose 再发前端（nginx 启动时解析容器名）
 ```
 
 ## 后续项（本期不做）

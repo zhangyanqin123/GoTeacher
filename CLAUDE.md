@@ -15,10 +15,13 @@ go test ./...                # 跑全部测试
 go test ./internal/sanitize -run TestRichText -v   # 单个测试
 go vet ./...
 swag init -g cmd/server/main.go -o docs   # 接口注释改动后重新生成 Swagger 文档
-docker compose up -d --build        # 全栈容器化（中间件 + Go server/consumer 容器）
+docker compose up -d --build        # 全栈容器化（中间件 + Go server/consumer 容器；日常调试用，发版走 deploy.sh）
+./deploy.sh deploy                  # 后端版本化发版（缺省 patch+1；minor/major 升段位；双服务健康门禁失败自动回滚，见 PLAN-docker.md 决策 12）
+./deploy.sh rollback prev          # 回滚上一版（rollback <tag> 回任意历史版；list 列版本；prune [-n] 清旧版）
 ```
 
 - 依赖 MySQL/Redis/RabbitMQ 统一由 Docker Compose 起：`docker compose up -d`（健康状态 `docker compose ps`，决策见 plans/PLAN-docker.md）。容器映射 **3307/6380** 避让本机 dmg MySQL（3306）与 brew redis@6.2（6379），与本机服务并存互不影响。`up -d` 即全栈（server/consumer 容器不挂 profile）；server 容器**不映射宿主机端口**，前端容器 GoProject-web 经 `goproject_default` 网络直连 `handicap-server:8080`（容器名）——宿主机 8080 永远留给 `go run`，容器化全栈与宿主机开发流并存零冲突；浏览器 Swagger 入口改走前端 nginx `/swagger` 反代（前端容器先于后端起时靠其 `--restart` 自愈）
+- **后端镜像版本化发版**（`./deploy.sh`，与前端 GoProject-web 同款模式，决策见 PLAN-docker.md 决策 12）：语义三段式 tag，`deploy/rollback/list/prune` 四子命令；容器切换走 `APP_TAG=x.y.z docker compose up -d --no-build --no-deps server consumer`（脚本内部注入，**手动 compose 命令勿带 APP_TAG**，`up -d --build` 带它会打出无 GIT_REV 的版本 tag 污染历史）。`compose up -d` 不带 APP_TAG 时 app 容器用 latest = 最近一次成功发版/回滚的指针别名（故 up -d 与发版流自洽并存）；发版后旧版本镜像保留可回滚。注意发版=代码已变=`COPY . .` 层失效=VM 内全量重编译（15 分钟起，`go mod download` 层仍命中）
 - 库无需手工建：compose 的 `MYSQL_DATABASE=handicap_db` 自动建库，`MYSQL_USER/MYSQL_PASSWORD` 插值自 `.env` 的 DB_USER/DB_PASSWORD（app_user）；空库首启 go 服务自动建表+种子；`JWT_SECRET` 必填（空值启动退出），见 plans/PLAN-auth.md
 - 配置走 `.env`（模板 `.env.example`；本仓库实际 `.env` 端口已指容器 3307/6380）
 - 重灌种子：`TRUNCATE TABLE <表>;` 后重启（种子仅在表空时写入，schema/seed SQL 均 go:embed 随二进制发布；admin_user 种子为 Go 代码 bcrypt 动态生成 admin/admin123，不走 seed SQL）
