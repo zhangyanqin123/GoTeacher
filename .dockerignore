@@ -27,6 +27,8 @@ scripts/
 Dockerfile
 docker-compose.yml
 .dockerignore
+# 发版脚本不参与编译：不排除的话每次改脚本都 invalidate COPY . . 层（发版=全量重编译 15 分钟起）
+deploy.sh
 
 # swag 生成物的外部副本：docs.go 内联 docTemplate（自包含），编译与运行都不读这两个文件。
 # 红线：docs/ 不能整目录排除——cmd/server/main.go blank import "handicap-service/docs"，docs.go 必须在
