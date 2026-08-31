@@ -87,6 +87,15 @@ server 不映射宿主机端口：8080 空闲留给 go run（与容器化全栈�
 - **语义版本排序坑**：字典序 `1.10.0 < 1.9.0`；macOS BSD sort 无 `-V`，用 `sort -t. -k1,1nr -k2,2nr -k3,3nr` 分段数字降序（假 tag 实测 1.10.0 > 1.9.0 正确，历史 `v2026xxx` 非数字首段按 0 沉底）。
 - 同一坑第二次踩：新写的 `$arg（` 又被 bash 3.2 吞进变量名报 unbound variable——后跟中文标点的变量必须 `${var}`，此规约已入记忆但仍需写代码时自查。
 
+## 实测记录（2026-08-31 五改，后端镜像版本号管理）
+
+- 全链路验证：`list` 空历史（仅手工 dev tag，正确提示「首次 deploy 将发 1.0.0」）→ `deploy` 首发 1.0.0（构建 15 分钟，见下）→ 误报 gone 触发完整失败恢复链（见坑 1）→ 修复后 `deploy` 发 1.0.1 上线成功（双容器 `Config.Image=handicap-server:1.0.1`、`IMAGE_TAG=1.0.1`+`GIT_REV=7a7a22f` 双 ENV 溯源、latest 与 1.0.1 同镜像 ID）→ `rollback prev`（1.0.1→1.0.0）→ `rollback 1.0.1`（回指定版）→ `CHECK=1 deploy` 发 1.0.2（go vet 先跑，GIT_REV=81782d9 随 HEAD 更新）→ `deploy 1.1.0`（显式版本号，层缓存秒级）→ 撞名 `deploy 1.0.0` 正确报错 → preflight 拦截（`docker compose stop rabbitmq` 后 deploy 立即报「中间件 rabbitmq 未运行」零切换）→ `prune -n`（版本数 < KEEP=5 正确报无需清理）。`list` 排序 1.1.0 > 1.0.2 > 1.0.1 > 1.0.0 正确（版本感知降序）。
+- **坑 1：`RestartCount` 是 docker inspect 顶层字段，不在 `State` 里**——`{{.State.RestartCount}}` 模板求值报 `map has no entry for key "RestartCount"`，docker inspect 退出 1 → 被脚本 `|| echo gone` 误判「容器消失」。首发 1.0.0 即此误报：门禁 dump 的 consumer 日志明明三队列就绪（`order consumers started`）却报 gone，按设计走了「首次版本化部署失败按发版前镜像 ID 恢复」→ latest 重指旧 ID → FATAL 手工命令——**意外实战验证了首发失败恢复链**，现场回滚到发版前镜像零丢失。正确写法 `{{.RestartCount}}`。教训：**「报 gone 但日志健康」= 探测命令自身报错，先手动跑一遍探测命令再查容器**。
+- **坑 2：Docker Desktop health 状态机偶发卡 starting**——`rollback prev` 第一轮：server 容器 `/health` 连续两次 200（18:40:40/46）后 healthcheck 探测停更、状态 120s 停留 `starting`（starting 是门禁的 continue 态，不立即失败只会耗尽预算超时）；恢复流程第二轮立即正常 healthy。疑 VM 资源压力下探测调度延迟（与已知「VM 内存挤压触发 rabbitmq memory alarm」「diagnostics 冷执行 >5s」同族，当时距 15 分钟全量编译结束仅 4 分钟）。对策（已入 deploy.sh）：server 门禁在 starting 超 20s 后**容器内直探兜底**——`docker exec` 跑与 compose healthcheck 同一条 `wget -q --spider /health`，绕开状态机直接验证服务响应，实测 VM 平稳时走 Health.Status 快路径（~10s 判定），异常时 20s 兜底，均落 120s 预算内。
+- **构建缓存语义（重要预期管理）**：发版=代码已变=`COPY . .` 层缓存失效=VM 内 go build 全量重编译（实测 ~15 分钟；`go mod download` 层键只看 go.mod/go.sum 仍命中）。deploy.sh 已排除出 `.dockerignore`（改脚本不再触发重编译）。1.0.1 的秒级构建是特例：Go 代码未变 + 排除 deploy.sh 后上下文恰等于早前构建的缓存键。「层缓存秒级」只属于「代码不变的重跑」，不属于发版。
+- **compose 缺镜像时原子中止**：`APP_TAG=9.9.9 docker compose up -d --no-build --no-deps server consumer` 在触碰任何容器前报 `No such image`（伴随误导性 pull access denied warning），运行中容器零影响——`require_image` 预检只为给干净报错文案。
+- 停机窗口：切版 = server 优雅停（SIGTERM，15s 宽限内实际秒级）+ 新容器启动 + 门禁判定，全程约 20~40s；期间前端 nginx 静态 proxy_pass 反代 502，`docker restart goproject-web` 立即恢复。
+
 ## 常用命令
 
 ```bash
