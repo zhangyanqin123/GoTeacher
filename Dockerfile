@@ -33,6 +33,14 @@ FROM ${RUNTIME_IMAGE}
 RUN apk add --no-cache tzdata ca-certificates
 ENV TZ=Asia/Shanghai
 
+# 版本溯源（对齐前端 GoProject-web Dockerfile）：语义 tag 不含 hash，代码对应关系靠这两个 ENV，
+# tag 被 prune 后 docker inspect 仍可查。仅 deploy.sh 的 docker build 传精确值；
+# compose 日常 up -d --build 路径不传，落默认值 dev/unknown，天然区分「手动构建」与「发版构建」
+ARG IMAGE_TAG=dev
+ARG GIT_REV=unknown
+ENV IMAGE_TAG=${IMAGE_TAG}
+ENV GIT_REV=${GIT_REV}
+
 WORKDIR /app
 COPY --from=builder /out/server   /app/server
 COPY --from=builder /out/consumer /app/consumer

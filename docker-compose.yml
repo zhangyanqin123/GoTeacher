@@ -72,7 +72,9 @@ services:
         GO_IMAGE: ${GO_IMAGE:-golang:1.24-alpine}
         RUNTIME_IMAGE: ${RUNTIME_IMAGE:-alpine:3.21}
         GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
-    image: handicap-server:latest
+    # APP_TAG 仅由 deploy.sh 发版时注入（APP_TAG=x.y.z up -d --no-build）；手动命令勿带，
+    # 否则 up -d --build 会打出该版本 tag 却走无 GIT_REV 的构建路径，污染版本历史（决策见 PLAN-docker.md）
+    image: handicap-server:${APP_TAG:-latest}
     container_name: handicap-server
     restart: unless-stopped
     environment:
@@ -100,7 +102,7 @@ services:
     healthcheck:
       # 只探进程不 ping 依赖：中间件挂了重启 server 容器无意义且中断在途请求（理由见 PLAN-docker.md）
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/health"]
-      interval: 10s
+      interval: 5s # 对齐前端发版脚本的健康门禁节奏：最坏 unhealthy 判定 = 30+5*6=60s，落在 120s 门禁预算内
       timeout: 3s
       retries: 6
       start_period: 30s # 首启含 Migrate+Seed，留缓冲
@@ -113,7 +115,7 @@ services:
         GO_IMAGE: ${GO_IMAGE:-golang:1.24-alpine}
         RUNTIME_IMAGE: ${RUNTIME_IMAGE:-alpine:3.21}
         GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
-    image: handicap-server:latest
+    image: handicap-server:${APP_TAG:-latest} # 与 server 同 tag：deploy.sh 切换时 APP_TAG 一条 up 同步双服务
     container_name: handicap-consumer
     command: ["/app/consumer"] # 唯一差异：起另一个二进制
     restart: unless-stopped
