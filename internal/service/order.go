@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"math"
 	"math/rand"
+	"strings"
 	"time"
 
 	"handicap-service/internal/model"
@@ -25,6 +26,56 @@ const maxOrderQuantity = 999 // 对齐下单数量上限（防一次买空库存
 // ListProducts 商品下拉（创建订单页）
 func (s *Service) ListProducts(ctx context.Context) ([]model.Product, error) {
 	return s.repo.ListProducts(ctx)
+}
+
+// ---------- 商品管理 CRUD（POST /products/*，见 PLAN-product-crud.md） ----------
+// 商品名不做唯一校验（表无 uk，「有校验无约束」不一致，不引入）；
+// 写前查存在性区分 404，对齐 admin_user 域的查后改模式（管理员改信息非状态机，无需条件 UPDATE 守卫）。
+
+// ListManagedProducts 商品管理列表（分页 + 商品名模糊，默认 pageSize=10 对齐其他列表）
+func (s *Service) ListManagedProducts(ctx context.Context, req model.ProductListReq) (*model.PageResult, error) {
+	pageIndex, pageSize := normalizePage(req.PageIndex, req.PageSize, defaultListPageSize)
+	list, count, err := s.repo.PageListProducts(ctx, model.ProductListFilter{
+		ProductName: strings.TrimSpace(req.ProductName),
+		Offset:      (pageIndex - 1) * pageSize,
+		Limit:       pageSize,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &model.PageResult{List: list, Count: count}, nil
+}
+
+// CreateProduct 新增商品（商品名/价格/库存，binding 层已保证非空与范围）
+func (s *Service) CreateProduct(ctx context.Context, req model.ProductAddReq) error {
+	return s.repo.CreateProduct(ctx, strings.TrimSpace(req.ProductName), req.Price, req.Stock)
+}
+
+// UpdateProduct 编辑商品：存在性 → 落库
+func (s *Service) UpdateProduct(ctx context.Context, req model.ProductEditReq) error {
+	p, err := s.repo.GetProduct(ctx, req.ID)
+	if err != nil {
+		return err
+	}
+	if p == nil {
+		return ErrProductNotFound
+	}
+	return s.repo.UpdateProduct(ctx, req.ID, strings.TrimSpace(req.ProductName), req.Price, req.Stock)
+}
+
+// DeleteProduct 删除商品：存在性 → 物理删除。
+// orders.product_name 冗余快照、无外键，历史订单展示不受影响；但商品已删时在途 MQ 订单
+// 的 DeductProductStock 影响 0 行 → 走 MarkOrderStockFailed 取消并回滚积分/通知（表现同库存不足）。
+// 注意：商品全删光后重启 server，seedProduct 空表会重播种子（既有 seedIfEmpty 行为）。
+func (s *Service) DeleteProduct(ctx context.Context, id int64) error {
+	p, err := s.repo.GetProduct(ctx, id)
+	if err != nil {
+		return err
+	}
+	if p == nil {
+		return ErrProductNotFound
+	}
+	return s.repo.DeleteProduct(ctx, id)
 }
 
 // CreateOrder 创建订单：校验 → 查商品（快照 + 库存预检）→ 落库 → 发 order.created。

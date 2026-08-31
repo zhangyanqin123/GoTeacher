@@ -526,6 +526,64 @@ definitions:
       updated_at:
         type: string
     type: object
+  model.ProductAddReq:
+    properties:
+      price:
+        example: 129
+        type: number
+      product_name:
+        example: 无线充电板
+        maxLength: 100
+        type: string
+      stock:
+        example: 500
+        minimum: 0
+        type: integer
+    required:
+    - price
+    - product_name
+    type: object
+  model.ProductDeleteReq:
+    properties:
+      id:
+        example: 5
+        type: integer
+    required:
+    - id
+    type: object
+  model.ProductEditReq:
+    properties:
+      id:
+        example: 5
+        type: integer
+      price:
+        example: 129
+        type: number
+      product_name:
+        example: 无线充电板
+        maxLength: 100
+        type: string
+      stock:
+        example: 500
+        minimum: 0
+        type: integer
+    required:
+    - id
+    - price
+    - product_name
+    type: object
+  model.ProductListReq:
+    properties:
+      page_index:
+        example: 1
+        type: integer
+      page_size:
+        example: 10
+        type: integer
+      product_name:
+        example: 键盘
+        type: string
+    type: object
   model.ProductListResp:
     properties:
       code:
@@ -535,6 +593,25 @@ definitions:
         items:
           $ref: '#/definitions/model.Product'
         type: array
+      msg:
+        example: success
+        type: string
+    type: object
+  model.ProductManageListResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        properties:
+          count:
+            example: 4
+            type: integer
+          list:
+            items:
+              $ref: '#/definitions/model.Product'
+            type: array
+        type: object
       msg:
         example: success
         type: string
@@ -1792,6 +1869,143 @@ paths:
       summary: 积分列表
       tags:
       - 订单
+  /products/add:
+    post:
+      consumes:
+      - application/json
+      description: 新增商品（商品名 ≤100 字符、价格 >0、库存 ≥0；商品名不做唯一性限制）
+      parameters:
+      - description: 新增商品请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ProductAddReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「新增成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 新增商品
+      tags:
+      - 商品管理
+  /products/delete:
+    post:
+      consumes:
+      - application/json
+      description: 物理删除商品。orders.product_name 冗余快照且无外键，历史订单不受影响；删除后该商品不可下单（404 商品不存在）
+      parameters:
+      - description: 删除商品请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ProductDeleteReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「删除成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 商品不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 删除商品
+      tags:
+      - 商品管理
+  /products/edit:
+    post:
+      consumes:
+      - application/json
+      description: 编辑商品信息（名称/价格/库存全覆盖；库存编辑与消费者异步扣减存在覆盖竞态，人工改数场景可接受）
+      parameters:
+      - description: 编辑商品请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ProductEditReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「编辑成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 商品不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 编辑商品
+      tags:
+      - 商品管理
+  /products/list:
+    post:
+      consumes:
+      - application/json
+      description: 分页查询商品（product_name 模糊匹配，传空串/null 表示未填；商品管理 tab 用，区别于 /orders/products
+        全量下拉）
+      parameters:
+      - description: 查询条件（product_name 模糊匹配，传空串/null 表示未填）
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ProductListReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.ProductManageListResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 商品列表
+      tags:
+      - 商品管理
 schemes:
 - http
 securityDefinitions:

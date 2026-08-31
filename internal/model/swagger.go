@@ -140,6 +140,16 @@ type ProductListResp struct {
 	Data []Product `json:"data"`
 }
 
+// ProductManageListResp 商品管理列表响应（POST /products/list，分页形状；与下拉的 ProductListResp 区分）
+type ProductManageListResp struct {
+	Code int    `json:"code" example:"200"`
+	Msg  string `json:"msg"  example:"success"`
+	Data struct {
+		List  []Product `json:"list"`
+		Count int       `json:"count" example:"4"`
+	} `json:"data"`
+}
+
 // PointsListResp 积分列表响应（POST /points/list）
 type PointsListResp struct {
 	Code int    `json:"code" example:"200"`

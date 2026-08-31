@@ -194,3 +194,138 @@ func (h *OrderHandler) NotificationsList(c *gin.Context) {
 	}
 	response.OKMsg(c, "success", result)
 }
+
+// ---------- 商品管理 CRUD（POST /products/*，见 PLAN-product-crud.md） ----------
+
+// ProductList POST /api/v1/products/list
+//
+// 错误映射：body 绑定失败 → 400；其他 → 500
+//
+//	@Summary		商品列表
+//	@Description	分页查询商品（product_name 模糊匹配，传空串/null 表示未填；商品管理 tab 用，区别于 /orders/products 全量下拉）
+//	@Tags			商品管理
+//	@Accept			json
+//	@Produce		json
+//	@Param			body body model.ProductListReq true "查询条件（product_name 模糊匹配，传空串/null 表示未填）"
+//	@Success		200 {object} model.ProductManageListResp
+//	@Failure		400 {object} response.Response "请求体非法"
+//	@Failure		500 {object} response.Response "服务器内部错误"
+//	@Security		ApiKeyAuth
+//	@Router			/products/list [post]
+func (h *OrderHandler) ProductList(c *gin.Context) {
+	var req model.ProductListReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Error("bind product list request failed", "err", err)
+		response.Fail(c, 400, 400, "请求体非法")
+		return
+	}
+
+	result, err := h.svc.ListManagedProducts(c.Request.Context(), req)
+	if err != nil {
+		slog.Error("list products failed", "err", err)
+		response.Fail(c, 500, 500, "服务器内部错误")
+		return
+	}
+	response.OKMsg(c, "success", result)
+}
+
+// ProductAdd POST /api/v1/products/add
+//
+// 错误映射：body 绑定失败 → 400；其他 → 500
+//
+//	@Summary		新增商品
+//	@Description	新增商品（商品名 ≤100 字符、价格 >0、库存 ≥0；商品名不做唯一性限制）
+//	@Tags			商品管理
+//	@Accept			json
+//	@Produce		json
+//	@Param			body body model.ProductAddReq true "新增商品请求体"
+//	@Success		200 {object} model.ActionResp "msg 固定「新增成功」，data 恒为 null"
+//	@Failure		400 {object} response.Response "请求体非法"
+//	@Failure		500 {object} response.Response "服务器内部错误"
+//	@Security		ApiKeyAuth
+//	@Router			/products/add [post]
+func (h *OrderHandler) ProductAdd(c *gin.Context) {
+	var req model.ProductAddReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Error("bind product add request failed", "err", err)
+		response.Fail(c, 400, 400, "请求体非法")
+		return
+	}
+
+	if err := h.svc.CreateProduct(c.Request.Context(), req); err != nil {
+		slog.Error("create product failed", "name", req.ProductName, "err", err)
+		response.Fail(c, 500, 500, "服务器内部错误")
+		return
+	}
+	response.OKMsg(c, "新增成功", nil)
+}
+
+// ProductEdit POST /api/v1/products/edit
+//
+// 错误映射：body 绑定失败 → 400；商品不存在 → 404；其他 → 500
+//
+//	@Summary		编辑商品
+//	@Description	编辑商品信息（名称/价格/库存全覆盖；库存编辑与消费者异步扣减存在覆盖竞态，人工改数场景可接受）
+//	@Tags			商品管理
+//	@Accept			json
+//	@Produce		json
+//	@Param			body body model.ProductEditReq true "编辑商品请求体"
+//	@Success		200 {object} model.ActionResp "msg 固定「编辑成功」，data 恒为 null"
+//	@Failure		400 {object} response.Response "请求体非法"
+//	@Failure		404 {object} response.Response "商品不存在"
+//	@Failure		500 {object} response.Response "服务器内部错误"
+//	@Security		ApiKeyAuth
+//	@Router			/products/edit [post]
+func (h *OrderHandler) ProductEdit(c *gin.Context) {
+	var req model.ProductEditReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Error("bind product edit request failed", "err", err)
+		response.Fail(c, 400, 400, "请求体非法")
+		return
+	}
+
+	switch err := h.svc.UpdateProduct(c.Request.Context(), req); {
+	case err == nil:
+		response.OKMsg(c, "编辑成功", nil)
+	case errors.Is(err, service.ErrProductNotFound):
+		response.Fail(c, 404, 404, err.Error())
+	default:
+		slog.Error("update product failed", "id", req.ID, "err", err)
+		response.Fail(c, 500, 500, "服务器内部错误")
+	}
+}
+
+// ProductDelete POST /api/v1/products/delete
+//
+// 错误映射：body 绑定失败 → 400；商品不存在 → 404；其他 → 500
+//
+//	@Summary		删除商品
+//	@Description	物理删除商品。orders.product_name 冗余快照且无外键，历史订单不受影响；删除后该商品不可下单（404 商品不存在）
+//	@Tags			商品管理
+//	@Accept			json
+//	@Produce		json
+//	@Param			body body model.ProductDeleteReq true "删除商品请求体"
+//	@Success		200 {object} model.ActionResp "msg 固定「删除成功」，data 恒为 null"
+//	@Failure		400 {object} response.Response "请求体非法"
+//	@Failure		404 {object} response.Response "商品不存在"
+//	@Failure		500 {object} response.Response "服务器内部错误"
+//	@Security		ApiKeyAuth
+//	@Router			/products/delete [post]
+func (h *OrderHandler) ProductDelete(c *gin.Context) {
+	var req model.ProductDeleteReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Error("bind product delete request failed", "err", err)
+		response.Fail(c, 400, 400, "请求体非法")
+		return
+	}
+
+	switch err := h.svc.DeleteProduct(c.Request.Context(), req.ID); {
+	case err == nil:
+		response.OKMsg(c, "删除成功", nil)
+	case errors.Is(err, service.ErrProductNotFound):
+		response.Fail(c, 404, 404, err.Error())
+	default:
+		slog.Error("delete product failed", "id", req.ID, "err", err)
+		response.Fail(c, 500, 500, "服务器内部错误")
+	}
+}

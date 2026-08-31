@@ -84,5 +84,11 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 	authed.GET("/orders/products", oh.Products)
 	authed.POST("/points/list", oh.PointsList)
 	authed.POST("/notifications/list", oh.NotificationsList)
+
+	// 商品管理 CRUD（product 表维护，见 PLAN-product-crud.md；/orders/products 全量下拉保留不动）
+	authed.POST("/products/list", oh.ProductList)
+	authed.POST("/products/add", oh.ProductAdd)
+	authed.POST("/products/edit", oh.ProductEdit)
+	authed.POST("/products/delete", oh.ProductDelete)
 	return r
 }

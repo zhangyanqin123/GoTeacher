@@ -50,6 +50,78 @@ func (r *Repository) ListProducts(ctx context.Context) ([]model.Product, error) 
 	return list, nil
 }
 
+// ---------- 商品管理 CRUD（POST /products/*，见 PLAN-product-crud.md） ----------
+
+// PageListProducts 按商品名模糊条件分页查询商品（管理列表，id 倒序新商品在上）
+func (r *Repository) PageListProducts(ctx context.Context, f model.ProductListFilter) ([]model.Product, int, error) {
+	where, args := "1 = 1", []any{}
+	if f.ProductName != "" {
+		where, args = "product_name LIKE CONCAT('%', ?, '%')", []any{f.ProductName}
+	}
+
+	var count int
+	if err := r.db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM product WHERE "+where, args...,
+	).Scan(&count); err != nil {
+		return nil, 0, fmt.Errorf("count product: %w", err)
+	}
+
+	const query = `SELECT id, product_name, price, stock, created_at, updated_at
+	               FROM product
+	               WHERE %s
+	               ORDER BY id DESC
+	               LIMIT ? OFFSET ?`
+	list := make([]model.Product, 0, f.Limit)
+	rows, err := r.db.QueryContext(ctx,
+		fmt.Sprintf(query, where), append(args, f.Limit, f.Offset)...,
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("query product page list: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var p model.Product
+		if err := rows.Scan(&p.ID, &p.ProductName, &p.Price, &p.Stock, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			return nil, 0, fmt.Errorf("scan product row: %w", err)
+		}
+		list = append(list, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterate product rows: %w", err)
+	}
+	return list, count, nil
+}
+
+// CreateProduct 新增商品（created_at/updated_at 走列默认值 CURRENT_TIMESTAMP）
+func (r *Repository) CreateProduct(ctx context.Context, name string, price float64, stock int) error {
+	const q = `INSERT INTO product (product_name, price, stock) VALUES (?, ?, ?)`
+	if _, err := r.db.ExecContext(ctx, q, name, price, stock); err != nil {
+		return fmt.Errorf("insert product: %w", err)
+	}
+	return nil
+}
+
+// UpdateProduct 更新商品信息。直接 SET 覆盖：与消费者异步扣库存（stock = stock - ?）
+// 存在覆盖竞态，人工改数场景 demo 可接受（并发守卫语义留给订单扣减链路）
+func (r *Repository) UpdateProduct(ctx context.Context, id int64, name string, price float64, stock int) error {
+	const q = `UPDATE product SET product_name = ?, price = ?, stock = ?, updated_at = NOW() WHERE id = ?`
+	if _, err := r.db.ExecContext(ctx, q, name, price, stock, id); err != nil {
+		return fmt.Errorf("update product %d: %w", id, err)
+	}
+	return nil
+}
+
+// DeleteProduct 物理删除商品（存在性由 service 层先查；
+// orders.product_name 冗余快照、无外键，历史订单不受影响）
+func (r *Repository) DeleteProduct(ctx context.Context, id int64) error {
+	const q = `DELETE FROM product WHERE id = ?`
+	if _, err := r.db.ExecContext(ctx, q, id); err != nil {
+		return fmt.Errorf("delete product %d: %w", id, err)
+	}
+	return nil
+}
+
 // InsertOrder 落一条订单（status=1 处理中，三步骤列默认 0 待处理）。单条 INSERT 自身原子。
 func (r *Repository) InsertOrder(ctx context.Context, rec model.OrderInsert) (int64, error) {
 	const query = `INSERT INTO orders

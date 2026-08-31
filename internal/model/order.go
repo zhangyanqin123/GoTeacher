@@ -114,6 +114,43 @@ type OrderCreateReq struct {
 	Quantity  int   `json:"quantity"`   // 购买数量 1-999
 }
 
+// 商品管理请求体（product CRUD，POST /products/*，见 PLAN-product-crud.md）。
+// price=0 被 required 拒（demo 无 0 元商品）；stock=0 合法（售罄），故不加 required。
+
+// ProductAddReq 新增商品
+type ProductAddReq struct {
+	ProductName string  `json:"product_name" binding:"required,max=100" example:"无线充电板"`
+	Price       float64 `json:"price"        binding:"required,gt=0"      example:"129.00"`
+	Stock       int     `json:"stock"        binding:"gte=0"              example:"500"`
+}
+
+// ProductEditReq 编辑商品
+type ProductEditReq struct {
+	ID          int64   `json:"id"           binding:"required,gt=0"      example:"5"`
+	ProductName string  `json:"product_name" binding:"required,max=100" example:"无线充电板"`
+	Price       float64 `json:"price"        binding:"required,gt=0"      example:"129.00"`
+	Stock       int     `json:"stock"        binding:"gte=0"              example:"500"`
+}
+
+// ProductDeleteReq 删除商品
+type ProductDeleteReq struct {
+	ID int64 `json:"id" binding:"required,gt=0" example:"5"`
+}
+
+// ProductListReq 商品列表查询（POST body，同 admin/user 先例）
+type ProductListReq struct {
+	ProductName string `json:"product_name" example:"键盘"`
+	PageIndex   int    `json:"page_index"   example:"1"`
+	PageSize    int    `json:"page_size"    example:"10"`
+}
+
+// ProductListFilter service 归一化分页后传给 repository
+type ProductListFilter struct {
+	ProductName string
+	Offset      int
+	Limit       int
+}
+
 // OrderListReq 订单列表查询请求体（POST /orders/list）。
 // 数值筛选用指针：null/缺省不过滤，传 0 是有效过滤值（status 白名单 1/2/3，0 会被 handler 拒）。
 type OrderListReq struct {
