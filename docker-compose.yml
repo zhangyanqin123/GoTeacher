@@ -1,4 +1,6 @@
-# 中间件统一编排（MySQL / Redis / RabbitMQ）——Go 服务本身仍跑宿主机（go run），见 plans/PLAN-docker.md
+# 中间件 + Go 服务统一编排——app 服务挂 profiles: ["app"]，默认 up 只起三件套，见 plans/PLAN-docker.md
+#   docker compose up -d                → 只起中间件，宿主机 go run 开发流不变
+#   docker compose --profile app up -d  → 全栈（中间件 + server + consumer）
 # 变量插值默认读同目录 .env（与 godotenv 同一文件双用）：DB_USER/DB_PASSWORD 即 go 服务连接凭证，一处配置两边生效
 # 端口避让本机服务：本机 dmg MySQL 占 3306、brew redis@6.2 占 6379，容器用 3307/6380 并存
 services:
@@ -55,8 +57,81 @@ services:
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
-      timeout: 5s
+      timeout: 15s # rabbitmq-diagnostics 是 erlang 脚本，VM 资源紧张时冷执行 >5s（实测踩坑，5s 曾致 depends_on 误判 unhealthy）
       retries: 30 # 冷启动（节点 + management 插件初始化 >2 分钟）不够 12 次会误判 unhealthy
+
+  # ==================== app profile：Go 服务容器化（默认不激活）====================
+  # 单镜像双二进制（Dockerfile 一个 builder 产出 /app/server 与 /app/consumer），
+  # consumer 用 command 覆盖启动另一个，避免双镜像版本漂移（决策见 plans/PLAN-docker.md）
+  server:
+    build:
+      context: .
+      args:
+        # 弱网可在 .env 覆盖：GO_IMAGE=docker.m.daocloud.io/library/golang:1.24-alpine（RUNTIME_IMAGE/GOPROXY 同法）
+        GO_IMAGE: ${GO_IMAGE:-golang:1.24-alpine}
+        RUNTIME_IMAGE: ${RUNTIME_IMAGE:-alpine:3.21}
+        GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
+    image: handicap-server:latest
+    container_name: handicap-server
+    profiles: ["app"]
+    restart: unless-stopped
+    environment:
+      # 容器网络内直连服务名；端口是容器内端口（3306/6379/5672），不是宿主机映射端口 3307/6380
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      REDIS_ADDR: redis:6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      # 凭证/密钥：沿用 .env 插值，:? 语法强制必填（对齐 mysql 服务既有约定，不进镜像层）
+      DB_USER: ${DB_USER:-app_user}
+      DB_PASSWORD: ${DB_PASSWORD:?请在项目根 .env 设置 DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-handicap_db}
+      JWT_SECRET: ${JWT_SECRET:?请在项目根 .env 设置 JWT_SECRET}
+      JWT_TTL_HOURS: ${JWT_TTL_HOURS:-24}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      GIN_MODE: release # gin 读 GIN_MODE 关 [GIN-debug] 输出（Logger/Recovery 中间件保留）
+      TZ: Asia/Shanghai # 对齐 DSN Loc: time.Local 与 mysql 容器时区，防 DATETIME 偏 8h
+    ports:
+      - "8080:8080" # 前端容器 GoProject-web 的 nginx proxy_pass host.docker.internal:8080 零改动的关键
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    healthcheck:
+      # 只探进程不 ping 依赖：中间件挂了重启 server 容器无意义且中断在途请求（理由见 PLAN-docker.md）
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 30s # 首启含 Migrate+Seed，留缓冲
+    stop_grace_period: 15s # > main.go Shutdown 超时(10s)，优雅退出日志打完再 SIGKILL
+
+  consumer:
+    build: # 与 server 同 build 同 tag：第二次全命中层缓存，秒级
+      context: .
+      args:
+        GO_IMAGE: ${GO_IMAGE:-golang:1.24-alpine}
+        RUNTIME_IMAGE: ${RUNTIME_IMAGE:-alpine:3.21}
+        GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
+    image: handicap-server:latest
+    container_name: handicap-consumer
+    command: ["/app/consumer"] # 唯一差异：起另一个二进制
+    profiles: ["app"]
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_USER: ${DB_USER:-app_user}
+      DB_PASSWORD: ${DB_PASSWORD:?请在项目根 .env 设置 DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-handicap_db}
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      TZ: Asia/Shanghai
+      # 不设 REDIS_ADDR/JWT_SECRET：consumer 不连 Redis、不验 JWT（cmd/consumer/main.go service.New 传零值）
+    depends_on:
+      mysql: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    # 不设 healthcheck：无端口无业务探针，唯一进程即 PID 1——进程退出容器即退出，restart 负责拉起
+    stop_grace_period: 15s # 三队列在途消息手动 ack 排空的时间窗
 
 volumes:
   mysql_data:

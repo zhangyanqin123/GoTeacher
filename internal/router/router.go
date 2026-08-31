@@ -13,6 +13,7 @@ import (
 	"handicap-service/internal/handler"
 	"handicap-service/internal/mq"
 	"handicap-service/internal/repository"
+	"handicap-service/internal/response"
 	"handicap-service/internal/service"
 )
 
@@ -26,6 +27,10 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 
 	// Swagger 文档（docs 包由 swag init 生成，见 cmd/server/main.go 头注释）；公开，不挂鉴权
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// 存活探针（容器 healthcheck 用）：公开免鉴权，纯进程探活不 ping 依赖——
+	// 中间件挂了重启 server 容器无意义且中断在途请求；依赖可达性由启动 fail-fast 保证，见 PLAN-docker.md
+	r.GET("/health", func(c *gin.Context) { response.OK(c, nil) })
 
 	repo := repository.New(db)
 	svc := service.New(repo, rdb, cfg.JWTSecret, time.Duration(cfg.JWTTTLHours)*time.Hour, cfg.XiaoeAPIBase, publisher)

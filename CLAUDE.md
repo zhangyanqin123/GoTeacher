@@ -15,9 +15,10 @@ go test ./...                # 跑全部测试
 go test ./internal/sanitize -run TestRichText -v   # 单个测试
 go vet ./...
 swag init -g cmd/server/main.go -o docs   # 接口注释改动后重新生成 Swagger 文档
+docker compose --profile app up -d --build   # 全栈容器化（中间件 + Go server/consumer 容器）
 ```
 
-- 依赖 MySQL/Redis/RabbitMQ 统一由 Docker Compose 起：`docker compose up -d`（健康状态 `docker compose ps`，决策见 plans/PLAN-docker.md）。容器映射 **3307/6380** 避让本机 dmg MySQL（3306）与 brew redis@6.2（6379），与本机服务并存互不影响
+- 依赖 MySQL/Redis/RabbitMQ 统一由 Docker Compose 起：`docker compose up -d`（健康状态 `docker compose ps`，决策见 plans/PLAN-docker.md）。容器映射 **3307/6380** 避让本机 dmg MySQL（3306）与 brew redis@6.2（6379），与本机服务并存互不影响。**两种 up 语义**：默认 `up -d` 只起三件套中间件（宿主机 `go run` 开发流不变）；`--profile app up -d --build` 起全栈（server/consumer 容器，`--profile app down` 全停）——两者都占宿主机 8080，全栈前先停宿主机 go run
 - 库无需手工建：compose 的 `MYSQL_DATABASE=handicap_db` 自动建库，`MYSQL_USER/MYSQL_PASSWORD` 插值自 `.env` 的 DB_USER/DB_PASSWORD（app_user）；空库首启 go 服务自动建表+种子；`JWT_SECRET` 必填（空值启动退出），见 plans/PLAN-auth.md
 - 配置走 `.env`（模板 `.env.example`；本仓库实际 `.env` 端口已指容器 3307/6380）
 - 重灌种子：`TRUNCATE TABLE <表>;` 后重启（种子仅在表空时写入，schema/seed SQL 均 go:embed 随二进制发布；admin_user 种子为 Go 代码 bcrypt 动态生成 admin/admin123，不走 seed SQL）
@@ -33,8 +34,8 @@ handler → service → repository → model
 ```
 
 - `internal/router/router.go` 是唯一组装点：`repository.New(db) → service.New(repo, rdb, secret, ttl, xiaoeBase, publisher) → 各 handler`。repository 与 service 均为**单一结构体**，按业务域拆文件，不按实体建多 struct。publisher 参数为 `mq.Publisher` 接口（订单事件发布），接口定义在 service 侧、amqp 实现在 `internal/mq`，避免 mq→service 依赖环
-- `cmd/server/main.go`：加载配置 → 连 MySQL/Redis/RabbitMQ（均 fail-fast）→ `Migrate`（幂等建表 + 存量列型升级）→ `Seed` → 路由启动
-- 订单异步链路是**双进程部署**：`cmd/server`（HTTP 发布端）与 `cmd/consumer`（库存/积分/通知三队列消费者，各队列独立 channel、prefetch=1 手动 ack）完全独立，测订单链路须两个都起；MQ 拓扑由 `internal/mq` 幂等声明，消费者先于 server 启动也能建齐 exchange/queue（见 plans/PLAN-order.md）
+- `cmd/server/main.go`：加载配置 → 连 MySQL/Redis/RabbitMQ（均 fail-fast）→ `Migrate`（幂等建表 + 存量列型升级）→ `Seed` → http.Server 启动（SIGTERM 优雅退出排空在途请求；公开免鉴权的 `GET /health` 是容器 healthcheck 探针，纯进程探活不 ping 依赖）
+- 订单异步链路是**双进程部署**：`cmd/server`（HTTP 发布端）与 `cmd/consumer`（库存/积分/通知三队列消费者，各队列独立 channel、prefetch=1 手动 ack）完全独立，测订单链路须两个都起；MQ 拓扑由 `internal/mq` 幂等声明，消费者先于 server 启动也能建齐 exchange/queue（见 plans/PLAN-order.md）。两者已同镜像容器化（compose `app` profile，单镜像双二进制 `/app/server` 与 `/app/consumer`，consumer 服务用 `command` 覆盖，见 plans/PLAN-docker.md）
 - 数据访问是裸 `database/sql`（无 ORM）：动态 WHERE 靠拼 SQL 片段 + args；模糊查询用 `LIKE CONCAT('%',?,'%')`；LIMIT/OFFSET 只能拼常量，参数放最后
 
 ### 鉴权约定（JWT + Redis 白名单，设计决策见 plans/PLAN-auth.md）

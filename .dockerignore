@@ -1,0 +1,37 @@
+# 版本库与本地工具（.playwright-mcp 有 140+ 个日志文件，是最大的上下文垃圾）
+.git
+.vscode/
+.claude/
+.playwright-mcp/
+.DS_Store
+**/.DS_Store
+
+# 秘密：绝不进构建上下文/镜像层（容器配置一律走 compose environment 注入）
+.env
+.env.example
+
+# 构建产物与本地运行残留
+bin/
+*.exe
+*.test
+dump.rdb
+*.log
+
+# 纯文档，不参与编译
+README.md
+CLAUDE.md
+plans/
+scripts/
+
+# docker 自身文件
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# swag 生成物的外部副本：docs.go 内联 docTemplate（自包含），编译与运行都不读这两个文件。
+# 红线：docs/ 不能整目录排除——cmd/server/main.go blank import "handicap-service/docs"，docs.go 必须在
+docs/swagger.json
+docs/swagger.yaml
+
+# 压测工具不容器化（学习项目取舍，见 PLAN-docker.md）
+cmd/loadtest/

@@ -12,8 +12,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log/slog"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"handicap-service/internal/config"
 	"handicap-service/internal/database"
@@ -87,12 +93,42 @@ func main() {
 		os.Exit(1)
 	}
 
-	// 6. 启动 HTTP 服务
+	// 6. 启动 HTTP 服务：http.Server 显式超时 + 优雅退出（信号风格对齐 cmd/consumer/main.go）
 	r := router.New(db, rdb, cfg, mq.NewPublisher(mqCh))
-	slog.Info("server started", "port", cfg.ServerPort, "jwt_ttl_hours", cfg.JWTTTLHours)
-	if err := r.Run(":" + cfg.ServerPort); err != nil {
-		slog.Error("server exit", "err", err)
+	srv := &http.Server{
+		Addr:              ":" + cfg.ServerPort,
+		Handler:           r,
+		ReadHeaderTimeout: 10 * time.Second, // slowloris 防护
+		IdleTimeout:       60 * time.Second,
+		// 不设 WriteTimeout：接口均短响应，设了反而在慢客户端场景截断写回
 	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	errCh := make(chan error, 1)
+	go func() { errCh <- srv.ListenAndServe() }()
+
+	slog.Info("server started", "port", cfg.ServerPort, "jwt_ttl_hours", cfg.JWTTTLHours)
+	select {
+	case err := <-errCh:
+		// 非 Shutdown 触发的退出（典型：宿主机 8080 被占）——保持既有 fail-fast 风格
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("server exit", "err", err)
+			os.Exit(1)
+		}
+	case <-ctx.Done():
+		slog.Info("shutdown signal received, draining in-flight requests...")
+	}
+
+	// 排空在途请求；10s 必须小于 compose stop_grace_period(15s)，否则被 SIGKILL 截断
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		slog.Error("graceful shutdown failed", "err", err)
+	}
+	slog.Info("server stopped")
+	// main 自然返回 → defer 依次关闭 mqConn/rdb/db（与启动顺序相反）
 }
 
 // parseLevel 解析日志级别（debug/info/warn/error，亦支持 "debug+2" 形式），非法值回落 info

@@ -441,6 +441,24 @@ go run ./cmd/server
 
 首次启动自动执行：建表（幂等，含 admin_user）→ 表为空则插入种子数据（admin_user 种子：admin/admin123）。之后启动直接可用。
 
+### 容器化运行（全栈可选，见 plans/PLAN-docker.md）
+
+上述流程是「中间件容器 + Go 宿主机 go run」的开发模式；server/consumer 也可容器化一键全栈：
+
+```bash
+docker compose --profile app up -d --build   # 全栈：三件套中间件 + server + consumer 容器
+docker compose --profile app ps              # 看健康状态（server 有 healthcheck，consumer 无端口仅看 running）
+docker compose --profile app logs -f server consumer
+docker compose --profile app down            # 全停（不带 --profile app 的 down 停不掉 app 容器）
+```
+
+- **两种 up 语义**：默认 `docker compose up -d` 只起中间件（开发流不变）；`--profile app` 起全栈。两者都占宿主机 8080，全栈前先停宿主机 `go run ./cmd/server`
+- 镜像：多阶段构建（`golang:1.24-alpine` → `alpine:3.21`，约 55MB），单镜像双二进制 `/app/server` 与 `/app/consumer`（consumer 服务 `command` 覆盖）；tzdata + `TZ=Asia/Shanghai` 对齐 DSN 时区、ca-certificates 支撑小鹅通 HTTPS
+- 配置：容器内直连服务名（`DB_HOST=mysql` 等），凭证/`JWT_SECRET` 从 `.env` 插值注入（`:?` 强制必填），**不进镜像层**
+- 弱网：`.env` 末段取消注释 `GO_IMAGE`/`RUNTIME_IMAGE`/`GOPROXY` 换 daocloud/goproxy 源
+- 前端联动：server 容器映射宿主机 `8080:8080`，GoProject-web 容器 nginx 反代 `host.docker.internal:8080` 零改动衔接
+- 构建后建议 `docker builder prune -f`：buildkit 缓存可达数 GB，挤爆 Docker Desktop VM 内存会触发 RabbitMQ 内存告警（AMQP 拒连，详见 PLAN-docker.md 实测记录）
+
 ### 5. 验证
 
 ```bash
@@ -485,6 +503,9 @@ npm run dev        # :5173，dev proxy /api 与 /guyuzhoudb → http://localhost
 | 认证失败（caching_sha2_password） | go-sql-driver 原生支持，容器场景基本不会遇到；本机直连老客户端时兜底 `ALTER USER ... IDENTIFIED WITH mysql_native_password ...` |
 | server 启动报 `dial rabbitmq` | RabbitMQ 容器未起：`docker compose up -d rabbitmq`；连接串在 `.env` 的 `RABBITMQ_URL`（订单 Demo 对 MQ fail-fast） |
 | 下了单但订单一直「处理中」 | 消费者进程没起：另开终端 `go run ./cmd/consumer`（消费与 HTTP 是两个独立进程） |
+| 全栈下单报 `channel/connection is not open`（504） | server 的 MQ channel 被 rabbitmq 重启/内存告警关掉后不自动重建（amqp091 无内置重连）：`docker compose --profile app restart server` 即恢复（根因与后续加固见 plans/PLAN-docker.md 实测记录） |
+| rabbitmq 容器 unhealthy 且 server/consumer 连不上 | 多为 Docker Desktop VM 内存紧张触发 rabbitmq memory alarm（alarm 期间 AMQP 拒连）：`docker builder prune -f` 清构建缓存，alarm 自动 clear 后重启 server/consumer |
+| 前端容器调不通后端（:80 反代 502） | 确认 server 容器已起且映射 `8080:8080`（`docker compose --profile app ps`），且宿主机 8080 无残留 `go run` 进程占位 |
 
 ## 进阶方向（本期未实现）
 
