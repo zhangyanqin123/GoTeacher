@@ -42,7 +42,7 @@ server 不映射宿主机端口：8080 空闲留给 go run（与容器化全栈�
 9. **/health 探针与优雅退出（08-31，代码改动）**：`router.go` 新增公开免鉴权 `GET /health`（`response.OK` → 200，纯进程探活**不 ping 依赖**——中间件挂了重启 server 容器无意义且中断在途请求，依赖可达性由启动 fail-fast 保证；日后要 readiness 另加 /ready 不污染 liveness）；`cmd/server/main.go` 由 `r.Run` 改 `http.Server` + `signal.NotifyContext(SIGINT,SIGTERM)` + `Shutdown(10s)`（风格对齐 cmd/consumer；`errors.Is(err, http.ErrServerClosed)` 过滤正常退出，10s < compose `stop_grace_period: 15s`）。consumer 无端口不设 healthcheck：唯一进程即 PID 1，进程退出容器即退出，restart 负责拉起。
 10. **前端容器网络直连 + 撤 profile + 去端口映射（08-31 二改）**：GoProject-web 容器加入 `goproject_default` 网络（`docker run --network`，前端独立仓库、不纳入本 compose，避免跨仓编排），nginx `API_UPSTREAM` 直指 `http://handicap-server:8080`（容器名 + 容器内端口），去掉 `host.docker.internal` 绕宿主机一圈的依赖；server 随之去掉 `ports: "8080:8080"`——宿主机 8080 永远留给 go run，容器化全栈与宿主机开发流并存零冲突。app profile 的初衷就是避 8080 冲突（决策 8），端口不冲突后失去存在意义，server/consumer 撤掉 `profiles: ["app"]`，`up -d` 即全栈。代价与对策：宿主机浏览器失去 :8080 直连入口，Swagger 改走前端 nginx `/swagger` 反代（前端 template 反代正则加 `swagger`）；nginx 静态 `proxy_pass` 在启动时解析容器名，须先起后端 compose 再起前端容器，顺序颠倒靠前端 `--restart unless-stopped` 反复拉起自愈。
 
-11. **前端镜像版本化发版（08-31 三改，deploy.sh 落在前端仓库）**：此前前端发版是单 `latest` tag 重建即覆盖，零历史版本、无法回滚。改为前端仓库单脚本 `deploy.sh`（`deploy [tag]` / `rollback [tag|prev]` / `list` / `prune [-n]`），核心约定：**tag 规则 `v日期-时分秒-git短hash`**（脏工作区加 `-dirty` 不阻塞、同秒撞名加 `-2`；手动传 `v1.2.0` 覆盖）；**容器运行具体版本 tag**（`docker inspect {{.Config.Image}}` 即当前版本，零额外状态文件，事实来源=git+docker images+镜像内 `IMAGE_TAG` env 三层）；**latest 是当前运行版本的指针别名**（deploy/rollback 成功后 `docker tag` 重指，杜绝「latest 是最新构建但线上是旧版」的认知分裂）。**两段式自动回滚**：build 失败 `set -e` 退出旧容器毫发无损（最重要的安全性质）；切换后健康门禁（2s 轮询、预算 60s，unhealthy/exited 即刻失败 dump 日志）失败则自动切回上一版——**回滚用镜像 ID 不用 tag 引用**（裸名 `goproject-web` 会被重打的 latest 误导），回滚再失败打印手工恢复命令退出。配套 Dockerfile 两处：HEALTHCHECK `--interval` 30s→5s（健康门禁从 ~30s 降到秒级）；`ARG/ENV IMAGE_TAG` 版本号打进镜像（tag 被 prune 后 `docker inspect` 仍可溯源）。**prune** 保留最近 `KEEP`(默认5) 个版本：按镜像 ID 去重（latest 与版本同 ID 只算一行）、当前运行版本计入名额但永不删除、`-n` 干跑+确认。**排序按 tag 字典序不按 docker images 输出**——BuildKit 层缓存命中时连续构建的镜像 `CreatedAt` 完全相同，docker images 顺序不可靠（实测三镜像同秒），tag 含定长时间戳字典序即构建序。**否决前端 compose 化**（单服务 compose + `image: ${TAG}`）：compose 只解决 run，tag 规则/构建打标/prune 仍要脚本，等于两份 run 参数事实来源必漂移，且与决策 10「不纳入 compose」精神一致。**边界**：健康门禁只探 `/` 静态页，后端反代故障不触发回滚（nginx 静态站的合理边界）；rm→run 有 1~2s 停机窗口，自用环境接受（零停机预验换绑列后续项）。
+11. **前端镜像版本化发版（08-31 三改，deploy.sh 落在前端仓库）**：此前前端发版是单 `latest` tag 重建即覆盖，零历史版本、无法回滚。改为前端仓库单脚本 `deploy.sh`（`deploy [tag]` / `rollback [tag|prev]` / `list` / `prune [-n]`），核心约定：**tag 规则语义化三段式 `x.y.z`（08-31 四改；初版为 `v日期-时分秒-git短hash`，可读性差废弃）**——缺省 patch+1（1.2.3→1.2.4）、`deploy minor`/`deploy major` 升对应段位（bug 修复合新功能的语义区分靠调用者选择）、显式 `1.2.0` 可传；无历史语义版本时首版 1.0.0；版本已存在直接报错（自动 bump 场景递增 patch 避让）；git 短 hash 改由镜像内 `GIT_REV` env 记录（tag 不再含 hash，`IMAGE_TAG`+`GIT_REV` 双 env 溯源）；**容器运行具体版本 tag**（`docker inspect {{.Config.Image}}` 即当前版本，零额外状态文件，事实来源=git+docker images+镜像内 `IMAGE_TAG` env 三层）；**latest 是当前运行版本的指针别名**（deploy/rollback 成功后 `docker tag` 重指，杜绝「latest 是最新构建但线上是旧版」的认知分裂）。**两段式自动回滚**：build 失败 `set -e` 退出旧容器毫发无损（最重要的安全性质）；切换后健康门禁（2s 轮询、预算 60s，unhealthy/exited 即刻失败 dump 日志）失败则自动切回上一版——**回滚用镜像 ID 不用 tag 引用**（裸名 `goproject-web` 会被重打的 latest 误导），回滚再失败打印手工恢复命令退出。配套 Dockerfile 两处：HEALTHCHECK `--interval` 30s→5s（健康门禁从 ~30s 降到秒级）；`ARG/ENV IMAGE_TAG` 版本号打进镜像（tag 被 prune 后 `docker inspect` 仍可溯源）。**prune** 保留最近 `KEEP`(默认5) 个版本：按镜像 ID 去重（latest 与版本同 ID 只算一行）、当前运行版本计入名额但永不删除、`-n` 干跑+确认。**排序按 `sort -t. -k1,1nr -k2,2nr -k3,3nr` 分段数字降序（四改；初版 tag 含时间戳字典序即构建序，改语义版本后字典序有 `1.10.0 < 1.9.0` 的坑；macOS BSD sort 无 `-V`）**、不按 docker images 输出——BuildKit 层缓存命中时连续构建的镜像 `CreatedAt` 完全相同，docker images 顺序不可靠（实测三镜像同秒）；历史 `v2026xxx` tag 首段非数字按 0 沉底，prune 时自然先被清。**否决前端 compose 化**（单服务 compose + `image: ${TAG}`）：compose 只解决 run，tag 规则/构建打标/prune 仍要脚本，等于两份 run 参数事实来源必漂移，且与决策 10「不纳入 compose」精神一致。**边界**：健康门禁只探 `/` 静态页，后端反代故障不触发回滚（nginx 静态站的合理边界）；rm→run 有 1~2s 停机窗口，自用环境接受（零停机预验换绑列后续项）。
 
 ## 实测记录（2026-08-30）
 
@@ -79,6 +79,12 @@ server 不映射宿主机端口：8080 空闲留给 go run（与容器化全栈�
 - **层缓存让失败路径测试失真**：`NPM_REGISTRY=https://invalid.example.com` 未能触发 build 失败——package.json/lock 未变时 `npm ci` 层 CACHED 根本不访问 registry；验证 build 失败保护要用「拉不到基础镜像」（`NODE_IMAGE=不存在的镜像`）。
 - 耗时参考：HEALTHCHECK interval 收紧 5s 后健康门禁秒级通过（改前 ~30s）；层缓存全命中时 deploy 构建 ~2s，全量构建 ~70s（vite build 32s + npm ci）；单版本镜像 64.5MB，KEEP=5 约占 320MB。
 
+## 实测记录（2026-08-31 四改，版本号改语义化三段式）
+
+- 需求变更：时间戳+hash tag 可读性差，改 `1.1.0` 风格。验证：无语义历史首版 `1.0.0` → `minor` → `1.1.0` → 缺省（patch）→ `1.1.1` → `rollback prev`（1.1.1→1.1.0）→ 撞名 `deploy 1.0.0` 报错退出；`IMAGE_TAG=1.0.0`+`GIT_REV=5f3588d` 双 env 溯源生效。
+- **语义版本排序坑**：字典序 `1.10.0 < 1.9.0`；macOS BSD sort 无 `-V`，用 `sort -t. -k1,1nr -k2,2nr -k3,3nr` 分段数字降序（假 tag 实测 1.10.0 > 1.9.0 正确，历史 `v2026xxx` 非数字首段按 0 沉底）。
+- 同一坑第二次踩：新写的 `$arg（` 又被 bash 3.2 吞进变量名报 unbound variable——后跟中文标点的变量必须 `${var}`，此规约已入记忆但仍需写代码时自查。
+
 ## 常用命令
 
 ```bash
@@ -90,7 +96,7 @@ docker compose down            # 全停（volume 保留）
 docker compose down -v         # 停并清 volume（= 清空数据库重灌种子，慎重）
 docker builder prune -f        # 清构建缓存（build 后 VM 内存紧张/告警时必做，见实测记录）
 # 前端发版/回滚（GoProject-web 仓库的 deploy.sh）：先起本 compose 再发前端（nginx 启动时解析容器名）
-./deploy.sh deploy            # 构建版本镜像并上线（旧版本保留，build 失败不动旧容器，健康门禁失败自动回滚）
+./deploy.sh deploy            # 构建语义版本镜像并上线（缺省 patch+1；minor/major 升段位；旧版本保留，build 失败不动旧容器，健康门禁失败自动回滚）
 ./deploy.sh rollback prev     # 回滚上一版（rollback <tag> 指定历史版；不带参数列出版本）
 ./deploy.sh list              # 版本列表（标注当前运行）
 ```
