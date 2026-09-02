@@ -41,6 +41,7 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 	auh := handler.NewAdminUser(svc)
 	lh := handler.NewLive(svc)
 	oh := handler.NewOrder(svc)
+	abh := handler.NewAbModule(svc)
 
 	// 鉴权公开接口（login 签发 token；logout/getinfo 需登录态放 authed 组）
 	r.POST("/api/v1/login", ah.Login)
@@ -95,5 +96,21 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 	authed.POST("/products/add", oh.ProductAdd)
 	authed.POST("/products/edit", oh.ProductEdit)
 	authed.POST("/products/delete", oh.ProductDelete)
+
+	// AB 版模块配置管理台 CRUD（C 端 H5 gyz-h5-spacestation 显隐配置，见 PLAN-ab-module.md）
+	ab := r.Group("/api/v1/ab", Auth(svc))
+	ab.POST("/modules/list", abh.ModuleList)
+	ab.GET("/modules/options", abh.ModuleOptions)
+	ab.POST("/modules/add", abh.ModuleAdd)
+	ab.POST("/modules/edit", abh.ModuleEdit)
+	ab.POST("/modules/delete", abh.ModuleDelete)
+	ab.POST("/items/list", abh.ItemList)
+	ab.POST("/items/add", abh.ItemAdd)
+	ab.POST("/items/edit", abh.ItemEdit)
+	ab.POST("/items/delete", abh.ItemDelete)
+
+	// AB 聚合查询：免鉴权直挂引擎（H5 无本服务登录态，公网域名直访，login 同款先例），
+	// 返回全量配置两级 map，语义区别于 modules 资源的分页列表
+	r.GET("/api/v1/ab/config", abh.AbConfig)
 	return r
 }

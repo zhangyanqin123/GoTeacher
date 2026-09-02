@@ -1,5 +1,262 @@
 basePath: /api/v1
 definitions:
+  model.AbConfigResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        additionalProperties:
+          additionalProperties:
+            items:
+              type: string
+            type: array
+          type: object
+        type: object
+      msg:
+        example: success
+        type: string
+    type: object
+  model.AbModule:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      item_count:
+        type: integer
+      module_key:
+        type: string
+      module_name:
+        type: string
+      sort_no:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  model.AbModuleAddReq:
+    properties:
+      module_key:
+        example: spacestation
+        maxLength: 50
+        type: string
+      module_name:
+        example: 空间站
+        maxLength: 100
+        type: string
+      sort_no:
+        example: 1
+        type: integer
+    required:
+    - module_key
+    - module_name
+    type: object
+  model.AbModuleDeleteReq:
+    properties:
+      id:
+        example: 1
+        type: integer
+    required:
+    - id
+    type: object
+  model.AbModuleEditReq:
+    properties:
+      id:
+        example: 1
+        type: integer
+      module_name:
+        example: 空间站
+        maxLength: 100
+        type: string
+      sort_no:
+        example: 1
+        type: integer
+    required:
+    - id
+    - module_name
+    type: object
+  model.AbModuleItem:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      item_key:
+        type: string
+      item_name:
+        type: string
+      module_id:
+        type: integer
+      module_key:
+        type: string
+      sort_no:
+        type: integer
+      updated_at:
+        type: string
+      versions:
+        items:
+          type: string
+        type: array
+    type: object
+  model.AbModuleItemAddReq:
+    properties:
+      item_key:
+        example: topBanner
+        maxLength: 50
+        type: string
+      item_name:
+        example: 顶部图
+        maxLength: 100
+        type: string
+      module_id:
+        example: 1
+        type: integer
+      sort_no:
+        example: 1
+        type: integer
+      versions:
+        example:
+        - mass
+        - data
+        items:
+          type: string
+        maxItems: 10
+        minItems: 1
+        type: array
+    required:
+    - item_key
+    - item_name
+    - module_id
+    - versions
+    type: object
+  model.AbModuleItemDeleteReq:
+    properties:
+      id:
+        example: 1
+        type: integer
+    required:
+    - id
+    type: object
+  model.AbModuleItemEditReq:
+    properties:
+      id:
+        example: 1
+        type: integer
+      item_name:
+        example: 顶部图
+        maxLength: 100
+        type: string
+      module_id:
+        example: 1
+        type: integer
+      sort_no:
+        example: 1
+        type: integer
+      versions:
+        example:
+        - mass
+        - data
+        items:
+          type: string
+        maxItems: 10
+        minItems: 1
+        type: array
+    required:
+    - id
+    - item_name
+    - module_id
+    - versions
+    type: object
+  model.AbModuleItemListReq:
+    properties:
+      item_key:
+        example: topBanner
+        type: string
+      module_id:
+        example: 1
+        type: integer
+      page_index:
+        example: 1
+        type: integer
+      page_size:
+        example: 10
+        type: integer
+    type: object
+  model.AbModuleItemListResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        properties:
+          count:
+            example: 16
+            type: integer
+          list:
+            items:
+              $ref: '#/definitions/model.AbModuleItem'
+            type: array
+        type: object
+      msg:
+        example: success
+        type: string
+    type: object
+  model.AbModuleListReq:
+    properties:
+      module_key:
+        example: space
+        type: string
+      module_name:
+        example: 空间
+        type: string
+      page_index:
+        example: 1
+        type: integer
+      page_size:
+        example: 10
+        type: integer
+    type: object
+  model.AbModuleListResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        properties:
+          count:
+            example: 2
+            type: integer
+          list:
+            items:
+              $ref: '#/definitions/model.AbModule'
+            type: array
+        type: object
+      msg:
+        example: success
+        type: string
+    type: object
+  model.AbModuleOption:
+    properties:
+      id:
+        type: integer
+      module_key:
+        type: string
+      module_name:
+        type: string
+    type: object
+  model.AbModuleOptionsResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/model.AbModuleOption'
+        type: array
+      msg:
+        example: success
+        type: string
+    type: object
   model.ActionResp:
     properties:
       code:
@@ -1016,6 +1273,321 @@ info:
   title: im系统诊股 API
   version: "1.0"
 paths:
+  /ab/config:
+    get:
+      description: 返回全部模块的 AB 版显隐配置两级 map：模块标识 → 配置项标识（camelCase 原文，如 topBanner）→
+        可见版本数组（mass 大众版 / data 数据版）。data 无 list 包装，空模块输出空对象。公开接口无鉴权
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AbConfigResp'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: H5 聚合配置
+      tags:
+      - AB 模块配置
+  /ab/items/add:
+    post:
+      consumes:
+      - application/json
+      description: 在模块下新增配置项（item_key 为 H5 代码 camelCase 常量原文如 topBanner，创建后不可改；versions
+        值域 mass/data）
+      parameters:
+      - description: 新增配置项请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AbModuleItemAddReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「新增成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / 标识格式非法 / 可见版本仅支持 mass 或 data / 该模块下配置项标识已存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 模块不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 新增配置项
+      tags:
+      - AB 模块配置
+  /ab/items/delete:
+    post:
+      consumes:
+      - application/json
+      description: 删除配置项（该配置项对应模块 UI 在 H5 全版本隐藏）
+      parameters:
+      - description: 删除配置项请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AbModuleItemDeleteReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「删除成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 配置项不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 删除配置项
+      tags:
+      - AB 模块配置
+  /ab/items/edit:
+    post:
+      consumes:
+      - application/json
+      description: 编辑配置项（item_key 不可改：请求体不含该字段；module_id 可改 = 挪模块；versions 值域 mass/data）
+      parameters:
+      - description: 编辑配置项请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AbModuleItemEditReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「编辑成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / 可见版本仅支持 mass 或 data / 该模块下配置项标识已存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 配置项不存在 / 模块不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 编辑配置项
+      tags:
+      - AB 模块配置
+  /ab/items/list:
+    post:
+      consumes:
+      - application/json
+      description: 分页查询配置项（module_id 精确过滤，传 0/不传 = 不过滤；item_key 模糊匹配），项含所属模块 module_key
+        与可见版本数组
+      parameters:
+      - description: 查询条件
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AbModuleItemListReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AbModuleItemListResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 配置项列表
+      tags:
+      - AB 模块配置
+  /ab/modules/add:
+    post:
+      consumes:
+      - application/json
+      description: 新增 AB 版模块（module_key 小写字母开头，可含小写字母/数字/下划线，创建后不可改）
+      parameters:
+      - description: 新增模块请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AbModuleAddReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「新增成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / 标识格式非法 / 模块标识已存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 新增模块
+      tags:
+      - AB 模块配置
+  /ab/modules/delete:
+    post:
+      consumes:
+      - application/json
+      description: 删除 AB 版模块；模块下存在配置项时拒绝删除（不级联删，先删全部配置项再删模块）
+      parameters:
+      - description: 删除模块请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AbModuleDeleteReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「删除成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法 / 模块下存在配置项，请先删除全部配置项
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 模块不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 删除模块
+      tags:
+      - AB 模块配置
+  /ab/modules/edit:
+    post:
+      consumes:
+      - application/json
+      description: 编辑 AB 版模块（module_key 不可改：请求体不含该字段，业务标识被 H5 代码引用）
+      parameters:
+      - description: 编辑模块请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AbModuleEditReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「编辑成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 模块不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 编辑模块
+      tags:
+      - AB 模块配置
+  /ab/modules/list:
+    post:
+      consumes:
+      - application/json
+      description: 分页查询 AB 版模块（module_key/module_name 均模糊匹配，传空串表示未填），list 项含 item_count（模块下配置项数）
+      parameters:
+      - description: 查询条件（module_key/module_name 模糊匹配）
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AbModuleListReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AbModuleListResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 模块列表
+      tags:
+      - AB 模块配置
+  /ab/modules/options:
+    get:
+      description: 全量模块下拉（id/module_key/module_name，配置项管理页选父模块用），不分页
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AbModuleOptionsResp'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 模块下拉选项
+      tags:
+      - AB 模块配置
   /admin/user/add:
     post:
       consumes:

@@ -169,3 +169,39 @@ type NotificationListResp struct {
 		Count int            `json:"count" example:"42"`
 	} `json:"data"`
 }
+
+// AbModuleListResp AB 模块列表响应（POST /ab/modules/list）
+type AbModuleListResp struct {
+	Code int    `json:"code" example:"200"`
+	Msg  string `json:"msg"  example:"success"`
+	Data struct {
+		List  []AbModule `json:"list"`
+		Count int        `json:"count" example:"2"`
+	} `json:"data"`
+}
+
+// AbModuleOptionsResp AB 模块下拉响应（GET /ab/modules/options，data 直接为数组不分页）
+type AbModuleOptionsResp struct {
+	Code int              `json:"code" example:"200"`
+	Msg  string           `json:"msg"  example:"success"`
+	Data []AbModuleOption `json:"data"`
+}
+
+// AbModuleItemListResp AB 配置项列表响应（POST /ab/items/list）
+type AbModuleItemListResp struct {
+	Code int    `json:"code" example:"200"`
+	Msg  string `json:"msg"  example:"success"`
+	Data struct {
+		List  []AbModuleItem `json:"list"`
+		Count int            `json:"count" example:"16"`
+	} `json:"data"`
+}
+
+// AbConfigResp H5 聚合配置响应（GET /ab/config，免鉴权公开）。
+// data 是两级 map：模块标识 → 配置项标识（camelCase 原文，业务数据非固定字段名，
+// swag 以 map 形式声明）→ 可见版本数组；空模块输出空对象
+type AbConfigResp struct {
+	Code int                            `json:"code" example:"200"`
+	Msg  string                         `json:"msg"  example:"success"`
+	Data map[string]map[string][]string `json:"data"`
+}

@@ -228,3 +228,41 @@ CREATE TABLE IF NOT EXISTS notification (
   UNIQUE KEY uk_order (order_id),
   KEY idx_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='通知记录';
+
+-- ============================================================
+-- AB 版模块配置（C 端 H5 gyz-h5-spacestation 各页面模块显隐，见 PLAN-ab-module.md）
+-- 两级结构：模块（页面域，如 spacestation 空间站 / f10）→ 配置项（模块内 UI 块）
+-- 兼容约定：
+--   module_key / item_key 是 H5 代码引用的业务标识，创建后不可改（编辑接口不含此字段）
+--   item_key 的值是 camelCase 原文（topBanner），是业务数据不是接口字段名，
+--     不受本项目 JSON 键名 snake_case 约束
+--   versions 逗号分隔枚举串（'mass,data'）：mass 大众版 / data 数据版，
+--     值域固定枚举、每项不含逗号，无 JSON 列需求；service 层 join/split + 值域校验
+--   item 的 module_id 是逻辑外键（不建 FOREIGN KEY，同项目其他表先例）
+-- ============================================================
+
+-- AB 版模块（父级）
+CREATE TABLE IF NOT EXISTS ab_module (
+  id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  module_key  VARCHAR(50)     NOT NULL                COMMENT '模块标识（H5 页面域，聚合接口返回 map 第一级 key，如 spacestation；创建后不可改）',
+  module_name VARCHAR(100)    NOT NULL DEFAULT ''     COMMENT '模块名称（管理台展示，如 空间站）',
+  sort_no     INT             NOT NULL DEFAULT 0      COMMENT '排序号（管理台列表升序）',
+  created_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_module_key (module_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AB 版模块';
+
+-- AB 版模块配置项（子级）；uk_module_item 一键两用：同模块内 item_key 唯一（跨模块允许同名）+ 最左前缀服务按模块查/数子项
+CREATE TABLE IF NOT EXISTS ab_module_item (
+  id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  module_id  BIGINT UNSIGNED NOT NULL                COMMENT '所属模块 ID（ab_module.id，逻辑外键）',
+  item_key   VARCHAR(50)     NOT NULL                COMMENT '配置项标识（H5 代码 camelCase key 原文，如 topBanner；业务数据不受 snake_case 约束，创建后不可改）',
+  item_name  VARCHAR(100)    NOT NULL DEFAULT ''     COMMENT '配置项名称（管理台展示，如 顶部图）',
+  versions   VARCHAR(64)     NOT NULL DEFAULT ''     COMMENT '可见版本逗号分隔串：mass 大众版 / data 数据版，如 mass,data（至少一项）',
+  sort_no    INT             NOT NULL DEFAULT 0      COMMENT '排序号（管理台列表升序）',
+  created_at DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_module_item (module_id, item_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AB 版模块配置项';

@@ -43,7 +43,7 @@ handler → service → repository → model
 
 ### 鉴权约定（JWT + Redis 白名单，设计决策见 plans/PLAN-auth.md）
 
-- 除 `POST /api/v1/login`、`/swagger/**` 与 `/guyuzhoudb/**`（直播小鹅通透传，mofang 是另一 token 体系本服务验不了，凭证即入参 access_token 由小鹅通侧校验）外全部挂 `Auth` 中间件（`internal/router/auth.go`）：解析 `Authorization: Bearer` → `service.VerifyAccessToken` 验签 + 白名单比对 → `c.Set` 用户信息（key 常量在 `internal/model/auth.go`）。**新增业务接口默认进鉴权组**（挂 `Auth(svc)` 或放 `authed` 组内）
+- 除 `POST /api/v1/login`、`/swagger/**`、`/guyuzhoudb/**`（直播小鹅通透传，mofang 是另一 token 体系本服务验不了，凭证即入参 access_token 由小鹅通侧校验）与 `GET /api/v1/ab/config`（C 端 H5 聚合的 AB 版模块显隐配置，无用户数据，见 plans/PLAN-ab-module.md）外全部挂 `Auth` 中间件（`internal/router/auth.go`）：解析 `Authorization: Bearer` → `service.VerifyAccessToken` 验签 + 白名单比对 → `c.Set` 用户信息（key 常量在 `internal/model/auth.go`）。**新增业务接口默认进鉴权组**（挂 `Auth(svc)` 或放 `authed` 组内）
 - 单设备模式：Redis `auth:token:{user_id}` 存当前有效 jti，TTL=JWT 有效期；重新登录覆盖即互踢，`DEL` 即踢人；登出/logout 幂等
 - 401 统一文案 `登录已过期，请重新登录`（哨兵错误 `service.ErrUnauthorized`，不区分失败原因防探测）；Redis 故障映 500（fail-closed）
 - **login 接口是响应约定特例**：失败也返回 HTTP 200 + `code:400`（前端登录页对 reject 值调 `error.includes('密码')`）；`token`/`expire`/`passwd_expired` 在 body 根而非 data 内；`ErrInvalidCredentials` 文案必须含「密码」关键词（前端据此定位密码输入框），勿改措辞

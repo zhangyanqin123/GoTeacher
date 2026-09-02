@@ -35,6 +35,10 @@ var diagnoseSeedSQL string
 //go:embed order_seed.sql
 var orderSeedSQL string
 
+//
+//go:embed ab_module_seed.sql
+var abModuleSeedSQL string
+
 // Connect 建立 MySQL 连接池并探活。
 // 经 sqllog 包装 connector：所有 SQL（含事务与 Migrate/Seed）打 slog.Debug 日志，LOG_LEVEL=debug 可见。
 func Connect(cfg *config.Config) (*sql.DB, error) {
@@ -186,6 +190,9 @@ func Seed(db *sql.DB) error {
 	if err := seedProduct(db); err != nil {
 		return err
 	}
+	if err := seedAbModule(db); err != nil {
+		return err
+	}
 	return seedAdminUser(db)
 }
 
@@ -223,6 +230,18 @@ func seedProduct(db *sql.DB) error {
 		return fmt.Errorf("seed product count: %w", err)
 	}
 	return seedIfEmpty(db, count, orderSeedSQL)
+}
+
+// seedAbModule AB 版模块配置空表种子（ab_module/ab_module_item 一次事务写入，见 ab_module_seed.sql）。
+// 判空只看 ab_module：若两表独立判空，会有「模块表有数据、item 表空」的中间态错插风险
+// （用户自建模块占了 seed 显式 id，item 挂错父），单函数使 seed 原子。
+// 重灌必须两表一起清：TRUNCATE ab_module_item; TRUNCATE ab_module; 后重启
+func seedAbModule(db *sql.DB) error {
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM ab_module").Scan(&count); err != nil {
+		return fmt.Errorf("seed ab_module count: %w", err)
+	}
+	return seedIfEmpty(db, count, abModuleSeedSQL)
 }
 
 // seedAdminUser admin_user 空表种子（初始账号 admin/admin123，见 PLAN-auth.md）。
