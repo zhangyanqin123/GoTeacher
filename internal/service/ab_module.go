@@ -205,8 +205,9 @@ func (s *Service) DeleteAbModuleItem(ctx context.Context, id int64) error {
 
 // AbConfig H5 聚合配置（GET /api/v1/ab/config，免鉴权）：
 // 两级 map 模块标识 → 配置项标识 → 可见版本数组。
-// 空模块输出空对象（不省略 key），H5 端 cfg[moduleKey]?.[itemKey] 无需判空特殊处理。
-func (s *Service) AbConfig(ctx context.Context) (map[string]map[string][]string, error) {
+// moduleKey 非空时只返回该模块；模块不存在返回空 map——快照过滤语义（与列表筛选空结果
+// 一致），H5 无需处理错误分支。空模块输出空对象（不省略 key），H5 端 cfg[moduleKey]?.[itemKey] 无需判空特殊处理。
+func (s *Service) AbConfig(ctx context.Context, moduleKey string) (map[string]map[string][]string, error) {
 	modules, err := s.repo.ListAllAbModules(ctx)
 	if err != nil {
 		return nil, err
@@ -216,9 +217,14 @@ func (s *Service) AbConfig(ctx context.Context) (map[string]map[string][]string,
 		return nil, err
 	}
 
+	// idToKey 只收录入选模块，items 循环天然跳过非目标模块的配置项
+	// （配置数据量个位数量级，全量查询 + 内存过滤，无需按模块单查）
 	cfg := make(map[string]map[string][]string, len(modules))
 	idToKey := make(map[int64]string, len(modules))
 	for _, m := range modules {
+		if moduleKey != "" && m.ModuleKey != moduleKey {
+			continue
+		}
 		cfg[m.ModuleKey] = make(map[string][]string)
 		idToKey[m.ID] = m.ModuleKey
 	}

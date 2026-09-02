@@ -22,13 +22,13 @@
 H5 聚合（**免鉴权**，直挂引擎同 login 先例）：
 
 ```
-GET /api/v1/ab/config →
+GET /api/v1/ab/config?module_key=spacestation →
 { "code":200, "msg":"success",
-  "data": { "spacestation": { "topBanner":["mass","data"], "carouselAd":["data"], ... },
-            "f10": { ...同构... } } }
+  "data": { "spacestation": { "topBanner":["mass","data"], "carouselAd":["data"], ... } } }
 ```
 
 - data 直接是两级 map，无 list/count 包装（非分页结构先例：GET /orders/products data 为数组）；空模块输出 `"key": {}` 不省略，H5 端 `cfg[moduleKey]?.[itemKey]` 无需判空
+- `module_key` 可选 query 参数（2026-09-02 增）：传模块标识只返回该模块，不传返回全部（向后兼容）；标识不存在返回 `data: {}`——快照过滤语义（与列表筛选空结果一致），H5 无需处理错误分支。实现为 service 内存过滤（idToKey 只收录入选模块），数据量个位数不单查
 - 路径不用 `/ab/modules`（那是鉴权组分页列表语义）——config 是全量快照，无参幂等可被网关/CDN 缓存
 
 ## 表结构（schema.sql 追加，Migrate 幂等）
@@ -54,6 +54,7 @@ GET /api/v1/ab/config →
 
 - **curl 全套**：无 token 401 ✓；重复 module_key 400「模块标识已存在」✓；中文 key 400 格式文案 ✓；versions 乱序+重复 `["data","mass","data"]` 归一化存输出 `["mass","data"]` ✓；同模块重名 item_key 400 ✓；非法版本值 `["gray"]` 400 ✓；item_key 含下划线 400 ✓；挪模块编辑 + versions 收敛 ✓；删有子项模块 400 拦截 ✓；删空模块成功 ✓；删/编不存在 404 ✓
 - **聚合接口**：无 token 200；两级 map camelCase key 原文输出；carouselAd 仅 `["data"]`；空模块输出 `{}` ✓
+- **聚合接口 module_key 过滤口径**（2026-09-02 增）：不传=全部 2 模块 16 项（向后兼容）✓；`?module_key=spacestation`=仅 1 模块 8 项 ✓；`?module_key=不存在`=`data:{}` ✓；运行时 swagger 参数收录 `module_key (string, 非必填)` ✓
 - **seed**：全新空表首启自动建表+首灌 2 模块 16 项（item_count=8×2）✓；重启不重复（幂等）✓；TRUNCATE 重灌走同一条 seedIfEmpty 判空路径
 - **浏览器全流程**（Playwright 驱动 localhost:5173/abmodule）：左侧菜单「AB 模块配置」出现 ✓；模块表 item_count 列 ✓；配置项表 16 条 versions 彩色 Tag（carouselAd 仅数据版）✓；编辑弹窗 topBanner 置灰 + 模块 Select 回显「空间站（spacestation）」+ Checkbox 双勾选回显 ✓；**编辑闭环**：取消大众版保存 → 列表 Tag 变「数据版」+ updated_at 刷新 → /ab/config 同步 `["data"]` → 勾回恢复 ✓；父模块下拉筛选 8 条 ✓；删 spacestation 弹「模块下存在配置项，请先删除全部配置项」且行数不变 ✓
 - **构建**：go build/vet/test 全过；前端 oxlint 仅 1 个 set-state-in-effect warning（与既有 ReportModal/AuditModal 同款模式）、tsc 通过；`swag init` 生成 10 路径 + 15 个 Ab definitions（AbConfigResp.data 为 object/map 型）

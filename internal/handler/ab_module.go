@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"log/slog"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -326,16 +327,18 @@ func (h *AbModuleHandler) ItemDelete(c *gin.Context) {
 // AbConfig GET /api/v1/ab/config（免鉴权，公开不挂 Auth：H5 无本服务登录态，公网域名直访）
 //
 //	@Summary		H5 聚合配置
-//	@Description	返回全部模块的 AB 版显隐配置两级 map：模块标识 → 配置项标识（camelCase 原文，如 topBanner）→ 可见版本数组（mass 大众版 / data 数据版）。data 无 list 包装，空模块输出空对象。公开接口无鉴权
+//	@Description	返回 AB 版显隐配置两级 map：模块标识 → 配置项标识（camelCase 原文，如 topBanner）→ 可见版本数组（mass 大众版 / data 数据版）。module_key 传模块标识只返回该模块（不存在返回空对象），不传返回全部模块。data 无 list 包装，空模块输出空对象。公开接口无鉴权
 //	@Tags			AB 模块配置
 //	@Produce		json
+//	@Param			module_key query string false "模块标识（如 spacestation；不传=返回全部模块）"
 //	@Success		200 {object} model.AbConfigResp
 //	@Failure		500 {object} response.Response "服务器内部错误"
 //	@Router			/ab/config [get]
 func (h *AbModuleHandler) AbConfig(c *gin.Context) {
-	switch cfg, err := h.svc.AbConfig(c.Request.Context()); {
+	moduleKey := strings.TrimSpace(c.Query("module_key"))
+	switch cfg, err := h.svc.AbConfig(c.Request.Context(), moduleKey); {
 	case err != nil:
-		slog.Error("get ab config failed", "err", err)
+		slog.Error("get ab config failed", "module_key", moduleKey, "err", err)
 		response.Fail(c, 500, 500, "服务器内部错误")
 	default:
 		response.OKMsg(c, "success", cfg)

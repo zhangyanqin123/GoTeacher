@@ -1275,8 +1275,13 @@ info:
 paths:
   /ab/config:
     get:
-      description: 返回全部模块的 AB 版显隐配置两级 map：模块标识 → 配置项标识（camelCase 原文，如 topBanner）→
-        可见版本数组（mass 大众版 / data 数据版）。data 无 list 包装，空模块输出空对象。公开接口无鉴权
+      description: 返回 AB 版显隐配置两级 map：模块标识 → 配置项标识（camelCase 原文，如 topBanner）→ 可见版本数组（mass
+        大众版 / data 数据版）。module_key 传模块标识只返回该模块（不存在返回空对象），不传返回全部模块。data 无 list 包装，空模块输出空对象。公开接口无鉴权
+      parameters:
+      - description: 模块标识（如 spacestation；不传=返回全部模块）
+        in: query
+        name: module_key
+        type: string
       produces:
       - application/json
       responses:
