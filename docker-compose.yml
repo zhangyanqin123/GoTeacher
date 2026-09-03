@@ -1,13 +1,13 @@
 # 中间件 + Go 服务统一编排——server/consumer 不挂 profile，up 即全栈，见 plans/PLAN-docker.md
 #   docker compose up -d --build  → 全栈（中间件 + server + consumer）
-#   server 不映射宿主机端口：前端容器 GoProject-web 经 compose 网络直连 handicap-server:8080，
+#   server 不映射宿主机端口：前端容器 GoProject-web 经 compose 网络直连 gyz-server:8080，
 #   宿主机 8080 永远留给 go run——容器化全栈与宿主机开发流并存零冲突
 # 变量插值默认读同目录 .env（与 godotenv 同一文件双用）：DB_USER/DB_PASSWORD 即 go 服务连接凭证，一处配置两边生效
 # 端口避让本机服务：本机 dmg MySQL 占 3306、brew redis@6.2 占 6379，容器用 3307/6380 并存
 services:
   mysql:
     image: mysql:8.0
-    container_name: handicap-mysql
+    container_name: gyz-mysql
     restart: unless-stopped
     # utf8mb4_0900_ai_ci 与 README 建库语句一致（8.0 默认即是，显式声明防漂移）
     command:
@@ -33,7 +33,7 @@ services:
 
   redis:
     image: redis:6.2 # 对齐本机 brew redis@6.2 版本，减少变量
-    container_name: handicap-redis
+    container_name: gyz-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"] # AOF：容器重启后鉴权白名单 token 不丢
     ports:
@@ -74,8 +74,8 @@ services:
         GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
     # APP_TAG 仅由 deploy.sh 发版时注入（APP_TAG=x.y.z up -d --no-build）；手动命令勿带，
     # 否则 up -d --build 会打出该版本 tag 却走无 GIT_REV 的构建路径，污染版本历史（决策见 PLAN-docker.md）
-    image: handicap-server:${APP_TAG:-latest}
-    container_name: handicap-server
+    image: gyz-server:${APP_TAG:-latest}
+    container_name: gyz-server
     restart: unless-stopped
     environment:
       # 容器网络内直连服务名；端口是容器内端口（3306/6379/5672），不是宿主机映射端口 3307/6380
@@ -93,7 +93,7 @@ services:
       GIN_MODE: release # gin 读 GIN_MODE 关 [GIN-debug] 输出（Logger/Recovery 中间件保留）
       TZ: Asia/Shanghai # 对齐 DSN Loc: time.Local 与 mysql 容器时区，防 DATETIME 偏 8h
     # 无宿主机端口映射：前端容器 GoProject-web 经 goproject_default 网络直连
-    # handicap-server:8080（容器名 + 容器内端口）；宿主机 8080 永远留给 go run（并存零冲突），
+    # gyz-server:8080（容器名 + 容器内端口）；宿主机 8080 永远留给 go run（并存零冲突），
     # 浏览器 Swagger/接口文档改走前端 nginx 的 /swagger 反代入口
     depends_on:
       mysql: { condition: service_healthy }
@@ -115,8 +115,8 @@ services:
         GO_IMAGE: ${GO_IMAGE:-golang:1.24-alpine}
         RUNTIME_IMAGE: ${RUNTIME_IMAGE:-alpine:3.21}
         GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
-    image: handicap-server:${APP_TAG:-latest} # 与 server 同 tag：deploy.sh 切换时 APP_TAG 一条 up 同步双服务
-    container_name: handicap-consumer
+    image: gyz-server:${APP_TAG:-latest} # 与 server 同 tag：deploy.sh 切换时 APP_TAG 一条 up 同步双服务
+    container_name: gyz-consumer
     command: ["/app/consumer"] # 唯一差异：起另一个二进制
     restart: unless-stopped
     environment:

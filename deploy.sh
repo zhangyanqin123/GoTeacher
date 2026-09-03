@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# handicap-server（Go 后端）版本化发版 / 回滚 —— 移植自前端 GoProject-web/deploy.sh（决策 11）
+# gyz-server（Go 后端）版本化发版 / 回滚 —— 移植自前端 GoProject-web/deploy.sh（决策 11）
 # 镜像按语义版本 tag 命名（1.2.0 风格），旧版本保留可回滚；
 # latest 只是「当前运行版本」的指针别名，容器始终运行具体版本 tag。
 # 与前端的核心差异（后端本就 compose 管理）：容器切换走 compose
@@ -11,9 +11,9 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-REPO=handicap-server
-CONTAINER_SERVER=handicap-server     # compose container_name（固定，inspect/logs 直接用）
-CONTAINER_CONSUMER=handicap-consumer
+REPO=gyz-server
+CONTAINER_SERVER=gyz-server     # compose container_name（固定，inspect/logs 直接用）
+CONTAINER_CONSUMER=gyz-consumer
 KEEP="${KEEP:-5}"                    # prune 保留的版本数
 HEALTH_BUDGET=120                    # 双服务健康门禁预算（秒）：server 最坏判定 30+5*6=60s + 首启 Migrate+Seed
 CONSUMER_STABLE_SECS=10              # consumer 就绪稳定窗：持续 running 该秒数且零重启才认可
@@ -26,7 +26,7 @@ err()  { printf '\033[31m%s\033[0m\n' "$*" >&2; }
 # 从 .env 提取变量值（compose 插值读 .env，本脚本的 docker build 不读——shell 环境优先，回落 .env）
 env_val() { sed -n "s/^$1=//p" .env 2>/dev/null | tail -1; }
 
-# server 容器当前运行的镜像引用（如 handicap-server:1.2.0），未运行则为空
+# server 容器当前运行的镜像引用（如 gyz-server:1.2.0），未运行则为空
 current_image() { docker inspect -f '{{.Config.Image}}' "$CONTAINER_SERVER" 2>/dev/null || true; }
 
 # 当前运行版本 tag：优先 Config.Image 引用；引用是 latest 时（手动 compose up 的场景）
@@ -340,7 +340,7 @@ cmd_prune() { # $1=-n 干跑
 
 usage() {
   cat <<'EOF'
-handicap-server（Go 后端）版本化发版 / 回滚
+gyz-server（Go 后端）版本化发版 / 回滚
 server/consumer 单镜像双二进制：一条 compose up 同步切换，健康门禁覆盖双服务。
 
 用法: ./deploy.sh <命令>
