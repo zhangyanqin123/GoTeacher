@@ -42,7 +42,7 @@ func Load() *Config {
 		DBPort:     getEnv("DB_PORT", "3306"),
 		DBUser:     getEnv("DB_USER", "root"),
 		DBPassword: getEnv("DB_PASSWORD", ""),
-		DBName:     getEnv("DB_NAME", "handicap_db"),
+		DBName:     getEnv("DB_NAME", "gyz_db"),
 		ServerPort: getEnv("SERVER_PORT", "8080"),
 		LogLevel:   getEnv("LOG_LEVEL", "info"),
 

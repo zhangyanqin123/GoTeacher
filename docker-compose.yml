@@ -17,7 +17,7 @@ services:
       # root 密码复用 DB_PASSWORD：学习项目取舍，不为此引入新键（见 plans/PLAN-docker.md）
       # 密码用 :? 语法强制必填——缺失/为空即报错退出，无内置默认值，真实密码只存在于 .env（不进 git）
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?请在项目根 .env 设置 DB_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME:-handicap_db}
+      MYSQL_DATABASE: ${DB_NAME:-gyz_db}
       MYSQL_USER: ${DB_USER:-app_user}
       MYSQL_PASSWORD: ${DB_PASSWORD:?请在项目根 .env 设置 DB_PASSWORD}
       TZ: Asia/Shanghai # 对齐 Go 侧 Loc: time.Local 的 DATETIME 语义
@@ -86,7 +86,7 @@ services:
       # 凭证/密钥：沿用 .env 插值，:? 语法强制必填（对齐 mysql 服务既有约定，不进镜像层）
       DB_USER: ${DB_USER:-app_user}
       DB_PASSWORD: ${DB_PASSWORD:?请在项目根 .env 设置 DB_PASSWORD}
-      DB_NAME: ${DB_NAME:-handicap_db}
+      DB_NAME: ${DB_NAME:-gyz_db}
       JWT_SECRET: ${JWT_SECRET:?请在项目根 .env 设置 JWT_SECRET}
       JWT_TTL_HOURS: ${JWT_TTL_HOURS:-24}
       LOG_LEVEL: ${LOG_LEVEL:-info}
@@ -124,7 +124,7 @@ services:
       DB_PORT: "3306"
       DB_USER: ${DB_USER:-app_user}
       DB_PASSWORD: ${DB_PASSWORD:?请在项目根 .env 设置 DB_PASSWORD}
-      DB_NAME: ${DB_NAME:-handicap_db}
+      DB_NAME: ${DB_NAME:-gyz_db}
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
       LOG_LEVEL: ${LOG_LEVEL:-info}
       TZ: Asia/Shanghai
