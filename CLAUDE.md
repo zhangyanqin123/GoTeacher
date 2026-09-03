@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目定位
 
-Go 学习项目 `handicap-service`：chatSys（老师管理/离职转移）+ 诊股记录接口 + 直播小鹅通透传。**核心约束：chatSys 与诊股接口的 JSON 键名全链路 snake_case（`page_index`/`dept_id`/`original_teacher_id`），与前端 gyz-admin 对接页面的键名严格一致**（2026-08-18 由 camelCase 整体迁移，决策见 plans/PLAN-api-snake-case.md）。新增字段一律蛇形；URL 路径段（如 `bindSales`）不在此约束内。新增/修改接口前先读对应 `plans/PLAN-*.md` 了解设计决策（设计文档统一在 `plans/`，`docs/` 仅放 swag 生成物）。**本项目的配套前端项目是 `GoProject-web`，不是 gyz-admin**。两者关系：`GoProject-web/`（与 GoProject 同级的独立目录，React + Vite + TS + antd 5）是当前承载本服务全部接口的管理台（见 plans/PLAN-web.md），接口改动需同步其页面与 service 层；gyz-admin 是仓库外的旧 Vue2 对接前端（snake_case 键名约束的历史来源，仍独立运行、与本服务无耦合）。
+Go 学习项目 `gyz-service`：chatSys（老师管理/离职转移）+ 诊股记录接口 + 直播小鹅通透传。**核心约束：chatSys 与诊股接口的 JSON 键名全链路 snake_case（`page_index`/`dept_id`/`original_teacher_id`），与前端 gyz-admin 对接页面的键名严格一致**（2026-08-18 由 camelCase 整体迁移，决策见 plans/PLAN-api-snake-case.md）。新增字段一律蛇形；URL 路径段（如 `bindSales`）不在此约束内。新增/修改接口前先读对应 `plans/PLAN-*.md` 了解设计决策（设计文档统一在 `plans/`，`docs/` 仅放 swag 生成物）。**本项目的配套前端项目是 `GoProject-web`，不是 gyz-admin**。两者关系：`GoProject-web/`（与 GoProject 同级的独立目录，React + Vite + TS + antd 5）是当前承载本服务全部接口的管理台（见 plans/PLAN-web.md），接口改动需同步其页面与 service 层；gyz-admin 是仓库外的旧 Vue2 对接前端（snake_case 键名约束的历史来源，仍独立运行、与本服务无耦合）。
 
 ## 常用命令
 
@@ -20,9 +20,9 @@ docker compose up -d --build        # 全栈容器化（中间件 + Go server/co
 ./deploy.sh rollback prev          # 回滚上一版（rollback <tag> 回任意历史版；list 列版本；prune [-n] 清旧版）
 ```
 
-- 依赖 MySQL/Redis/RabbitMQ 统一由 Docker Compose 起：`docker compose up -d`（健康状态 `docker compose ps`，决策见 plans/PLAN-docker.md）。容器映射 **3307/6380** 避让本机 dmg MySQL（3306）与 brew redis@6.2（6379），与本机服务并存互不影响。`up -d` 即全栈（server/consumer 容器不挂 profile）；server 容器**不映射宿主机端口**，前端容器 GoProject-web 经 `goproject_default` 网络直连 `handicap-server:8080`（容器名）——宿主机 8080 永远留给 `go run`，容器化全栈与宿主机开发流并存零冲突；浏览器 Swagger 入口改走前端 nginx `/swagger` 反代（前端容器先于后端起时靠其 `--restart` 自愈）
+- 依赖 MySQL/Redis/RabbitMQ 统一由 Docker Compose 起：`docker compose up -d`（健康状态 `docker compose ps`，决策见 plans/PLAN-docker.md）。容器映射 **3307/6380** 避让本机 dmg MySQL（3306）与 brew redis@6.2（6379），与本机服务并存互不影响。`up -d` 即全栈（server/consumer 容器不挂 profile）；server 容器**不映射宿主机端口**，前端容器 GoProject-web 经 `goproject_default` 网络直连 `gyz-server:8080`（容器名）——宿主机 8080 永远留给 `go run`，容器化全栈与宿主机开发流并存零冲突；浏览器 Swagger 入口改走前端 nginx `/swagger` 反代（前端容器先于后端起时靠其 `--restart` 自愈）
 - **后端镜像版本化发版**（`./deploy.sh`，与前端 GoProject-web 同款模式，决策见 PLAN-docker.md 决策 12）：语义三段式 tag，`deploy/rollback/list/prune` 四子命令；容器切换走 `APP_TAG=x.y.z docker compose up -d --no-build --no-deps server consumer`（脚本内部注入，**手动 compose 命令勿带 APP_TAG**，`up -d --build` 带它会打出无 GIT_REV 的版本 tag 污染历史）。`compose up -d` 不带 APP_TAG 时 app 容器用 latest = 最近一次成功发版/回滚的指针别名（故 up -d 与发版流自洽并存）；发版后旧版本镜像保留可回滚。注意发版=代码已变=`COPY . .` 层失效=VM 内全量重编译（15 分钟起，`go mod download` 层仍命中）
-- 库无需手工建：compose 的 `MYSQL_DATABASE=handicap_db` 自动建库，`MYSQL_USER/MYSQL_PASSWORD` 插值自 `.env` 的 DB_USER/DB_PASSWORD（app_user）；空库首启 go 服务自动建表+种子；`JWT_SECRET` 必填（空值启动退出），见 plans/PLAN-auth.md
+- 库无需手工建：compose 的 `MYSQL_DATABASE=gyz_db` 自动建库，`MYSQL_USER/MYSQL_PASSWORD` 插值自 `.env` 的 DB_USER/DB_PASSWORD（app_user）；空库首启 go 服务自动建表+种子；`JWT_SECRET` 必填（空值启动退出），见 plans/PLAN-auth.md
 - 配置走 `.env`（模板 `.env.example`；本仓库实际 `.env` 端口已指容器 3307/6380）
 - 重灌种子：`TRUNCATE TABLE <表>;` 后重启（种子仅在表空时写入，schema/seed SQL 均 go:embed 随二进制发布；admin_user 种子为 Go 代码 bcrypt 动态生成 admin/admin123，不走 seed SQL）
 - 无 lint 工具链，无 Makefile

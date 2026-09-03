@@ -1,4 +1,4 @@
-# handicap-service
+# gyz-service
 
 Go 学习项目：老师管理（chatSys）接口 + 老师离职转移接口 + 诊股记录接口。数据从 MySQL 查询返回（非硬编码），首次启动自动建表并写入种子数据。业务接口统一 Bearer token 鉴权（见下文「鉴权」）。
 
@@ -424,7 +424,7 @@ curl -s -X POST 'http://localhost:8080/api/v1/notifications/list' \
 
 ### 2. 初始化数据库
 
-无需手工建库：容器 `MYSQL_DATABASE=handicap_db` 自动建库（utf8mb4_0900_ai_ci），首次 `docker compose up -d` 即完成；空库启动 go 服务自动建表 + 种子。
+无需手工建库：容器 `MYSQL_DATABASE=gyz_db` 自动建库（utf8mb4_0900_ai_ci），首次 `docker compose up -d` 即完成；空库启动 go 服务自动建表 + 种子。
 
 ### 3. 配置环境变量
 
@@ -456,7 +456,7 @@ docker compose down            # 全停（volume 保留）
 - 镜像：多阶段构建（`golang:1.24-alpine` → `alpine:3.21`，约 55MB），单镜像双二进制 `/app/server` 与 `/app/consumer`（consumer 服务 `command` 覆盖）；tzdata + `TZ=Asia/Shanghai` 对齐 DSN 时区、ca-certificates 支撑小鹅通 HTTPS
 - 配置：容器内直连服务名（`DB_HOST=mysql` 等），凭证/`JWT_SECRET` 从 `.env` 插值注入（`:?` 强制必填），**不进镜像层**
 - 弱网：`.env` 末段取消注释 `GO_IMAGE`/`RUNTIME_IMAGE`/`GOPROXY` 换 daocloud/goproxy 源
-- 前端联动：GoProject-web 容器经 `goproject_default` 网络直连 `handicap-server:8080`（容器名），Swagger 也走前端 `/swagger` 反代；宿主机 8080 空闲留给 go run
+- 前端联动：GoProject-web 容器经 `goproject_default` 网络直连 `gyz-server:8080`（容器名），Swagger 也走前端 `/swagger` 反代；宿主机 8080 空闲留给 go run
 - 构建后建议 `docker builder prune -f`：buildkit 缓存可达数 GB，挤爆 Docker Desktop VM 内存会触发 RabbitMQ 内存告警（AMQP 拒连，详见 PLAN-docker.md 实测记录）
 
 #### 版本化发版（deploy.sh，对齐前端模式，见 plans/PLAN-docker.md 决策 12）
@@ -470,7 +470,7 @@ docker compose down            # 全停（volume 保留）
 CHECK=1 ./deploy.sh deploy    # 构建前先跑 go vet（弱网下 docker build 前快速失败）
 ```
 
-- 镜像按语义三段式 tag（`handicap-server:1.0.0` 风格）保留历史版本可回滚；`latest` 只是「当前运行版本」的指针别名；`IMAGE_TAG`/`GIT_REV` 双 ENV 打进镜像溯源（compose 日常 `up -d --build` 落 `dev/unknown`，可区分手动/发版构建）
+- 镜像按语义三段式 tag（`gyz-server:1.0.0` 风格）保留历史版本可回滚；`latest` 只是「当前运行版本」的指针别名；`IMAGE_TAG`/`GIT_REV` 双 ENV 打进镜像溯源（compose 日常 `up -d --build` 落 `dev/unknown`，可区分手动/发版构建）
 - 发版必须走 deploy.sh；手动 `docker compose up -d --build` 仅日常调试（会覆盖 latest 指针且无版本历史），**勿带 APP_TAG**（会打出无 GIT_REV 的版本 tag 污染历史）
 - 停机窗口：容器重建期间（server 优雅停 15s + 启动 + 门禁判定，约 20~60s）前端 API 短暂 502，可 `docker restart goproject-web` 立即恢复（不重启也会 --restart 自愈）
 - 发版耗时：代码已变时 `COPY . .` 层缓存失效，VM 内 go build 全量重编译（15 分钟起，`go mod download` 层仍命中）；deploy.sh 自身已排除出构建上下文（改脚本不触发重编译）
