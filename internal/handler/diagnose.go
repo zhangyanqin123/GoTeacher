@@ -7,9 +7,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"handicap-service/internal/model"
-	"handicap-service/internal/response"
-	"handicap-service/internal/service"
+	"gyz-service/internal/model"
+	"gyz-service/internal/response"
+	"gyz-service/internal/service"
 )
 
 // DiagnoseHandler 诊股记录 HTTP 层

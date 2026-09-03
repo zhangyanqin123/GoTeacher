@@ -8,8 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"handicap-service/internal/response"
-	"handicap-service/internal/service"
+	"gyz-service/internal/response"
+	"gyz-service/internal/service"
 )
 
 // LiveHandler 直播（小鹅通透传）HTTP 层（设计决策见 PLAN-live.md）

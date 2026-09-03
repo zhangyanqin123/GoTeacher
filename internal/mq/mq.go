@@ -11,7 +11,7 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	"handicap-service/internal/model"
+	"gyz-service/internal/model"
 )
 
 // 拓扑常量：一个事件广播给三个消费者（库存/积分/通知）

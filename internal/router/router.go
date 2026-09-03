@@ -9,12 +9,12 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	"handicap-service/internal/config"
-	"handicap-service/internal/handler"
-	"handicap-service/internal/mq"
-	"handicap-service/internal/repository"
-	"handicap-service/internal/response"
-	"handicap-service/internal/service"
+	"gyz-service/internal/config"
+	"gyz-service/internal/handler"
+	"gyz-service/internal/mq"
+	"gyz-service/internal/repository"
+	"gyz-service/internal/response"
+	"gyz-service/internal/service"
 )
 
 // New 组装依赖（repo → service → handler）并注册路由。

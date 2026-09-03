@@ -6,9 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"handicap-service/internal/model"
-	"handicap-service/internal/response"
-	"handicap-service/internal/service"
+	"gyz-service/internal/model"
+	"gyz-service/internal/response"
+	"gyz-service/internal/service"
 )
 
 // AdminUserHandler 用户管理 HTTP 层（登录账号 CRUD，见 PLAN-admin-user.md）

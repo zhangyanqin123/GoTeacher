@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"handicap-service/internal/model"
+	"gyz-service/internal/model"
 )
 
 // newOrderTestService 不依赖 DB/MQ 的最小构造（CreateOrder 的库访问走不到，

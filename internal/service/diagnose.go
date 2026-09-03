@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strings"
 
-	"handicap-service/internal/model"
-	"handicap-service/internal/sanitize"
+	"gyz-service/internal/model"
+	"gyz-service/internal/sanitize"
 )
 
 // diagnose 业务错误定义，handler 用 errors.Is 判断并映射 HTTP 状态码

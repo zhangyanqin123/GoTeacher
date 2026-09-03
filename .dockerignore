@@ -31,7 +31,7 @@ docker-compose.yml
 deploy.sh
 
 # swag 生成物的外部副本：docs.go 内联 docTemplate（自包含），编译与运行都不读这两个文件。
-# 红线：docs/ 不能整目录排除——cmd/server/main.go blank import "handicap-service/docs"，docs.go 必须在
+# 红线：docs/ 不能整目录排除——cmd/server/main.go blank import "gyz-service/docs"，docs.go 必须在
 docs/swagger.json
 docs/swagger.yaml
 

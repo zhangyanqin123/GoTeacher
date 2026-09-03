@@ -6,9 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"handicap-service/internal/model"
-	"handicap-service/internal/response"
-	"handicap-service/internal/service"
+	"gyz-service/internal/model"
+	"gyz-service/internal/response"
+	"gyz-service/internal/service"
 )
 
 // OrderHandler 订单系统 HTTP 层（Gin → MySQL → RabbitMQ，见 PLAN-order.md）

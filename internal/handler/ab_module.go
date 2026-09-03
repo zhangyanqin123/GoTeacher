@@ -7,9 +7,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"handicap-service/internal/model"
-	"handicap-service/internal/response"
-	"handicap-service/internal/service"
+	"gyz-service/internal/model"
+	"gyz-service/internal/response"
+	"gyz-service/internal/service"
 )
 
 // AbModuleHandler AB 版模块配置 HTTP 层（模块/配置项 CRUD + H5 聚合，见 PLAN-ab-module.md）

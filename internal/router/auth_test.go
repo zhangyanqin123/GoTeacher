@@ -14,8 +14,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/redis/go-redis/v9"
 
-	"handicap-service/internal/model"
-	"handicap-service/internal/service"
+	"gyz-service/internal/model"
+	"gyz-service/internal/service"
 )
 
 const testSecret = "test-secret-32-bytes-xxxxxxxxxxxx"

@@ -11,7 +11,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/bcrypt"
 
-	"handicap-service/internal/config"
+	"gyz-service/internal/config"
 )
 
 // 内嵌 SQL，随二进制发布，无需外部迁移工具

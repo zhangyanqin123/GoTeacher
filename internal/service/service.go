@@ -5,8 +5,8 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"handicap-service/internal/mq"
-	"handicap-service/internal/repository"
+	"gyz-service/internal/mq"
+	"gyz-service/internal/repository"
 )
 
 // Service 业务逻辑层（对应 Spring Boot 的 Service）

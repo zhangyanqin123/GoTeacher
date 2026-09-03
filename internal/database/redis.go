@@ -7,7 +7,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"handicap-service/internal/config"
+	"gyz-service/internal/config"
 )
 
 // ConnectRedis 建立 Redis 连接并探活（鉴权白名单存储，见 PLAN-auth.md）。

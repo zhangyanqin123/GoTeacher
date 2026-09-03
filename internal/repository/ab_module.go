@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"handicap-service/internal/model"
+	"gyz-service/internal/model"
 )
 
 // AB 版模块配置数据访问（ab_module / ab_module_item，见 PLAN-ab-module.md）。

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"handicap-service/internal/model"
+	"gyz-service/internal/model"
 )
 
 // ListResigns 按筛选条件分页查询离职转移记录。

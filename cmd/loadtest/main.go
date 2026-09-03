@@ -22,8 +22,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"handicap-service/internal/config"
-	"handicap-service/internal/database"
+	"gyz-service/internal/config"
+	"gyz-service/internal/database"
 )
 
 // apiResp 通用响应骨架(只看 code/msg 分类,不关心 data)

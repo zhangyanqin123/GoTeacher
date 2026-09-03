@@ -13,12 +13,12 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	"handicap-service/internal/config"
-	"handicap-service/internal/database"
-	"handicap-service/internal/model"
-	"handicap-service/internal/mq"
-	"handicap-service/internal/repository"
-	"handicap-service/internal/service"
+	"gyz-service/internal/config"
+	"gyz-service/internal/database"
+	"gyz-service/internal/model"
+	"gyz-service/internal/mq"
+	"gyz-service/internal/repository"
+	"gyz-service/internal/service"
 )
 
 func main() {

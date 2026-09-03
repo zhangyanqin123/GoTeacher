@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"handicap-service/internal/model"
+	"gyz-service/internal/model"
 )
 
 // ListDiagnoses 按筛选条件分页查询诊股记录。

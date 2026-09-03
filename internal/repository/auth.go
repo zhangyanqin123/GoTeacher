@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"handicap-service/internal/model"
+	"gyz-service/internal/model"
 )
 
 // GetAdminUserByUsername 按用户名查管理员。ErrNoRows 返回 (nil, nil)

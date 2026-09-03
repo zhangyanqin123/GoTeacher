@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"handicap-service/internal/model"
+	"gyz-service/internal/model"
 )
 
 // AB 版模块配置业务错误定义，handler 用 errors.Is 判断并映射 HTTP 状态码。

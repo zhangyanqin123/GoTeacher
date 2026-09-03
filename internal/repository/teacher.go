@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"handicap-service/internal/model"
+	"gyz-service/internal/model"
 )
 
 // ListTeachers 按筛选条件分页查询老师列表。

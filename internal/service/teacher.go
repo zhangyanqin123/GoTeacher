@@ -6,7 +6,7 @@ import (
 	"slices"
 	"unicode/utf8"
 
-	"handicap-service/internal/model"
+	"gyz-service/internal/model"
 )
 
 // teacher 业务错误定义，handler 用 errors.Is 判断并映射 HTTP 状态码

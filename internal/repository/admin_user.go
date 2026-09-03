@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"handicap-service/internal/model"
+	"gyz-service/internal/model"
 )
 
 // ExistsAdminUserByUsername 用户名唯一性检查。

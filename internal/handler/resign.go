@@ -6,9 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"handicap-service/internal/model"
-	"handicap-service/internal/response"
-	"handicap-service/internal/service"
+	"gyz-service/internal/model"
+	"gyz-service/internal/response"
+	"gyz-service/internal/service"
 )
 
 // ResignHandler 老师离职转移 HTTP 层

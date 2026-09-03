@@ -1,4 +1,4 @@
-module handicap-service
+module gyz-service
 
 go 1.24.2
 

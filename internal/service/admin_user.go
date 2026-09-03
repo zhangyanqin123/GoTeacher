@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"handicap-service/internal/model"
+	"gyz-service/internal/model"
 )
 
 // 用户管理业务错误定义，handler 用 errors.Is 判断并映射 HTTP 状态码。

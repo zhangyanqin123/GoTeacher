@@ -13,7 +13,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/redis/go-redis/v9"
 
-	"handicap-service/internal/model"
+	"gyz-service/internal/model"
 )
 
 // 鉴权哨兵错误（文本即前端展示文案，见 PLAN-auth.md）。

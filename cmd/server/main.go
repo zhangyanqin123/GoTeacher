@@ -21,12 +21,12 @@ import (
 	"syscall"
 	"time"
 
-	"handicap-service/internal/config"
-	"handicap-service/internal/database"
-	"handicap-service/internal/mq"
-	"handicap-service/internal/router"
+	"gyz-service/internal/config"
+	"gyz-service/internal/database"
+	"gyz-service/internal/mq"
+	"gyz-service/internal/router"
 
-	_ "handicap-service/docs" // swag 生成物（swag init -g cmd/server/main.go -o docs）
+	_ "gyz-service/docs" // swag 生成物（swag init -g cmd/server/main.go -o docs）
 )
 
 func main() {

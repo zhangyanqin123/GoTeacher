@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"handicap-service/internal/model"
+	"gyz-service/internal/model"
 )
 
 // GetProduct 按ID查商品（创建订单回查快照/存在性校验）。查无返回 nil，不算错误。
