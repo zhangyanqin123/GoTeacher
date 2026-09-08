@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -29,6 +30,17 @@ type Config struct {
 	XiaoeAPIBase string // 小鹅通开放平台 API 域名（直播登录链接透传的上游 base，见 PLAN-live.md）
 
 	RabbitMQURL string // RabbitMQ 连接串（订单事件 order.created 发布/消费，见 PLAN-order.md）
+
+	// 前端监控告警（mon_event/mon_alert，见 PLAN-frontend-monitor.md）
+	MonAlertEnabled            bool     // 告警扫描任务开关（false 时 main 不起 goroutine）
+	MonAlertIntervalMin        int      // 扫描间隔（分钟）
+	MonAlertWindowMin          int      // 统计滚动窗口（分钟）
+	MonAlertEnvs               []string // 参与告警的环境（默认仅 production，test 刷数据不告警）
+	MonAlertProbeFailThreshold int      // PROBE_FAIL 触发阈值（窗口内 > 阈值；默认 0 即 >0）
+	MonAlertChunkThreshold     int      // CHUNK_LOAD_SURGE 阈值
+	MonAlertErrorThreshold     int      // ERROR_SURGE 阈值（win+vue+unhandled 合计）
+	MonRetentionDays           int      // mon_event 保留天数（每日分批清理）
+	MonAlertWebhookURL         string   // 告警 webhook（空=仅落表不推送）
 }
 
 // Load 加载配置并组装 DSN。
@@ -55,6 +67,16 @@ func Load() *Config {
 		XiaoeAPIBase: getEnv("XIAOE_API_BASE", "https://api.xiaoe-tech.com"),
 
 		RabbitMQURL: getEnv("RABBITMQ_URL", "amqp://guest:guest@127.0.0.1:5672/"),
+
+		MonAlertEnabled:            getEnvBool("MON_ALERT_ENABLED", true),
+		MonAlertIntervalMin:        getEnvInt("MON_ALERT_INTERVAL_MIN", 5),
+		MonAlertWindowMin:          getEnvInt("MON_ALERT_WINDOW_MIN", 10),
+		MonAlertEnvs:               splitComma(getEnv("MON_ALERT_ENVS", "production")),
+		MonAlertProbeFailThreshold: getEnvInt("MON_ALERT_PROBE_FAIL_THRESHOLD", 0),
+		MonAlertChunkThreshold:     getEnvInt("MON_ALERT_CHUNK_THRESHOLD", 10),
+		MonAlertErrorThreshold:     getEnvInt("MON_ALERT_ERROR_THRESHOLD", 50),
+		MonRetentionDays:           getEnvInt("MON_RETENTION_DAYS", 90),
+		MonAlertWebhookURL:         getEnv("MON_ALERT_WEBHOOK_URL", ""),
 	}
 
 	mc := mysql.Config{
@@ -85,4 +107,25 @@ func getEnvInt(key string, fallback int) int {
 		}
 	}
 	return fallback
+}
+
+// getEnvBool 布尔环境变量：仅 "true"/"1" 视为真，其余（含缺失）回落默认
+func getEnvBool(key string, fallback bool) bool {
+	if v := os.Getenv(key); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			return b
+		}
+	}
+	return fallback
+}
+
+// splitComma 逗号分隔串转切片（去空白/空项；空串返回空切片）
+func splitComma(s string) []string {
+	var out []string
+	for _, p := range strings.Split(s, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }

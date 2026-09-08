@@ -205,3 +205,38 @@ type AbConfigResp struct {
 	Msg  string                         `json:"msg"  example:"success"`
 	Data map[string]map[string][]string `json:"data"`
 }
+
+// MonEventListResp 事件列表响应（POST /mon/event/list）
+type MonEventListResp struct {
+	Code int          `json:"code" example:"200"`
+	Msg  string       `json:"msg"  example:"success"`
+	Data PageResult   `json:"data"`
+}
+
+// MonEventDetailResp 事件详情响应（GET /mon/event/detail）
+type MonEventDetailResp struct {
+	Code int           `json:"code" example:"200"`
+	Msg  string        `json:"msg"  example:"success"`
+	Data MonEventRow   `json:"data"`
+}
+
+// MonOverviewRespWrap 概览响应（POST /mon/overview）
+type MonOverviewRespWrap struct {
+	Code int              `json:"code" example:"200"`
+	Msg  string           `json:"msg"  example:"success"`
+	Data MonOverviewResp  `json:"data"`
+}
+
+// MonAlertListResp 告警列表响应（POST /mon/alert/list）
+type MonAlertListResp struct {
+	Code int          `json:"code" example:"200"`
+	Msg  string       `json:"msg"  example:"success"`
+	Data PageResult   `json:"data"`
+}
+
+// MonIngestRespWrap ingest POST 回执响应（POST /mon/event）
+type MonIngestRespWrap struct {
+	Code int             `json:"code" example:"200"`
+	Msg  string          `json:"msg"  example:"success"`
+	Data MonIngestResp   `json:"data"`
+}

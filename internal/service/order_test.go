@@ -12,7 +12,7 @@ import (
 // newOrderTestService 不依赖 DB/MQ 的最小构造（CreateOrder 的库访问走不到，
 // 仅测查库前的前置校验与纯函数；publisher nil 跳过发布）
 func newOrderTestService() *Service {
-	return New(nil, nil, testSecret, time.Hour, "", nil)
+	return New(nil, nil, testSecret, time.Hour, "", nil, MonAlertConfig{})
 }
 
 // TestCalcPoints 积分计算：1 元 1 分按金额向下取整

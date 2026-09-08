@@ -266,3 +266,70 @@ CREATE TABLE IF NOT EXISTS ab_module_item (
   PRIMARY KEY (id),
   UNIQUE KEY uk_module_item (module_id, item_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AB 版模块配置项';
+
+-- ============================================================
+-- 前端监控（H5 探针 gyz-h5-personalcenter 的 window.__GYZMON__，见 PLAN-frontend-monitor.md）
+--   mon_event 事件表：ingest 双通道写入（GET ?d= gif 兼容 / POST JSON 批量）
+--   mon_alert 告警表：服务内 ticker 三规则扫描，uk_dedup_pending 保证同故障仅一条 pending
+-- 索引口径：
+--   idx_env_type_created 服务告警扫描（env+type+时间窗）与日志默认查询
+--   idx_created 服务概览聚合（无 type 条件的 GROUP BY）
+--   idx_session_id 服务会话回放（按 sid 追溯 boot→错误全链路）
+--   idx_capbad 服务能力失败项分布聚合；cap_syntax 为写入时派生列（无序逗号串 LIKE 判 syntax 会漏，精确匹配走它）
+-- ============================================================
+
+-- 前端监控事件表（高写入：boot 事件≈每次 PV；不建唯一键——gif 弱网重发容忍 at-least-once）
+CREATE TABLE IF NOT EXISTS mon_event (
+  id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  event_type   VARCHAR(32)  NOT NULL DEFAULT '' COMMENT '事件类型：probe_fail/chunk_load_error/win_error/resource_error/unhandled_rejection/vue_error/boot',
+  env          VARCHAR(16)  NOT NULL DEFAULT '' COMMENT '环境：test/pre/production',
+  ver          VARCHAR(32)  NOT NULL DEFAULT '' COMMENT 'H5 版本+commit（构建期注入，如 1.2.22.0+126ef6a）',
+  chrome_ver   INT          NOT NULL DEFAULT 0 COMMENT 'UA Chrome 内核版本（iOS WKWebView 无 Chrome 标识恒 0）',
+  osv          VARCHAR(16)  NOT NULL DEFAULT '' COMMENT '系统版本（UA 提取：iOS 18.5 / Android 14；iOS 无 Chrome 号，内核维度以此补充）',
+  webview      VARCHAR(32)  NOT NULL DEFAULT '' COMMENT 'WebView 标识：TBSxxx（腾讯X5）/MQQ/XWEB',
+  net_type     VARCHAR(16)  NOT NULL DEFAULT '' COMMENT '网络类型（UA NetType，如 WIFI/4G，常空）',
+  device_model VARCHAR(64)  NOT NULL DEFAULT '' COMMENT '机型（H5 端常空，App 启动后探针 enrich）',
+  os           VARCHAR(64)  NOT NULL DEFAULT '' COMMENT '操作系统（如 iOS 18.5 / Android 12）',
+  route        VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'hash 路由（如 #/pages/produPkg/index）',
+  session_id   VARCHAR(40)  NOT NULL DEFAULT '' COMMENT '会话 id（sessionStorage 生成，会话回放键）',
+  seq          INT          NOT NULL DEFAULT 0 COMMENT '会话内序号（时序还原）',
+  capbad       VARCHAR(128) NOT NULL DEFAULT '' COMMENT '能力探测失败项逗号串（如 syntax,at），空=全部通过',
+  cap_syntax   TINYINT(1)   NOT NULL DEFAULT 0 COMMENT 'capbad 含 syntax（写入时服务端派生）：1=机型语法不兼容；判 syntax 走本列精确匹配',
+  cap          VARCHAR(512) NOT NULL DEFAULT '' COMMENT '能力探测原始 JSON 串（诊断细节，不参与判型）',
+  ua           VARCHAR(300) NOT NULL DEFAULT '' COMMENT 'User-Agent（探针端已截 300）',
+  msg          TEXT         NULL COMMENT '错误信息（≤500 字符，入库前净化）',
+  stack        TEXT         NULL COMMENT '调用栈（≤800 字符，入库前净化）',
+  src          VARCHAR(255) NOT NULL DEFAULT '' COMMENT '资源 URL（resource_error 的 404 判定依据）',
+  ip           VARCHAR(45)  NOT NULL DEFAULT '' COMMENT '客户端 IP（IPv6 最长 45）',
+  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '服务端接收时间（探针即时上报，≈事件时间）',
+  updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  KEY idx_env_type_created (env, event_type, created_at),
+  KEY idx_created (created_at),
+  KEY idx_session_id (session_id),
+  KEY idx_capbad (capbad)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='前端监控事件表';
+
+-- 前端监控告警表（ticker 规则写入；不自动关单，人工 ack 收口——避免恢复判定状态机）
+CREATE TABLE IF NOT EXISTS mon_alert (
+  id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  rule_code    VARCHAR(32)  NOT NULL COMMENT '规则码：PROBE_FAIL/CHUNK_LOAD_SURGE/ERROR_SURGE',
+  level        VARCHAR(8)   NOT NULL COMMENT '级别：P0/P1',
+  env          VARCHAR(16)  NOT NULL COMMENT '触发环境',
+  ver          VARCHAR(32)  NOT NULL DEFAULT '' COMMENT '命中窗口内 Top 版本（版本相关故障定位）',
+  window_start DATETIME     NOT NULL COMMENT '触发窗口起',
+  window_end   DATETIME     NOT NULL COMMENT '触发窗口止（持续触发时滚动更新）',
+  metric_value INT          NOT NULL COMMENT '窗口内事件数',
+  threshold    INT          NOT NULL COMMENT '触发时阈值快照（阈值调整后仍可追溯）',
+  detail       VARCHAR(1024) NOT NULL DEFAULT '' COMMENT '聚合摘要 JSON：Top 机型/cv/src/msg、分类型计数、样例 sid',
+  status       VARCHAR(16)  NOT NULL DEFAULT 'pending' COMMENT 'pending 待处理 / acked 已确认',
+  ack_user     VARCHAR(64)  NOT NULL DEFAULT '' COMMENT '确认人（鉴权上下文用户名）',
+  ack_note     VARCHAR(255) NOT NULL DEFAULT '' COMMENT '处置结论',
+  acked_at     DATETIME     NULL COMMENT '确认时间',
+  dedup_key    VARCHAR(128) NOT NULL COMMENT '去重键 rule_code|env',
+  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_dedup_pending (dedup_key, status),
+  KEY idx_status_created (status, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='前端监控告警记录';

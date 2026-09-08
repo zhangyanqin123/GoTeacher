@@ -17,11 +17,12 @@ import (
 	"gyz-service/internal/service"
 )
 
-// New 组装依赖（repo → service → handler）并注册路由。
+// New 组装依赖（repo → service → handler）并注册路由，返回 engine 与 service
+// （service 供 main 挂前端监控告警 goroutine 用，避免 main 重复组装一份依赖）。
 // 鉴权：JWT + Redis 白名单（见 PLAN-auth.md），除 login、swagger 与 /guyuzhoudb/live/**（小鹅通透传，
 // 公开，见 PLAN-live.md）外全部挂 Auth 中间件。
 // publisher：订单事件 order.created 的发布端（连接由 main 持有，见 PLAN-order.md）。
-func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publisher) *gin.Engine {
+func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publisher) (*gin.Engine, *service.Service) {
 	r := gin.Default()
 	r.Use(CORS())
 
@@ -33,7 +34,19 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 	r.GET("/health", func(c *gin.Context) { response.OK(c, nil) })
 
 	repo := repository.New(db)
-	svc := service.New(repo, rdb, cfg.JWTSecret, time.Duration(cfg.JWTTTLHours)*time.Hour, cfg.XiaoeAPIBase, publisher)
+	// 前端监控告警配置（cfg → service.MonAlertConfig 转换，service 不依赖 config 包）
+	monCfg := service.MonAlertConfig{
+		Enabled:            cfg.MonAlertEnabled,
+		IntervalMin:        cfg.MonAlertIntervalMin,
+		WindowMin:          cfg.MonAlertWindowMin,
+		Envs:               cfg.MonAlertEnvs,
+		ProbeFailThreshold: cfg.MonAlertProbeFailThreshold,
+		ChunkThreshold:     cfg.MonAlertChunkThreshold,
+		ErrorThreshold:     cfg.MonAlertErrorThreshold,
+		RetentionDays:      cfg.MonRetentionDays,
+		WebhookURL:         cfg.MonAlertWebhookURL,
+	}
+	svc := service.New(repo, rdb, cfg.JWTSecret, time.Duration(cfg.JWTTTLHours)*time.Hour, cfg.XiaoeAPIBase, publisher, monCfg)
 	th := handler.NewTeacher(svc)
 	rh := handler.NewResign(svc)
 	dh := handler.NewDiagnose(svc)
@@ -42,6 +55,7 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 	lh := handler.NewLive(svc)
 	oh := handler.NewOrder(svc)
 	abh := handler.NewAbModule(svc)
+	mh := handler.NewMon(svc)
 
 	// 鉴权公开接口（login 签发 token；logout/getinfo 需登录态放 authed 组）
 	r.POST("/api/v1/login", ah.Login)
@@ -112,5 +126,17 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 	// AB 聚合查询：免鉴权直挂引擎（H5 无本服务登录态，公网域名直访，login 同款先例），
 	// 返回全量配置两级 map，语义区别于 modules 资源的分页列表
 	r.GET("/api/v1/ab/config", abh.AbConfig)
-	return r
+
+	// 前端监控 ingest（H5 探针上报，见 PLAN-frontend-monitor.md）：免鉴权直挂——
+	// H5 探针无本服务登录态，公网直访，ab/config 同款先例；查询/告警接口挂 authed 组（阶段二）
+	r.GET("/api/v1/mon/event", mh.IngestGet)
+	r.POST("/api/v1/mon/event", mh.IngestPost)
+
+	// 前端监控管理台（概览/事件多口径查询/告警，见 PLAN-frontend-monitor.md）
+	authed.POST("/mon/event/list", mh.EventList)
+	authed.GET("/mon/event/detail", mh.EventDetail)
+	authed.POST("/mon/overview", mh.Overview)
+	authed.POST("/mon/alert/list", mh.AlertList)
+	authed.POST("/mon/alert/ack", mh.AlertAck)
+	return r, svc
 }

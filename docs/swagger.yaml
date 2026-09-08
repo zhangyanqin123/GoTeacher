@@ -580,6 +580,285 @@ definitions:
         example: eyJhbGciOiJIUzI1NiIs...
         type: string
     type: object
+  model.MonAlertAckReq:
+    properties:
+      ack_note:
+        example: XWEB 老内核语法不兼容，已回滚
+        maxLength: 255
+        type: string
+      id:
+        example: 1
+        type: integer
+    required:
+    - ack_note
+    - id
+    type: object
+  model.MonAlertListReq:
+    properties:
+      begin:
+        example: "2026-09-07 00:00:00"
+        type: string
+      end:
+        example: "2026-09-07 23:59:59"
+        type: string
+      env:
+        example: production
+        type: string
+      level:
+        example: P0
+        type: string
+      page_index:
+        example: 1
+        type: integer
+      page_size:
+        example: 10
+        type: integer
+      rule_code:
+        example: PROBE_FAIL
+        type: string
+      status:
+        example: pending
+        type: string
+    type: object
+  model.MonAlertListResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        $ref: '#/definitions/model.PageResult'
+      msg:
+        example: success
+        type: string
+    type: object
+  model.MonEventDetailResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        $ref: '#/definitions/model.MonEventRow'
+      msg:
+        example: success
+        type: string
+    type: object
+  model.MonEventListReq:
+    properties:
+      begin:
+        example: "2026-09-07 00:00:00"
+        type: string
+      cap_syntax:
+        description: 0=不过滤 1=仅语法不兼容机型
+        example: 1
+        type: integer
+      capbads:
+        description: FIND_IN_SET 语义（无序逗号串）
+        example:
+        - syntax
+        - at
+        items:
+          type: string
+        type: array
+      chrome_ver:
+        description: 0=不过滤
+        example: 77
+        type: integer
+      device_model:
+        example: HBN-AL00
+        type: string
+      end:
+        example: "2026-09-07 23:59:59"
+        type: string
+      env:
+        example: production
+        type: string
+      event_types:
+        example:
+        - chunk_load_error
+        - probe_fail
+        items:
+          type: string
+        type: array
+      msg:
+        example: Unexpected token
+        type: string
+      page_index:
+        example: 1
+        type: integer
+      page_size:
+        example: 20
+        type: integer
+      route:
+        example: produPkg
+        type: string
+      session_id:
+        example: mtqzwhcqjelh6q
+        type: string
+      src:
+        example: chunk-
+        type: string
+      ver:
+        description: 前缀匹配（忽略 commit hash）
+        example: 1.2.22
+        type: string
+    type: object
+  model.MonEventListResp:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        $ref: '#/definitions/model.PageResult'
+      msg:
+        example: success
+        type: string
+    type: object
+  model.MonEventRow:
+    properties:
+      cap:
+        description: 仅详情查询填充
+        type: string
+      cap_syntax:
+        type: integer
+      capbad:
+        type: string
+      chrome_ver:
+        type: integer
+      created_at:
+        type: string
+      device_model:
+        type: string
+      env:
+        type: string
+      event_type:
+        type: string
+      id:
+        type: integer
+      ip:
+        type: string
+      msg:
+        description: 列表态附带：msg 前 100 字预览（详情态为全文）
+        type: string
+      net_type:
+        type: string
+      os:
+        type: string
+      route:
+        type: string
+      seq:
+        type: integer
+      session_id:
+        type: string
+      src:
+        type: string
+      stack:
+        description: 仅详情查询填充
+        type: string
+      ua:
+        description: 仅详情查询填充
+        type: string
+      ver:
+        type: string
+      webview:
+        type: string
+    type: object
+  model.MonGroupRow:
+    properties:
+      count:
+        example: 80
+        type: integer
+      extra:
+        example: 3
+        type: integer
+      key:
+        example: HBN-AL00
+        type: string
+    type: object
+  model.MonIngestResp:
+    properties:
+      accepted:
+        example: 2
+        type: integer
+      rejected:
+        example: 0
+        type: integer
+    type: object
+  model.MonOverviewReq:
+    properties:
+      begin:
+        example: "2026-09-06 20:00:00"
+        type: string
+      end:
+        example: "2026-09-07 20:00:00"
+        type: string
+      env:
+        example: production
+        type: string
+    type: object
+  model.MonOverviewResp:
+    properties:
+      by_cv:
+        description: 内核版本分布（升序，低内核置顶；0=iOS/未知）
+        items:
+          $ref: '#/definitions/model.MonGroupRow'
+        type: array
+      by_mdl:
+        description: Top10 机型（Extra=语法不兼容数）
+        items:
+          $ref: '#/definitions/model.MonGroupRow'
+        type: array
+      by_route:
+        description: Top10 路由
+        items:
+          $ref: '#/definitions/model.MonGroupRow'
+        type: array
+      by_src:
+        description: resource_error Top10 资源 URL
+        items:
+          $ref: '#/definitions/model.MonGroupRow'
+        type: array
+      by_ver:
+        description: Top10 版本（版本相关故障定位）
+        items:
+          $ref: '#/definitions/model.MonGroupRow'
+        type: array
+      summary:
+        $ref: '#/definitions/model.MonOverviewSummary'
+    type: object
+  model.MonOverviewRespWrap:
+    properties:
+      code:
+        example: 200
+        type: integer
+      data:
+        $ref: '#/definitions/model.MonOverviewResp'
+      msg:
+        example: success
+        type: string
+    type: object
+  model.MonOverviewSummary:
+    properties:
+      by_type:
+        additionalProperties:
+          type: integer
+        description: 按事件类型计数
+        type: object
+      devices:
+        description: 去重机型数
+        type: integer
+      errors:
+        description: 错误类事件（total - boot）
+        type: integer
+      sessions:
+        description: 去重会话数
+        type: integer
+      syntax:
+        description: 语法不兼容事件（cap_syntax=1）
+        type: integer
+      total:
+        description: 全部事件
+        type: integer
+    type: object
   model.Notification:
     properties:
       content:
@@ -718,6 +997,12 @@ definitions:
       msg:
         example: success
         type: string
+    type: object
+  model.PageResult:
+    properties:
+      count:
+        type: integer
+      list: {}
     type: object
   model.PointsListReq:
     properties:
@@ -2294,6 +2579,202 @@ paths:
       summary: 退出登录
       tags:
       - 鉴权
+  /mon/alert/ack:
+    post:
+      consumes:
+      - application/json
+      description: 确认人取鉴权上下文；仅 pending 可确认（并发重复确认按 404 语义）
+      parameters:
+      - description: 确认请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.MonAlertAckReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: msg 固定「确认成功」，data 恒为 null
+          schema:
+            $ref: '#/definitions/model.ActionResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 告警不存在或已确认
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 确认告警
+      tags:
+      - 前端监控
+  /mon/alert/list:
+    post:
+      consumes:
+      - application/json
+      description: 多条件分页查询告警记录（status 缺省查 pending；最新在前）
+      parameters:
+      - description: 查询条件
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.MonAlertListReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.MonAlertListResp'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 告警列表
+      tags:
+      - 前端监控
+  /mon/event:
+    get:
+      description: H5 探针 window.__GYZMON__ 的 ?d= 上报通道，返回 1x1 透明 gif。免鉴权（H5 无登录态）。解析失败/超限静默丢弃仅记日志
+      parameters:
+      - description: URL-encoded 的事件 JSON（探针 payload）
+        in: query
+        name: d
+        required: true
+        type: string
+      produces:
+      - image/gif
+      responses:
+        "200":
+          description: 1x1 透明 gif
+          schema:
+            type: file
+      summary: 事件上报（探针 gif 通道）
+      tags:
+      - 前端监控
+    post:
+      consumes:
+      - application/json
+      description: 接收单对象或数组（≤50 条）。读 raw body 不校验 Content-Type（sendBeacon 发 text/plain）。免鉴权
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.MonIngestResp'
+        "400":
+          description: 请求体非法
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 事件上报（POST 批量）
+      tags:
+      - 前端监控
+  /mon/event/detail:
+    get:
+      description: 单事件全字段（含 stack/cap/ua 全文），详情抽屉用
+      parameters:
+      - description: 事件 ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.MonEventDetailResp'
+        "404":
+          description: 事件不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 事件详情
+      tags:
+      - 前端监控
+  /mon/event/list:
+    post:
+      consumes:
+      - application/json
+      description: 多条件分页查询监控事件（时间范围强制：缺省近 24h，跨度 ≤31 天）；capbads 为 FIND_IN_SET 语义；list
+        项 msg 为 100 字预览，全文走详情接口
+      parameters:
+      - description: 查询条件（全可选除时间）
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.MonEventListReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.MonEventListResp'
+        "400":
+          description: 时间范围非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 事件多口径查询
+      tags:
+      - 前端监控
+  /mon/overview:
+    post:
+      consumes:
+      - application/json
+      description: 指标卡（总数/错误/会话/机型/语法不兼容）+ 五个 Top 聚合（版本/机型/内核/路由/资源404）。时间缺省近 24h，跨度
+        ≤7 天
+      parameters:
+      - description: 概览查询条件
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.MonOverviewReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.MonOverviewRespWrap'
+        "400":
+          description: 时间范围非法
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: 监控概览聚合
+      tags:
+      - 前端监控
   /notifications/list:
     post:
       consumes:

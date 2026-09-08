@@ -76,6 +76,41 @@ func Migrate(db *sql.DB) error {
 	if err := migrateHouseUpDown(db); err != nil {
 		return fmt.Errorf("migrate house_up_down_stats: %w", err)
 	}
+	if err := migrateMonEventOsv(db); err != nil {
+		return fmt.Errorf("migrate mon_event osv: %w", err)
+	}
+	return nil
+}
+
+// migrateMonEventOsv mon_event 补 osv 列（前端监控二期增强：iOS 无 Chrome 版本号，
+// 内核维度以系统版本补充）。CREATE TABLE IF NOT EXISTS 不改已建表，存量库靠此处幂等升级：
+// 表不存在（首次部署）跳过——schema.sql 的建表语句已含该列。
+func migrateMonEventOsv(db *sql.DB) error {
+	var n int
+	err := db.QueryRow(
+		"SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'mon_event' AND COLUMN_NAME = 'osv'",
+	).Scan(&n)
+	if err != nil {
+		return fmt.Errorf("check mon_event.osv: %w", err)
+	}
+	if n > 0 {
+		return nil // 已有列（新库建表自带），幂等出口
+	}
+	// 表不存在则无需处理（schema.sql 建表含列）；存在但缺列才 ALTER
+	var tbl int
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'mon_event'",
+	).Scan(&tbl); err != nil {
+		return fmt.Errorf("check mon_event exists: %w", err)
+	}
+	if tbl == 0 {
+		return nil
+	}
+	// 与 schema.sql 中的列定义逐字一致，防两处漂移
+	const alter = "ALTER TABLE mon_event ADD COLUMN osv VARCHAR(16) NOT NULL DEFAULT '' COMMENT '系统版本（UA 提取：iOS 18.5 / Android 14；iOS 无 Chrome 号，内核维度以此补充）' AFTER chrome_ver"
+	if _, err := db.Exec(alter); err != nil {
+		return fmt.Errorf("alter mon_event add osv: %w", err)
+	}
 	return nil
 }
 

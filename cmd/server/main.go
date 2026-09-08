@@ -94,7 +94,7 @@ func main() {
 	}
 
 	// 6. 启动 HTTP 服务：http.Server 显式超时 + 优雅退出（信号风格对齐 cmd/consumer/main.go）
-	r := router.New(db, rdb, cfg, mq.NewPublisher(mqCh))
+	r, monSvc := router.New(db, rdb, cfg, mq.NewPublisher(mqCh))
 	srv := &http.Server{
 		Addr:              ":" + cfg.ServerPort,
 		Handler:           r,
@@ -105,6 +105,10 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	// 前端监控告警扫描（ticker 三规则 + 每日保留清理，见 PLAN-frontend-monitor.md）：
+	// 阻塞式主循环挂 goroutine，随 ctx 优雅退出；单实例部署，扩容前需加分布式锁（PLAN 风险项）
+	go monSvc.StartMonAlertJob(ctx)
 
 	errCh := make(chan error, 1)
 	go func() { errCh <- srv.ListenAndServe() }()

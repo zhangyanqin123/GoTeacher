@@ -1612,6 +1612,312 @@ const docTemplate = `{
                 }
             }
         },
+        "/mon/alert/ack": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "确认人取鉴权上下文；仅 pending 可确认（并发重复确认按 404 语义）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "前端监控"
+                ],
+                "summary": "确认告警",
+                "parameters": [
+                    {
+                        "description": "确认请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MonAlertAckReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "msg 固定「确认成功」，data 恒为 null",
+                        "schema": {
+                            "$ref": "#/definitions/model.ActionResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "告警不存在或已确认",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/mon/alert/list": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "多条件分页查询告警记录（status 缺省查 pending；最新在前）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "前端监控"
+                ],
+                "summary": "告警列表",
+                "parameters": [
+                    {
+                        "description": "查询条件",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MonAlertListReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.MonAlertListResp"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/mon/event": {
+            "get": {
+                "description": "H5 探针 window.__GYZMON__ 的 ?d= 上报通道，返回 1x1 透明 gif。免鉴权（H5 无登录态）。解析失败/超限静默丢弃仅记日志",
+                "produces": [
+                    "image/gif"
+                ],
+                "tags": [
+                    "前端监控"
+                ],
+                "summary": "事件上报（探针 gif 通道）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "URL-encoded 的事件 JSON（探针 payload）",
+                        "name": "d",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "1x1 透明 gif",
+                        "schema": {
+                            "type": "file"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "接收单对象或数组（≤50 条）。读 raw body 不校验 Content-Type（sendBeacon 发 text/plain）。免鉴权",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "前端监控"
+                ],
+                "summary": "事件上报（POST 批量）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.MonIngestResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求体非法",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/mon/event/detail": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "单事件全字段（含 stack/cap/ua 全文），详情抽屉用",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "前端监控"
+                ],
+                "summary": "事件详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "事件 ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.MonEventDetailResp"
+                        }
+                    },
+                    "404": {
+                        "description": "事件不存在",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/mon/event/list": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "多条件分页查询监控事件（时间范围强制：缺省近 24h，跨度 ≤31 天）；capbads 为 FIND_IN_SET 语义；list 项 msg 为 100 字预览，全文走详情接口",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "前端监控"
+                ],
+                "summary": "事件多口径查询",
+                "parameters": [
+                    {
+                        "description": "查询条件（全可选除时间）",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MonEventListReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.MonEventListResp"
+                        }
+                    },
+                    "400": {
+                        "description": "时间范围非法",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/mon/overview": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "指标卡（总数/错误/会话/机型/语法不兼容）+ 五个 Top 聚合（版本/机型/内核/路由/资源404）。时间缺省近 24h，跨度 ≤7 天",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "前端监控"
+                ],
+                "summary": "监控概览聚合",
+                "parameters": [
+                    {
+                        "description": "概览查询条件",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MonOverviewReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.MonOverviewRespWrap"
+                        }
+                    },
+                    "400": {
+                        "description": "时间范围非法",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/notifications/list": {
             "post": {
                 "security": [
@@ -2904,6 +3210,400 @@ const docTemplate = `{
                 }
             }
         },
+        "model.MonAlertAckReq": {
+            "type": "object",
+            "required": [
+                "ack_note",
+                "id"
+            ],
+            "properties": {
+                "ack_note": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "XWEB 老内核语法不兼容，已回滚"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "model.MonAlertListReq": {
+            "type": "object",
+            "properties": {
+                "begin": {
+                    "type": "string",
+                    "example": "2026-09-07 00:00:00"
+                },
+                "end": {
+                    "type": "string",
+                    "example": "2026-09-07 23:59:59"
+                },
+                "env": {
+                    "type": "string",
+                    "example": "production"
+                },
+                "level": {
+                    "type": "string",
+                    "example": "P0"
+                },
+                "page_index": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "page_size": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "rule_code": {
+                    "type": "string",
+                    "example": "PROBE_FAIL"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "pending"
+                }
+            }
+        },
+        "model.MonAlertListResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "$ref": "#/definitions/model.PageResult"
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "model.MonEventDetailResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "$ref": "#/definitions/model.MonEventRow"
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "model.MonEventListReq": {
+            "type": "object",
+            "properties": {
+                "begin": {
+                    "type": "string",
+                    "example": "2026-09-07 00:00:00"
+                },
+                "cap_syntax": {
+                    "description": "0=不过滤 1=仅语法不兼容机型",
+                    "type": "integer",
+                    "example": 1
+                },
+                "capbads": {
+                    "description": "FIND_IN_SET 语义（无序逗号串）",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "syntax",
+                        "at"
+                    ]
+                },
+                "chrome_ver": {
+                    "description": "0=不过滤",
+                    "type": "integer",
+                    "example": 77
+                },
+                "device_model": {
+                    "type": "string",
+                    "example": "HBN-AL00"
+                },
+                "end": {
+                    "type": "string",
+                    "example": "2026-09-07 23:59:59"
+                },
+                "env": {
+                    "type": "string",
+                    "example": "production"
+                },
+                "event_types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "chunk_load_error",
+                        "probe_fail"
+                    ]
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "Unexpected token"
+                },
+                "page_index": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "page_size": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "route": {
+                    "type": "string",
+                    "example": "produPkg"
+                },
+                "session_id": {
+                    "type": "string",
+                    "example": "mtqzwhcqjelh6q"
+                },
+                "src": {
+                    "type": "string",
+                    "example": "chunk-"
+                },
+                "ver": {
+                    "description": "前缀匹配（忽略 commit hash）",
+                    "type": "string",
+                    "example": "1.2.22"
+                }
+            }
+        },
+        "model.MonEventListResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "$ref": "#/definitions/model.PageResult"
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "model.MonEventRow": {
+            "type": "object",
+            "properties": {
+                "cap": {
+                    "description": "仅详情查询填充",
+                    "type": "string"
+                },
+                "cap_syntax": {
+                    "type": "integer"
+                },
+                "capbad": {
+                    "type": "string"
+                },
+                "chrome_ver": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "device_model": {
+                    "type": "string"
+                },
+                "env": {
+                    "type": "string"
+                },
+                "event_type": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "msg": {
+                    "description": "列表态附带：msg 前 100 字预览（详情态为全文）",
+                    "type": "string"
+                },
+                "net_type": {
+                    "type": "string"
+                },
+                "os": {
+                    "type": "string"
+                },
+                "route": {
+                    "type": "string"
+                },
+                "seq": {
+                    "type": "integer"
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "src": {
+                    "type": "string"
+                },
+                "stack": {
+                    "description": "仅详情查询填充",
+                    "type": "string"
+                },
+                "ua": {
+                    "description": "仅详情查询填充",
+                    "type": "string"
+                },
+                "ver": {
+                    "type": "string"
+                },
+                "webview": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MonGroupRow": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer",
+                    "example": 80
+                },
+                "extra": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "key": {
+                    "type": "string",
+                    "example": "HBN-AL00"
+                }
+            }
+        },
+        "model.MonIngestResp": {
+            "type": "object",
+            "properties": {
+                "accepted": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "rejected": {
+                    "type": "integer",
+                    "example": 0
+                }
+            }
+        },
+        "model.MonOverviewReq": {
+            "type": "object",
+            "properties": {
+                "begin": {
+                    "type": "string",
+                    "example": "2026-09-06 20:00:00"
+                },
+                "end": {
+                    "type": "string",
+                    "example": "2026-09-07 20:00:00"
+                },
+                "env": {
+                    "type": "string",
+                    "example": "production"
+                }
+            }
+        },
+        "model.MonOverviewResp": {
+            "type": "object",
+            "properties": {
+                "by_cv": {
+                    "description": "内核版本分布（升序，低内核置顶；0=iOS/未知）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MonGroupRow"
+                    }
+                },
+                "by_mdl": {
+                    "description": "Top10 机型（Extra=语法不兼容数）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MonGroupRow"
+                    }
+                },
+                "by_route": {
+                    "description": "Top10 路由",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MonGroupRow"
+                    }
+                },
+                "by_src": {
+                    "description": "resource_error Top10 资源 URL",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MonGroupRow"
+                    }
+                },
+                "by_ver": {
+                    "description": "Top10 版本（版本相关故障定位）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MonGroupRow"
+                    }
+                },
+                "summary": {
+                    "$ref": "#/definitions/model.MonOverviewSummary"
+                }
+            }
+        },
+        "model.MonOverviewRespWrap": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "$ref": "#/definitions/model.MonOverviewResp"
+                },
+                "msg": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "model.MonOverviewSummary": {
+            "type": "object",
+            "properties": {
+                "by_type": {
+                    "description": "按事件类型计数",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "devices": {
+                    "description": "去重机型数",
+                    "type": "integer"
+                },
+                "errors": {
+                    "description": "错误类事件（total - boot）",
+                    "type": "integer"
+                },
+                "sessions": {
+                    "description": "去重会话数",
+                    "type": "integer"
+                },
+                "syntax": {
+                    "description": "语法不兼容事件（cap_syntax=1）",
+                    "type": "integer"
+                },
+                "total": {
+                    "description": "全部事件",
+                    "type": "integer"
+                }
+            }
+        },
         "model.Notification": {
             "type": "object",
             "properties": {
@@ -3104,6 +3804,15 @@ const docTemplate = `{
                     "type": "string",
                     "example": "success"
                 }
+            }
+        },
+        "model.PageResult": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "list": {}
             }
         },
         "model.PointsListReq": {

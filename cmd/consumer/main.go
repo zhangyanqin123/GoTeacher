@@ -44,9 +44,9 @@ func main() {
 	}
 	defer conn.Close()
 
-	// 3. 组装业务（rdb/jwt/xiaoe/publisher 均不触达：消费者不鉴权不发消息，传零值/nil）
+	// 3. 组装业务（rdb/jwt/xiaoe/publisher/mon 均不触达：消费者不鉴权不发消息不跑告警，传零值/nil）
 	repo := repository.New(db)
-	svc := service.New(repo, nil, "", 0, "", nil)
+	svc := service.New(repo, nil, "", 0, "", nil, service.MonAlertConfig{})
 
 	// 4. SIGINT/SIGTERM 优雅停机：cancel 后各消费者退出投递循环（在途消息处理完再退出）
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
