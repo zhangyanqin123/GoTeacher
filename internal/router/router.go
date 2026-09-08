@@ -6,14 +6,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	// swaggerFiles "github.com/swaggo/files" // 部署分支：swagger 路由已注释，import 同步注释（unused）
+	// ginSwagger "github.com/swaggo/gin-swagger"
 
 	"gyz-service/internal/config"
 	"gyz-service/internal/handler"
 	"gyz-service/internal/mq"
 	"gyz-service/internal/repository"
-	"gyz-service/internal/response"
+	// "gyz-service/internal/response" // 部署分支：/health 已注释，router 不再用 response
 	"gyz-service/internal/service"
 )
 
@@ -26,12 +26,16 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 	r := gin.Default()
 	r.Use(CORS())
 
+	// ===== 部署分支 dev_xzp_deploy_mon_ingest：测试服务器（192.168.1.129）只暴露 mon/event 上报双通道 =====
+	// 其余路由（swagger/health/login/业务/管理台）整体注释，仅本分支生效，合回 main 前还原。
+	// 依赖链（repo → service → handler 组装、MySQL/Redis/MQ fail-fast、Migrate、CORS）保持原样不动。
+
 	// Swagger 文档（docs 包由 swag init 生成，见 cmd/server/main.go 头注释）；公开，不挂鉴权
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// 存活探针（容器 healthcheck 用）：公开免鉴权，纯进程探活不 ping 依赖——
 	// 中间件挂了重启 server 容器无意义且中断在途请求；依赖可达性由启动 fail-fast 保证，见 PLAN-docker.md
-	r.GET("/health", func(c *gin.Context) { response.OK(c, nil) })
+	// r.GET("/health", func(c *gin.Context) { response.OK(c, nil) })
 
 	repo := repository.New(db)
 	// 前端监控告警配置（cfg → service.MonAlertConfig 转换，service 不依赖 config 包）
@@ -47,85 +51,86 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 		WebhookURL:         cfg.MonAlertWebhookURL,
 	}
 	svc := service.New(repo, rdb, cfg.JWTSecret, time.Duration(cfg.JWTTTLHours)*time.Hour, cfg.XiaoeAPIBase, publisher, monCfg)
-	th := handler.NewTeacher(svc)
-	rh := handler.NewResign(svc)
-	dh := handler.NewDiagnose(svc)
-	ah := handler.NewAuth(svc)
-	auh := handler.NewAdminUser(svc)
-	lh := handler.NewLive(svc)
-	oh := handler.NewOrder(svc)
-	abh := handler.NewAbModule(svc)
+	// 部署分支：路由注释后 handler 变量不再使用（局部变量 unused 编译不过），随路由一并注释
+	// th := handler.NewTeacher(svc)
+	// rh := handler.NewResign(svc)
+	// dh := handler.NewDiagnose(svc)
+	// ah := handler.NewAuth(svc)
+	// auh := handler.NewAdminUser(svc)
+	// lh := handler.NewLive(svc)
+	// oh := handler.NewOrder(svc)
+	// abh := handler.NewAbModule(svc)
 	mh := handler.NewMon(svc)
 
 	// 鉴权公开接口（login 签发 token；logout/getinfo 需登录态放 authed 组）
-	r.POST("/api/v1/login", ah.Login)
+	// r.POST("/api/v1/login", ah.Login)
 
 	// 直播（小鹅通透传，mofang C 端，见 PLAN-live.md）：公开不挂 Auth——
 	// mofang 是另一 token 体系本服务验不了，/guyuzhoudb 前缀独立于 /api/v1，凭证即入参 access_token 由小鹅通校验
-	r.GET("/guyuzhoudb/live/get_login_url", lh.GetXeLoginURL)
-	r.GET("/guyuzhoudb/live/register_user", lh.RegisterXeUser)
+	// r.GET("/guyuzhoudb/live/get_login_url", lh.GetXeLoginURL)
+	// r.GET("/guyuzhoudb/live/register_user", lh.RegisterXeUser)
 
-	authed := r.Group("/api/v1", Auth(svc))
-	authed.POST("/logout", ah.Logout)
-	authed.GET("/getinfo", ah.GetInfo)
+	// authed := r.Group("/api/v1", Auth(svc))
+	// authed.POST("/logout", ah.Logout)
+	// authed.GET("/getinfo", ah.GetInfo)
 
 	// 老师管理（路径与前端 teacher.js 注释里的 URL 完全一致）
-	dxsf := r.Group("/api/v1/dxsf", Auth(svc))
-	dxsf.POST("/teacher/list", th.List)
-	dxsf.GET("/teacher/options", th.Options)
-	dxsf.GET("/teacher/detail", th.Detail)
-	dxsf.POST("/teacher/edit", th.Update)
-	dxsf.GET("/teacher/bind/salesman/list", th.SalesList)
-	dxsf.GET("/teacher/bind/salesman/users", th.BoundUserIds)
-	dxsf.POST("/teacher/bind/salesman", th.Bind)
+	// dxsf := r.Group("/api/v1/dxsf", Auth(svc))
+	// dxsf.POST("/teacher/list", th.List)
+	// dxsf.GET("/teacher/options", th.Options)
+	// dxsf.GET("/teacher/detail", th.Detail)
+	// dxsf.POST("/teacher/edit", th.Update)
+	// dxsf.GET("/teacher/bind/salesman/list", th.SalesList)
+	// dxsf.GET("/teacher/bind/salesman/users", th.BoundUserIds)
+	// dxsf.POST("/teacher/bind/salesman", th.Bind)
 
 	// 离职转移（路径与前端 resign.js 注释里的 URL 完全一致）
-	dxsf.POST("/teacher/resign/list", rh.List)
-	dxsf.POST("/teacher/resign/add", rh.Add)
+	// dxsf.POST("/teacher/resign/list", rh.List)
+	// dxsf.POST("/teacher/resign/add", rh.Add)
 
 	// 诊股记录（路径与前端 diagnose.js 注释里的 URL 完全一致）
-	diag := r.Group("/api/v1/dxsf/teacher/diagnose", Auth(svc))
-	diag.POST("/list", dh.List)
-	diag.GET("/detail", dh.Detail)
-	diag.POST("/submit/report", dh.SubmitReport)
-	diag.POST("/audit", dh.Audit)
+	// diag := r.Group("/api/v1/dxsf/teacher/diagnose", Auth(svc))
+	// diag.POST("/list", dh.List)
+	// diag.GET("/detail", dh.Detail)
+	// diag.POST("/submit/report", dh.SubmitReport)
+	// diag.POST("/audit", dh.Audit)
 
 	// 用户管理（登录账号 CRUD，见 PLAN-admin-user.md；admin_user 是系统账号域，不挂 /dxsf）
-	admin := r.Group("/api/v1/admin", Auth(svc))
-	admin.POST("/user/list", auh.List)
-	admin.POST("/user/add", auh.Add)
-	admin.POST("/user/edit", auh.Edit)
-	admin.POST("/user/delete", auh.Delete)
+	// admin := r.Group("/api/v1/admin", Auth(svc))
+	// admin.POST("/user/list", auh.List)
+	// admin.POST("/user/add", auh.Add)
+	// admin.POST("/user/edit", auh.Edit)
+	// admin.POST("/user/delete", auh.Delete)
 
 	// 订单系统 Demo（Gin → MySQL → RabbitMQ 异步链路，见 PLAN-order.md）：
 	// 创建后发 order.created 广播给库存/积分/通知三队列，消费者为独立进程 cmd/consumer
-	authed.POST("/orders", oh.Create)
-	authed.POST("/orders/list", oh.List)
-	authed.GET("/orders/products", oh.Products)
-	authed.POST("/points/list", oh.PointsList)
-	authed.POST("/notifications/list", oh.NotificationsList)
+	// authed.POST("/orders", oh.Create)
+	// authed.POST("/orders/list", oh.List)
+	// authed.GET("/orders/products", oh.Products)
+	// authed.POST("/points/list", oh.PointsList)
+	// authed.POST("/notifications/list", oh.NotificationsList)
 
 	// 商品管理 CRUD（product 表维护，见 PLAN-product-crud.md；/orders/products 全量下拉保留不动）
-	authed.POST("/products/list", oh.ProductList)
-	authed.POST("/products/add", oh.ProductAdd)
-	authed.POST("/products/edit", oh.ProductEdit)
-	authed.POST("/products/delete", oh.ProductDelete)
+	// authed.POST("/products/list", oh.ProductList)
+	// authed.POST("/products/add", oh.ProductAdd)
+	// authed.POST("/products/edit", oh.ProductEdit)
+	// authed.POST("/products/delete", oh.ProductDelete)
 
 	// AB 版模块配置管理台 CRUD（C 端 H5 gyz-h5-spacestation 显隐配置，见 PLAN-ab-module.md）
-	ab := r.Group("/api/v1/ab", Auth(svc))
-	ab.POST("/modules/list", abh.ModuleList)
-	ab.GET("/modules/options", abh.ModuleOptions)
-	ab.POST("/modules/add", abh.ModuleAdd)
-	ab.POST("/modules/edit", abh.ModuleEdit)
-	ab.POST("/modules/delete", abh.ModuleDelete)
-	ab.POST("/items/list", abh.ItemList)
-	ab.POST("/items/add", abh.ItemAdd)
-	ab.POST("/items/edit", abh.ItemEdit)
-	ab.POST("/items/delete", abh.ItemDelete)
+	// ab := r.Group("/api/v1/ab", Auth(svc))
+	// ab.POST("/modules/list", abh.ModuleList)
+	// ab.GET("/modules/options", abh.ModuleOptions)
+	// ab.POST("/modules/add", abh.ModuleAdd)
+	// ab.POST("/modules/edit", abh.ModuleEdit)
+	// ab.POST("/modules/delete", abh.ModuleDelete)
+	// ab.POST("/items/list", abh.ItemList)
+	// ab.POST("/items/add", abh.ItemAdd)
+	// ab.POST("/items/edit", abh.ItemEdit)
+	// ab.POST("/items/delete", abh.ItemDelete)
 
 	// AB 聚合查询：免鉴权直挂引擎（H5 无本服务登录态，公网域名直访，login 同款先例），
 	// 返回全量配置两级 map，语义区别于 modules 资源的分页列表
-	r.GET("/api/v1/ab/config", abh.AbConfig)
+	// r.GET("/api/v1/ab/config", abh.AbConfig)
 
 	// 前端监控 ingest（H5 探针上报，见 PLAN-frontend-monitor.md）：免鉴权直挂——
 	// H5 探针无本服务登录态，公网直访，ab/config 同款先例；查询/告警接口挂 authed 组（阶段二）
@@ -133,10 +138,10 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 	r.POST("/api/v1/mon/event", mh.IngestPost)
 
 	// 前端监控管理台（概览/事件多口径查询/告警，见 PLAN-frontend-monitor.md）
-	authed.POST("/mon/event/list", mh.EventList)
-	authed.GET("/mon/event/detail", mh.EventDetail)
-	authed.POST("/mon/overview", mh.Overview)
-	authed.POST("/mon/alert/list", mh.AlertList)
-	authed.POST("/mon/alert/ack", mh.AlertAck)
+	// authed.POST("/mon/event/list", mh.EventList)
+	// authed.GET("/mon/event/detail", mh.EventDetail)
+	// authed.POST("/mon/overview", mh.Overview)
+	// authed.POST("/mon/alert/list", mh.AlertList)
+	// authed.POST("/mon/alert/ack", mh.AlertAck)
 	return r, svc
 }
