@@ -11,6 +11,7 @@ import "encoding/json"
 // Cap 是探针的能力探测结果对象（{"fnok":1,...}），用 RawMessage 原样接收、落库时转串
 type MonEventIngest struct {
 	T      string          `json:"t"      example:"chunk_load_error"`
+	Proj   string          `json:"proj"   example:"personalCenter"`
 	Cap    json.RawMessage `json:"cap"    example:"{\"fnok\":1,\"nullish\":1,\"optchain\":1}"`
 	Capbad string          `json:"capbad" example:"syntax,at"`
 	Ua     string          `json:"ua"     example:"Mozilla/5.0 (Linux; Android 12) ... Chrome/77.0"`
@@ -34,6 +35,7 @@ type MonEventIngest struct {
 // 列表查询不 SELECT stack/cap/ua 全文（msg 由 SQL LEFT 截断为预览），详情查询单独补齐
 type MonEventRow struct {
 	ID          int64          `json:"id"           db:"id"`
+	Project     string         `json:"project"      db:"project"`
 	EventType   string         `json:"event_type"   db:"event_type"`
 	Env         string         `json:"env"          db:"env"`
 	Ver         string         `json:"ver"          db:"ver"`
@@ -70,6 +72,7 @@ type MonIngestResp struct {
 // MonEventListReq 事件多口径查询（除 begin/end 外全可选）。
 // begin/end 后端强制：缺省回退近 24h，跨度 >31 天拒绝（防全表扫描）
 type MonEventListReq struct {
+	Project     string   `json:"project"       example:"personalCenter"` // 精确匹配；空=不过滤
 	Begin       string   `json:"begin"        example:"2026-09-07 00:00:00"`
 	End         string   `json:"end"          example:"2026-09-07 23:59:59"`
 	EventTypes  []string `json:"event_types"  example:"chunk_load_error,probe_fail"`
@@ -89,6 +92,7 @@ type MonEventListReq struct {
 
 // MonEventListFilter service 归一化（时间校验+分页）后传 repository
 type MonEventListFilter struct {
+	Project     string
 	Begin       string
 	End         string
 	EventTypes  []string

@@ -15,22 +15,22 @@ import (
 // dedupKey 由 service 组装（rule_code|env）单独传入：列不进 SELECT/行模型，纯内部去重语义
 func (r *Repository) InsertMonAlert(ctx context.Context, a *model.MonAlert, dedupKey string) error {
 	const q = `INSERT INTO mon_alert
-	           (rule_code, level, env, ver, window_start, window_end, metric_value, threshold,
+	           (project, rule_code, level, env, ver, window_start, window_end, metric_value, threshold,
 	            detail, status, dedup_key, created_at, updated_at)
-	           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, NOW(), NOW())`
-	_, err := r.db.ExecContext(ctx, q, a.RuleCode, a.Level, a.Env, a.Ver,
+	           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, NOW(), NOW())`
+	_, err := r.db.ExecContext(ctx, q, a.Project, a.RuleCode, a.Level, a.Env, a.Ver,
 		a.WindowStart, a.WindowEnd, a.MetricValue, a.Threshold, a.Detail, dedupKey)
 	return err
 }
 
-// FindPendingMonAlertByRule 查同规则+环境的 pending 告警（滚动去重入口）。无则返回 (nil, nil)
-func (r *Repository) FindPendingMonAlertByRule(ctx context.Context, ruleCode, env string) (*model.MonAlert, error) {
-	const q = `SELECT id, rule_code, level, env, ver, window_start, window_end, metric_value,
+// FindPendingMonAlertByRule 查同规则+环境+项目的 pending 告警（滚动去重入口）。无则返回 (nil, nil)
+func (r *Repository) FindPendingMonAlertByRule(ctx context.Context, ruleCode, env, project string) (*model.MonAlert, error) {
+	const q = `SELECT id, project, rule_code, level, env, ver, window_start, window_end, metric_value,
 	                  threshold, detail, status, ack_user, ack_note, acked_at, created_at, updated_at
-	           FROM mon_alert WHERE rule_code = ? AND env = ? AND status = 'pending' LIMIT 1`
+	           FROM mon_alert WHERE rule_code = ? AND env = ? AND project = ? AND status = 'pending' LIMIT 1`
 	var a model.MonAlert
-	err := r.db.QueryRowContext(ctx, q, ruleCode, env).Scan(
-		&a.ID, &a.RuleCode, &a.Level, &a.Env, &a.Ver, &a.WindowStart, &a.WindowEnd,
+	err := r.db.QueryRowContext(ctx, q, ruleCode, env, project).Scan(
+		&a.ID, &a.Project, &a.RuleCode, &a.Level, &a.Env, &a.Ver, &a.WindowStart, &a.WindowEnd,
 		&a.MetricValue, &a.Threshold, &a.Detail, &a.Status, &a.AckUser, &a.AckNote,
 		&a.AckedAt, &a.CreatedAt, &a.UpdatedAt,
 	)
@@ -76,7 +76,7 @@ func (r *Repository) ListMonAlerts(ctx context.Context, f model.MonAlertListFilt
 		return nil, 0, fmt.Errorf("count mon_alert: %w", err)
 	}
 
-	const q = `SELECT id, rule_code, level, env, ver, window_start, window_end, metric_value,
+	const q = `SELECT id, project, rule_code, level, env, ver, window_start, window_end, metric_value,
 	                  threshold, detail, status, ack_user, ack_note, acked_at, created_at, updated_at
 	           FROM mon_alert WHERE %s ORDER BY id DESC LIMIT ? OFFSET ?`
 	rows, err := r.db.QueryContext(ctx,
@@ -91,7 +91,7 @@ func (r *Repository) ListMonAlerts(ctx context.Context, f model.MonAlertListFilt
 	for rows.Next() {
 		var a model.MonAlert
 		if err := rows.Scan(
-			&a.ID, &a.RuleCode, &a.Level, &a.Env, &a.Ver, &a.WindowStart, &a.WindowEnd,
+			&a.ID, &a.Project, &a.RuleCode, &a.Level, &a.Env, &a.Ver, &a.WindowStart, &a.WindowEnd,
 			&a.MetricValue, &a.Threshold, &a.Detail, &a.Status, &a.AckUser, &a.AckNote,
 			&a.AckedAt, &a.CreatedAt, &a.UpdatedAt,
 		); err != nil {
@@ -123,6 +123,10 @@ func monAlertWhere(f model.MonAlertListFilter) (string, []any) {
 	if f.Env != "" {
 		where += " AND env = ?"
 		args = append(args, f.Env)
+	}
+	if f.Project != "" {
+		where += " AND project = ?"
+		args = append(args, f.Project)
 	}
 	if f.Begin != "" {
 		where += " AND created_at >= ?"

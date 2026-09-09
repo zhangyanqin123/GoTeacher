@@ -50,6 +50,7 @@ func (s *Service) IngestEvents(ctx context.Context, events []model.MonEventInges
 		}
 		capbad := truncRunes(e.Capbad, monCapbadMax)
 		rows = append(rows, model.MonEventRow{
+			Project:     truncRunes(e.Proj, 32),
 			EventType:   e.T,
 			Env:         truncRunes(e.Env, 16),
 			Ver:         truncRunes(e.Ver, 32),
@@ -141,7 +142,7 @@ func (s *Service) ListMonEvents(ctx context.Context, req model.MonEventListReq) 
 	pageIndex, pageSize := normalizePage(req.PageIndex, req.PageSize, 20)
 
 	list, count, err := s.repo.ListMonEvents(ctx, model.MonEventListFilter{
-		Begin: begin, End: end,
+		Project: req.Project, Begin: begin, End: end,
 		EventTypes: req.EventTypes, Env: req.Env, VerPrefix: req.Ver,
 		ChromeVer: req.ChromeVer, SessionID: req.SessionID, DeviceModel: req.DeviceModel,
 		Capbads: req.Capbads, CapSyntax: req.CapSyntax, Route: req.Route,
@@ -186,11 +187,11 @@ func (s *Service) MonOverview(ctx context.Context, req model.MonOverviewReq) (*m
 	if err != nil {
 		return nil, err
 	}
-	byVer, err := s.repo.GroupMonEventsTop(ctx, begin, end, env, nil, "ver", 10, false)
+	byVer, err := s.repo.GroupMonEventsTop(ctx, begin, end, env, "", nil, "ver", 10, false)
 	if err != nil {
 		return nil, err
 	}
-	byMdl, err := s.repo.GroupMonEventsTop(ctx, begin, end, env, nil, "device_model", 10, true)
+	byMdl, err := s.repo.GroupMonEventsTop(ctx, begin, end, env, "", nil, "device_model", 10, true)
 	if err != nil {
 		return nil, err
 	}
@@ -201,12 +202,12 @@ func (s *Service) MonOverview(ctx context.Context, req model.MonOverviewReq) (*m
 	if err != nil {
 		return nil, err
 	}
-	byRoute, err := s.repo.GroupMonEventsTop(ctx, begin, end, env, nil, "route", 10, false)
+	byRoute, err := s.repo.GroupMonEventsTop(ctx, begin, end, env, "", nil, "route", 10, false)
 	if err != nil {
 		return nil, err
 	}
 	// by_src 只统计 resource_error（404 部署问题的定位入口）
-	bySrc, err := s.repo.GroupMonEventsTop(ctx, begin, end, env, []string{"resource_error"}, "src", 10, false)
+	bySrc, err := s.repo.GroupMonEventsTop(ctx, begin, end, env, "", []string{"resource_error"}, "src", 10, false)
 	if err != nil {
 		return nil, err
 	}

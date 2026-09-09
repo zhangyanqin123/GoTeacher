@@ -281,7 +281,8 @@ CREATE TABLE IF NOT EXISTS ab_module_item (
 -- 前端监控事件表（高写入：boot 事件≈每次 PV；不建唯一键——gif 弱网重发容忍 at-least-once）
 CREATE TABLE IF NOT EXISTS mon_event (
   id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
-  event_type   VARCHAR(32)  NOT NULL DEFAULT '' COMMENT '事件类型：probe_fail/chunk_load_error/win_error/resource_error/unhandled_rejection/vue_error/boot',
+  project      VARCHAR(32)  NOT NULL DEFAULT '' COMMENT '项目标识（gyz-h5 多包子项目：personalCenter/f10/lbh/information；空=接入前的存量数据）',
+  event_type   VARCHAR(32)  NOT NULL DEFAULT '' COMMENT '事件类型：probe_fail/chunk_load_error/win_error/resource_error/unhandled_rejection/vue_error/boot/device_info',
   env          VARCHAR(16)  NOT NULL DEFAULT '' COMMENT '环境：test/pre/production',
   ver          VARCHAR(32)  NOT NULL DEFAULT '' COMMENT 'H5 版本+commit（构建期注入，如 1.2.22.0+126ef6a）',
   chrome_ver   INT          NOT NULL DEFAULT 0 COMMENT 'UA Chrome 内核版本（iOS WKWebView 无 Chrome 标识恒 0）',
@@ -313,6 +314,7 @@ CREATE TABLE IF NOT EXISTS mon_event (
 -- 前端监控告警表（ticker 规则写入；不自动关单，人工 ack 收口——避免恢复判定状态机）
 CREATE TABLE IF NOT EXISTS mon_alert (
   id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  project      VARCHAR(32)  NOT NULL DEFAULT '' COMMENT '项目标识（告警按 rule|env|project 三维去重）',
   rule_code    VARCHAR(32)  NOT NULL COMMENT '规则码：PROBE_FAIL/CHUNK_LOAD_SURGE/ERROR_SURGE',
   level        VARCHAR(8)   NOT NULL COMMENT '级别：P0/P1',
   env          VARCHAR(16)  NOT NULL COMMENT '触发环境',
