@@ -21,7 +21,7 @@ var monEventTypes = map[string]bool{
 	"unhandled_rejection":  true,
 	"vue_error":            true,
 	"boot":                 true,
-	"device":               true, // App 启动 enrich 后补发（带机型/系统，弥补 boot 上报过早无机型）
+	"device_info":          true, // App 启动 enrich 后补发（带机型/系统，弥补 boot 上报过早无机型）；历史旧数据 event_type=device
 }
 
 // 各字段入库截断上限（与表列宽一致；探针端已截一次，此处二次防御伪造超长）
@@ -151,6 +151,9 @@ func (s *Service) ListMonEvents(ctx context.Context, req model.MonEventListReq) 
 	if err != nil {
 		return model.PageResult{}, err
 	}
+	for i := range list {
+		list[i].DeviceBrand = monDeviceBrand(list[i].DeviceModel)
+	}
 	return model.PageResult{List: list, Count: count}, nil
 }
 
@@ -163,6 +166,7 @@ func (s *Service) GetMonEvent(ctx context.Context, id int64) (*model.MonEventRow
 	if row == nil {
 		return nil, ErrMonEventNotFound
 	}
+	row.DeviceBrand = monDeviceBrand(row.DeviceModel)
 	return row, nil
 }
 
@@ -189,6 +193,9 @@ func (s *Service) MonOverview(ctx context.Context, req model.MonOverviewReq) (*m
 	byMdl, err := s.repo.GroupMonEventsTop(ctx, begin, end, env, nil, "device_model", 10, true)
 	if err != nil {
 		return nil, err
+	}
+	for i := range byMdl {
+		byMdl[i].Brand = monDeviceBrand(byMdl[i].Key)
 	}
 	byCv, err := s.repo.GroupMonEventsByCvAsc(ctx, begin, end, env, 15)
 	if err != nil {
