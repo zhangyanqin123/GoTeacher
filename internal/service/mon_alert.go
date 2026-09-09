@@ -268,7 +268,7 @@ func itoa(n int) string {
 func monRuleName(code string) string {
 	switch code {
 	case MonRuleProbeFail:
-		return "有兼容性问题"
+		return "有兼容性风险"
 	case MonRuleChunkSurge:
 		return "页面加载失败激增"
 	case MonRuleErrorSurge:
