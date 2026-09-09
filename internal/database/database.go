@@ -79,6 +79,9 @@ func Migrate(db *sql.DB) error {
 	if err := migrateMonEventOsv(db); err != nil {
 		return fmt.Errorf("migrate mon_event osv: %w", err)
 	}
+	if err := migrateMonProject(db); err != nil {
+		return fmt.Errorf("migrate mon project: %w", err)
+	}
 	return nil
 }
 
@@ -110,6 +113,44 @@ func migrateMonEventOsv(db *sql.DB) error {
 	const alter = "ALTER TABLE mon_event ADD COLUMN osv VARCHAR(16) NOT NULL DEFAULT '' COMMENT '系统版本（UA 提取：iOS 18.5 / Android 14；iOS 无 Chrome 号，内核维度以此补充）' AFTER chrome_ver"
 	if _, err := db.Exec(alter); err != nil {
 		return fmt.Errorf("alter mon_event add osv: %w", err)
+	}
+	return nil
+}
+
+
+// migrateMonProject mon_event/mon_alert 加 project 列（多项目监控接入：personalCenter/f10/lbh/information）。
+// CREATE TABLE IF NOT EXISTS 不改已建表，存量库靠此处幂等升级（样式同 migrateMonEventOsv）
+func migrateMonProject(db *sql.DB) error {
+	for _, table := range []string{"mon_event", "mon_alert"} {
+		var n int
+		if err := db.QueryRow(
+			"SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = 'project'",
+			table,
+		).Scan(&n); err != nil {
+			return fmt.Errorf("check %s.project: %w", table, err)
+		}
+		if n > 0 {
+			continue // 新库建表自带，幂等出口
+		}
+		var tbl int
+		if err := db.QueryRow(
+			"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?",
+			table,
+		).Scan(&tbl); err != nil {
+			return fmt.Errorf("check %s exists: %w", table, err)
+		}
+		if tbl == 0 {
+			continue
+		}
+		const alterEvent = "ALTER TABLE mon_event ADD COLUMN project VARCHAR(32) NOT NULL DEFAULT '' COMMENT '项目标识（gyz-h5 多包子项目：personalCenter/f10/lbh/information；空=接入前的存量数据）' AFTER id"
+		const alterAlert = "ALTER TABLE mon_alert ADD COLUMN project VARCHAR(32) NOT NULL DEFAULT '' COMMENT '项目标识（告警按 rule|env|project 三维去重）' AFTER id"
+		alter := alterEvent
+		if table == "mon_alert" {
+			alter = alterAlert
+		}
+		if _, err := db.Exec(alter); err != nil {
+			return fmt.Errorf("alter %s add project: %w", table, err)
+		}
 	}
 	return nil
 }

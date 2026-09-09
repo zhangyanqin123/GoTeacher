@@ -17,15 +17,15 @@ func (r *Repository) InsertMonEvents(ctx context.Context, rows []model.MonEventR
 	if len(rows) == 0 {
 		return nil
 	}
-	const cols = `event_type, env, ver, chrome_ver, osv, webview, net_type, device_model, os,
+	const cols = `project, event_type, env, ver, chrome_ver, osv, webview, net_type, device_model, os,
 	              route, session_id, seq, capbad, cap_syntax, cap, ua, msg, stack, src, ip`
-	one := "(" + strings.TrimSuffix(strings.Repeat("?, ", 20), ", ") + ")"
+	one := "(" + strings.TrimSuffix(strings.Repeat("?, ", 21), ", ") + ")"
 	q := fmt.Sprintf("INSERT INTO mon_event (%s) VALUES %s", cols,
 		strings.TrimSuffix(strings.Repeat(one+", ", len(rows)), ", "))
 
-	args := make([]any, 0, len(rows)*20)
+	args := make([]any, 0, len(rows)*21)
 	for _, e := range rows {
-		args = append(args, e.EventType, e.Env, e.Ver, e.ChromeVer, e.Osv, e.Webview, e.NetType,
+		args = append(args, e.Project, e.EventType, e.Env, e.Ver, e.ChromeVer, e.Osv, e.Webview, e.NetType,
 			e.DeviceModel, e.Os, e.Route, e.SessionID, e.Seq, e.Capbad, e.CapSyntax,
 			e.Cap, e.Ua, e.Msg, e.Stack, e.Src, e.Ip)
 	}
@@ -38,12 +38,12 @@ func (r *Repository) InsertMonEvents(ctx context.Context, rows []model.MonEventR
 // ============ 查询（管理台多口径） ============
 
 // monEventListCols 列表态 SELECT 列：不含 stack/cap/ua 全文，msg 截 100 字预览（详情另查）
-const monEventListCols = `id, event_type, env, ver, chrome_ver, osv, webview, net_type, device_model, os,
+const monEventListCols = `id, project, event_type, env, ver, chrome_ver, osv, webview, net_type, device_model, os,
        route, session_id, seq, capbad, cap_syntax, src, ip, LEFT(msg, 100) AS msg, created_at`
 
 func scanMonEventRow(scan func(dest ...any) error) (model.MonEventRow, error) {
 	var e model.MonEventRow
-	err := scan(&e.ID, &e.EventType, &e.Env, &e.Ver, &e.ChromeVer, &e.Osv, &e.Webview, &e.NetType,
+	err := scan(&e.ID, &e.Project, &e.EventType, &e.Env, &e.Ver, &e.ChromeVer, &e.Osv, &e.Webview, &e.NetType,
 		&e.DeviceModel, &e.Os, &e.Route, &e.SessionID, &e.Seq, &e.Capbad, &e.CapSyntax,
 		&e.Src, &e.Ip, &e.Msg, &e.CreatedAt)
 	return e, err
@@ -86,12 +86,12 @@ func (r *Repository) ListMonEvents(ctx context.Context, f model.MonEventListFilt
 
 // GetMonEventByID 单行全字段（详情抽屉：含 stack/cap/ua 全文）。不存在返回 (nil, nil)
 func (r *Repository) GetMonEventByID(ctx context.Context, id int64) (*model.MonEventRow, error) {
-	const q = `SELECT id, event_type, env, ver, chrome_ver, osv, webview, net_type, device_model, os,
+	const q = `SELECT id, project, event_type, env, ver, chrome_ver, osv, webview, net_type, device_model, os,
 	                   route, session_id, seq, capbad, cap_syntax, src, ip, msg, created_at, ua, cap, stack
 	           FROM mon_event WHERE id = ?`
 	var e model.MonEventRow
 	err := r.db.QueryRowContext(ctx, q, id).Scan(
-		&e.ID, &e.EventType, &e.Env, &e.Ver, &e.ChromeVer, &e.Osv, &e.Webview, &e.NetType,
+		&e.ID, &e.Project, &e.EventType, &e.Env, &e.Ver, &e.ChromeVer, &e.Osv, &e.Webview, &e.NetType,
 		&e.DeviceModel, &e.Os, &e.Route, &e.SessionID, &e.Seq, &e.Capbad, &e.CapSyntax,
 		&e.Src, &e.Ip, &e.Msg, &e.CreatedAt, &e.Ua, &e.Cap, &e.Stack)
 	if err == sql.ErrNoRows {
@@ -110,6 +110,10 @@ func monEventWhere(f model.MonEventListFilter) (string, []any) {
 	var args []any
 	where += " AND created_at >= ? AND created_at <= ?"
 	args = append(args, f.Begin, f.End)
+	if f.Project != "" {
+		where += " AND project = ?"
+		args = append(args, f.Project)
+	}
 	if len(f.EventTypes) > 0 {
 		where += " AND event_type IN (" + placeholders(len(f.EventTypes)) + ")"
 		for _, t := range f.EventTypes {
@@ -168,13 +172,17 @@ func placeholders(n int) string {
 
 // ============ 概览聚合 ============
 
-// monRangeWhere 时间范围（+可选 env）条件，概览/告警统计共用
-func monRangeWhere(begin, end, env string, types []string) (string, []any) {
+// monRangeWhere 时间范围（+可选 env/project）条件，概览/告警统计共用。project="" 不过滤（概览全量）
+func monRangeWhere(begin, end, env, project string, types []string) (string, []any) {
 	where := "created_at >= ? AND created_at <= ?"
 	args := []any{begin, end}
 	if env != "" {
 		where += " AND env = ?"
 		args = append(args, env)
+	}
+	if project != "" {
+		where += " AND project = ?"
+		args = append(args, project)
 	}
 	if len(types) > 0 {
 		where += " AND event_type IN (" + placeholders(len(types)) + ")"
@@ -197,7 +205,7 @@ type MonOverviewSummaryRow struct {
 // SumMonEvents 概览指标卡聚合（一次往返取全部标量；CAST 保证 SUM 扫进 int）。
 // errors = 非错误事件（boot 启动存活 / device_info 设备画像，含历史 device 旧值）之外的全部事件
 func (r *Repository) SumMonEvents(ctx context.Context, begin, end, env string) (MonOverviewSummaryRow, error) {
-	where, args := monRangeWhere(begin, end, env, nil)
+	where, args := monRangeWhere(begin, end, env, "", nil)
 	var s MonOverviewSummaryRow
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*),
 	       CAST(COALESCE(SUM(event_type NOT IN ('boot', 'device', 'device_info')), 0) AS SIGNED),
@@ -214,7 +222,7 @@ func (r *Repository) SumMonEvents(ctx context.Context, begin, end, env string) (
 
 // GroupMonEventsByType 按事件类型计数（概览 by_type）
 func (r *Repository) GroupMonEventsByType(ctx context.Context, begin, end, env string) (map[string]int, error) {
-	where, args := monRangeWhere(begin, end, env, nil)
+	where, args := monRangeWhere(begin, end, env, "", nil)
 	rows, err := r.db.QueryContext(ctx,
 		"SELECT event_type, CAST(COUNT(*) AS SIGNED) FROM mon_event WHERE "+where+" GROUP BY event_type", args...)
 	if err != nil {
@@ -240,12 +248,12 @@ var monGroupCols = map[string]bool{
 
 // GroupMonEventsTop 通用 Top-N 聚合（概览与告警 detail 共用）。
 // col 必须在 monGroupCols 白名单内；syntaxExtra=true 时附带 SUM(cap_syntax) 作 Extra（by_mdl 用）
-func (r *Repository) GroupMonEventsTop(ctx context.Context, begin, end, env string, types []string,
+func (r *Repository) GroupMonEventsTop(ctx context.Context, begin, end, env, project string, types []string,
 	col string, n int, syntaxExtra bool) ([]model.MonGroupRow, error) {
 	if !monGroupCols[col] {
 		return nil, fmt.Errorf("group col %q not allowed", col)
 	}
-	where, args := monRangeWhere(begin, end, env, types)
+	where, args := monRangeWhere(begin, end, env, project, types)
 	sel := fmt.Sprintf("SELECT %s, CAST(COUNT(*) AS SIGNED)", col)
 	if syntaxExtra {
 		sel += ", CAST(COALESCE(SUM(cap_syntax), 0) AS SIGNED)"
@@ -276,7 +284,7 @@ func (r *Repository) GroupMonEventsTop(ctx context.Context, begin, end, env stri
 
 // GroupMonEventsByCvAsc 内核版本升序分布（低内核置顶；chrome_ver 为数字列，单独走 CAST 拼接 Key）
 func (r *Repository) GroupMonEventsByCvAsc(ctx context.Context, begin, end, env string, n int) ([]model.MonGroupRow, error) {
-	where, args := monRangeWhere(begin, end, env, nil)
+	where, args := monRangeWhere(begin, end, env, "", nil)
 	rows, err := r.db.QueryContext(ctx,
 		"SELECT CAST(chrome_ver AS CHAR), CAST(COUNT(*) AS SIGNED) FROM mon_event WHERE "+where+
 			" GROUP BY chrome_ver ORDER BY chrome_ver ASC LIMIT "+fmt.Sprint(n), args...)
@@ -296,8 +304,8 @@ func (r *Repository) GroupMonEventsByCvAsc(ctx context.Context, begin, end, env 
 }
 
 // CountMonEventsWindow 告警窗口统计（types + env + 时间下界；上界恒 now 由调用方拼进 begin 即可）
-func (r *Repository) CountMonEventsWindow(ctx context.Context, env string, types []string, begin string) (int, error) {
-	where, args := monRangeWhere(begin, "9999-12-31 23:59:59", env, types)
+func (r *Repository) CountMonEventsWindow(ctx context.Context, env, project string, types []string, begin string) (int, error) {
+	where, args := monRangeWhere(begin, "9999-12-31 23:59:59", env, project, types)
 	var n int
 	if err := r.db.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM mon_event WHERE "+where, args...).Scan(&n); err != nil {
@@ -307,8 +315,8 @@ func (r *Repository) CountMonEventsWindow(ctx context.Context, env string, types
 }
 
 // FirstMonSidInWindow 窗口内样例 sid（告警 detail 提供追溯入口；无命中返回空串）
-func (r *Repository) FirstMonSidInWindow(ctx context.Context, env string, types []string, begin string) (string, error) {
-	where, args := monRangeWhere(begin, "9999-12-31 23:59:59", env, types)
+func (r *Repository) FirstMonSidInWindow(ctx context.Context, env, project string, types []string, begin string) (string, error) {
+	where, args := monRangeWhere(begin, "9999-12-31 23:59:59", env, project, types)
 	var sid string
 	err := r.db.QueryRowContext(ctx,
 		"SELECT session_id FROM mon_event WHERE "+where+" AND session_id <> '' ORDER BY id DESC LIMIT 1",
@@ -320,4 +328,24 @@ func (r *Repository) FirstMonSidInWindow(ctx context.Context, env string, types 
 		return "", fmt.Errorf("first mon sid: %w", err)
 	}
 	return sid, nil
+}
+
+// ListMonProjectsInWindow 告警扫描的项目维度：窗口内出现过事件的 distinct project（含空串——存量数据归为未知项目）
+func (r *Repository) ListMonProjectsInWindow(ctx context.Context, env, begin string) ([]string, error) {
+	where, args := monRangeWhere(begin, "9999-12-31 23:59:59", env, "", nil)
+	rows, err := r.db.QueryContext(ctx,
+		"SELECT DISTINCT project FROM mon_event WHERE "+where, args...)
+	if err != nil {
+		return nil, fmt.Errorf("distinct mon projects: %w", err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, fmt.Errorf("scan project: %w", err)
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
 }

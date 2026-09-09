@@ -7,6 +7,7 @@ package model
 // MonAlert 告警行模型。Detail 为聚合摘要 JSON 串（Top 机型/cv/src/msg、样例 sid），前端解析展示
 type MonAlert struct {
 	ID          int64          `json:"id"           db:"id"`
+	Project     string         `json:"project"      db:"project"`
 	RuleCode    string         `json:"rule_code"    db:"rule_code"`
 	Level       string         `json:"level"        db:"level"`
 	Env         string         `json:"env"          db:"env"`
@@ -27,6 +28,7 @@ type MonAlert struct {
 // MonAlertListReq 告警列表查询（status 缺省 pending；时间匹配 created_at）
 type MonAlertListReq struct {
 	Status    string `json:"status"     example:"pending"`
+	Project   string `json:"project"    example:"personalCenter"`
 	RuleCode  string `json:"rule_code"  example:"PROBE_FAIL"`
 	Level     string `json:"level"      example:"P0"`
 	Env       string `json:"env"        example:"production"`
@@ -39,6 +41,7 @@ type MonAlertListReq struct {
 // MonAlertListFilter service 归一化后传 repository
 type MonAlertListFilter struct {
 	Status   string
+	Project  string
 	RuleCode string
 	Level    string
 	Env      string
