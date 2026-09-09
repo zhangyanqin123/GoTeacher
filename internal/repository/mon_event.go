@@ -195,12 +195,12 @@ type MonOverviewSummaryRow struct {
 }
 
 // SumMonEvents 概览指标卡聚合（一次往返取全部标量；CAST 保证 SUM 扫进 int）。
-// errors = 非错误事件（boot 启动存活 / device 设备画像）之外的全部事件
+// errors = 非错误事件（boot 启动存活 / device_info 设备画像，含历史 device 旧值）之外的全部事件
 func (r *Repository) SumMonEvents(ctx context.Context, begin, end, env string) (MonOverviewSummaryRow, error) {
 	where, args := monRangeWhere(begin, end, env, nil)
 	var s MonOverviewSummaryRow
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*),
-	       CAST(COALESCE(SUM(event_type NOT IN ('boot', 'device')), 0) AS SIGNED),
+	       CAST(COALESCE(SUM(event_type NOT IN ('boot', 'device', 'device_info')), 0) AS SIGNED),
 	       CAST(COUNT(DISTINCT session_id) AS SIGNED),
 	       CAST(COUNT(DISTINCT NULLIF(device_model, '')) AS SIGNED),
 	       CAST(COALESCE(SUM(cap_syntax), 0) AS SIGNED)

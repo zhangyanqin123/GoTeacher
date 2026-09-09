@@ -42,6 +42,7 @@ type MonEventRow struct {
 	Webview     string         `json:"webview"      db:"webview"`
 	NetType     string         `json:"net_type"     db:"net_type"`
 	DeviceModel string         `json:"device_model" db:"device_model"`
+	DeviceBrand string         `json:"device_brand" db:"-"` // 代号→品牌（service 填充，展示用；不改写原始代号）
 	Os          string         `json:"os"           db:"os"`
 	Route       string         `json:"route"        db:"route"`
 	SessionID   string         `json:"session_id"   db:"session_id"`
@@ -126,7 +127,8 @@ type MonOverviewSummary struct {
 type MonGroupRow struct {
 	Key   string `json:"key"   example:"HBN-AL00"`
 	Count int    `json:"count" example:"80"`
-	Extra int    `json:"extra,omitempty" example:"3"`
+	Extra int    `json:"extra,omitempty" example:"3"` // by_mdl 复用作语法不兼容数
+	Brand string `json:"brand,omitempty" example:"华为/荣耀"` // by_mdl 的代号品牌（service 填充）
 }
 
 // MonOverviewResp 概览响应：指标卡 + 五个 Top 聚合
