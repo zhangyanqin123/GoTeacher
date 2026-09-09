@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"fmt"
 	"context"
 	"encoding/json"
 	"errors"
@@ -37,6 +38,15 @@ const (
 	MonRuleChunkSurge     = "CHUNK_LOAD_SURGE" // P0：页面 chunk 加载失败激增（白屏事故）
 	MonRuleErrorSurge     = "ERROR_SURGE"      // P1：JS 错误激增（win+vue+unhandled 合计）
 )
+
+// 告警级别（语义：P0 = 用户已实际受害；P1 = 错误量异常需关注）
+const (
+	MonLevelP0 = "P0"
+	MonLevelP1 = "P1"
+)
+
+// 推送企微的级别集合：仅 P0（新告警 INSERT 时推一次）；P1 只落表+看板。扩展新推送级别往此集合加
+var monWebhookLevels = map[string]bool{MonLevelP0: true}
 
 // monErrorTypes ERROR_SURGE 的统计口径（不含 chunk_load_error——它有专属规则；不含 probe_fail/boot）
 var monErrorTypes = []string{"win_error", "vue_error", "unhandled_rejection"}
@@ -97,9 +107,9 @@ func safeRunMonAlert(fn func()) {
 // runMonAlertOnce 对每个告警环境执行三规则扫描 + upsert pending
 func (s *Service) runMonAlertOnce(ctx context.Context) {
 	for _, env := range s.mon.Envs {
-		s.checkMonRule(ctx, env, MonRuleProbeFail, "P0", []string{"probe_fail"}, s.mon.ProbeFailThreshold)
-		s.checkMonRule(ctx, env, MonRuleChunkSurge, "P0", []string{"chunk_load_error"}, s.mon.ChunkThreshold)
-		s.checkMonRule(ctx, env, MonRuleErrorSurge, "P1", monErrorTypes, s.mon.ErrorThreshold)
+		s.checkMonRule(ctx, env, MonRuleProbeFail, MonLevelP0, []string{"probe_fail"}, s.mon.ProbeFailThreshold)
+		s.checkMonRule(ctx, env, MonRuleChunkSurge, MonLevelP0, []string{"chunk_load_error"}, s.mon.ChunkThreshold)
+		s.checkMonRule(ctx, env, MonRuleErrorSurge, MonLevelP1, monErrorTypes, s.mon.ErrorThreshold)
 	}
 }
 
@@ -150,7 +160,9 @@ func (s *Service) checkMonRule(ctx context.Context, env, ruleCode, level string,
 		return
 	}
 	slog.Warn("mon alert triggered", "rule", ruleCode, "env", env, "count", count, "threshold", threshold)
-	s.postMonWebhook(ruleCode, level, env, count, threshold)
+	if monWebhookLevels[level] { // 仅 P0 推企微；滚动 UPDATE 分支不推（新告警才推一次，不刷屏）
+		s.postMonWebhook(ruleCode, level, env, ver, count, threshold, detail)
+	}
 }
 
 // buildMonAlertDetail 组装规则各自的聚合摘要（判型线索：机型/资源/信息/版本/样例会话）
@@ -159,6 +171,9 @@ func (s *Service) buildMonAlertDetail(ctx context.Context, env string, types []s
 	d := monAlertDetail{ByType: map[string]int{}}
 	begin, end := windowStart, time.Now().Format(monTimeLayout)
 	d.TopMdl, _ = s.repo.GroupMonEventsTop(ctx, begin, end, env, types, "device_model", 3, false)
+	for i := range d.TopMdl { // 品牌前缀（OPPO PKL110），webhook/看板摘要共用
+		d.TopMdl[i].Brand = monDeviceBrand(d.TopMdl[i].Key)
+	}
 	d.TopVer, _ = s.repo.GroupMonEventsTop(ctx, begin, end, env, types, "ver", 1, false)
 	d.SampleSid, _ = s.repo.FirstMonSidInWindow(ctx, env, types, windowStart)
 	switch ruleCode {
@@ -170,21 +185,37 @@ func (s *Service) buildMonAlertDetail(ctx context.Context, env string, types []s
 	return d
 }
 
-// postMonWebhook 告警外推（钉钉/企微自定义机器人通用 text JSON；失败仅记日志不重试）
-func (s *Service) postMonWebhook(ruleCode, level, env string, count, threshold int) {
+// postMonWebhook 告警外推企微群机器人（markdown 卡片，含判型线索；失败仅记日志不重试）。
+// 企微 webhook 协议：POST {"msgtype":"markdown","markdown":{"content":...}}，
+// content ≤4096 字节（Top3 截断已保证），机器人限频 20 条/分钟（告警去重天然满足）
+func (s *Service) postMonWebhook(ruleCode, level, env, ver string, count, threshold int, detail monAlertDetail) {
 	if s.mon.WebhookURL == "" {
 		return
 	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "**[前端监控告警]** <font color=\"warning\">%s · %s</font>\n", level, ruleCode)
+	fmt.Fprintf(&b, "> 环境: %s", env)
+	if ver != "" {
+		fmt.Fprintf(&b, " ｜ 命中版本: %s", ver)
+	}
+	fmt.Fprintf(&b, "\n> 窗口事件数: **%d**（阈值 %d）\n", count, threshold)
+	if len(detail.TopMdl) > 0 {
+		fmt.Fprintf(&b, "> 机型: %s\n", monGroupText(detail.TopMdl))
+	}
+	if len(detail.TopSrc) > 0 {
+		fmt.Fprintf(&b, "> 资源: %s\n", monGroupText(detail.TopSrc))
+	}
+	if len(detail.TopMsg) > 0 {
+		fmt.Fprintf(&b, "> 消息: %s\n", monGroupText(detail.TopMsg))
+	}
+	if detail.SampleSid != "" {
+		fmt.Fprintf(&b, "> 样例会话: %s（看板按 sid 追溯）", detail.SampleSid)
+	}
+
 	client := &http.Client{Timeout: 5 * time.Second}
 	body, _ := json.Marshal(map[string]any{
-		"msgtype": "text",
-		"text": map[string]string{
-			"content": strings.Join([]string{
-				"[前端监控告警]", level, ruleCode,
-				"环境: " + env,
-				"窗口事件数: " + itoa(count) + "（阈值 " + itoa(threshold) + "）",
-			}, " "),
-		},
+		"msgtype": "markdown",
+		"markdown": map[string]string{"content": b.String()},
 	})
 	resp, err := client.Post(s.mon.WebhookURL, "application/json", bytes.NewReader(body))
 	if err != nil {
@@ -192,6 +223,23 @@ func (s *Service) postMonWebhook(ruleCode, level, env string, count, threshold i
 		return
 	}
 	resp.Body.Close()
+	slog.Info("mon alert webhook sent", "rule", ruleCode, "env", env, "http", resp.StatusCode)
+}
+
+// monGroupText 聚合行转「OPPO PKL110×2、小米/Redmi 2211133C×1」；key 超 60 字截断（资源/消息列）
+func monGroupText(rows []model.MonGroupRow) string {
+	parts := make([]string, 0, len(rows))
+	for _, r := range rows {
+		k := r.Key
+		if cut := len(k); cut > 60 {
+			k = k[:60]
+		}
+		if r.Brand != "" {
+			k = r.Brand + " " + k
+		}
+		parts = append(parts, k+"×"+itoa(r.Count))
+	}
+	return strings.Join(parts, "、")
 }
 
 func itoa(n int) string {
