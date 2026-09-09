@@ -115,7 +115,7 @@ type MonOverviewReq struct {
 // MonOverviewSummary 概览指标卡
 type MonOverviewSummary struct {
 	Total    int            `json:"total"`             // 全部事件
-	Errors   int            `json:"errors"`            // 错误类事件（total - boot）
+	Errors   int            `json:"errors"`            // 错误类事件（total − boot − device）
 	Sessions int            `json:"sessions"`          // 去重会话数
 	Devices  int            `json:"devices"`           // 去重机型数
 	Syntax   int            `json:"syntax"`            // 语法不兼容事件（cap_syntax=1）
