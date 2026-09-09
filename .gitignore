@@ -24,3 +24,4 @@
 dump.rdb
 # 数据库备份（含密码哈希与业务数据，不入库；导出方式见 mysqldump 命令）
 backups/
+deploy/.env.server
