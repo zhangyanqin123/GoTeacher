@@ -209,7 +209,7 @@ func (s *Service) postMonWebhook(ruleCode, level, env, project string, _ /*count
 		return
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "**[前端监控告警]** <font color=\"warning\">%s · %s</font>\n", level, ruleCode)
+	fmt.Fprintf(&b, "**[前端监控告警]** <font color=\"warning\">%s · %s</font>\n", level, monRuleName(ruleCode))
 	fmt.Fprintf(&b, "> 项目: %s ｜ 环境: %s\n", monProjectName(project), env)
 	if len(detail.TopMdl) > 0 {
 		fmt.Fprintf(&b, "> 机型: %s\n", monGroupText(detail.TopMdl))
@@ -227,7 +227,7 @@ func (s *Service) postMonWebhook(ruleCode, level, env, project string, _ /*count
 		fmt.Fprintf(&b, "> 消息: %s\n", monGroupText(detail.TopMsg))
 	}
 	if detail.SampleSid != "" {
-		fmt.Fprintf(&b, "> 样例会话: %s（看板按 sid 追溯）", detail.SampleSid)
+		fmt.Fprintf(&b, "> 会话ID: %s", detail.SampleSid)
 	}
 
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -244,7 +244,7 @@ func (s *Service) postMonWebhook(ruleCode, level, env, project string, _ /*count
 	slog.Info("mon alert webhook sent", "rule", ruleCode, "env", env, "project", project, "http", resp.StatusCode)
 }
 
-// monGroupText 聚合行转「OPPO PKL110×2、小米/Redmi 2211133C×1」；key 超 60 字截断（资源/消息列）
+// monGroupText 聚合行转「OPPO PKL110、小米/Redmi 2211133C」（不带次数）；key 超 60 字截断（资源/消息列）
 func monGroupText(rows []model.MonGroupRow) string {
 	parts := make([]string, 0, len(rows))
 	for _, r := range rows {
@@ -255,13 +255,26 @@ func monGroupText(rows []model.MonGroupRow) string {
 		if r.Brand != "" {
 			k = r.Brand + " " + k
 		}
-		parts = append(parts, k+"×"+itoa(r.Count))
+		parts = append(parts, k)
 	}
 	return strings.Join(parts, "、")
 }
 
 func itoa(n int) string {
 	return strconv.Itoa(n)
+}
+
+// monRuleName 规则码中文显示名（与看板 MON_ALERT_RULES 字典语义一致），企微卡片用
+func monRuleName(code string) string {
+	switch code {
+	case MonRuleProbeFail:
+		return "有兼容性问题"
+	case MonRuleChunkSurge:
+		return "页面加载失败激增"
+	case MonRuleErrorSurge:
+		return "JS 错误激增"
+	}
+	return code
 }
 
 // monProjectName 项目标识显示名；空串=存量数据（接入 project 字段前）
@@ -283,7 +296,7 @@ func monCvGroupText(rows []model.MonGroupRow) string {
 				label = "Chrome " + itoa(n)
 			}
 		}
-		parts = append(parts, label+"×"+itoa(r.Count))
+		parts = append(parts, label)
 	}
 	return strings.Join(parts, "、")
 }
