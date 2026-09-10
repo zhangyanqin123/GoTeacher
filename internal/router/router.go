@@ -59,19 +59,19 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 	mh := handler.NewMon(svc)
 
 	// 鉴权公开接口（login 签发 token；logout/getinfo 需登录态放 authed 组）
-	r.POST("/api/v1/login", ah.Login)
+	r.POST("/gyz-svc/v1/login", ah.Login)
 
 	// 直播（小鹅通透传，mofang C 端，见 PLAN-live.md）：公开不挂 Auth——
-	// mofang 是另一 token 体系本服务验不了，/guyuzhoudb 前缀独立于 /api/v1，凭证即入参 access_token 由小鹅通校验
+	// mofang 是另一 token 体系本服务验不了，/guyuzhoudb 前缀独立于 /gyz-svc/v1，凭证即入参 access_token 由小鹅通校验
 	r.GET("/guyuzhoudb/live/get_login_url", lh.GetXeLoginURL)
 	r.GET("/guyuzhoudb/live/register_user", lh.RegisterXeUser)
 
-	authed := r.Group("/api/v1", Auth(svc))
+	authed := r.Group("/gyz-svc/v1", Auth(svc))
 	authed.POST("/logout", ah.Logout)
 	authed.GET("/getinfo", ah.GetInfo)
 
 	// 老师管理（路径与前端 teacher.js 注释里的 URL 完全一致）
-	dxsf := r.Group("/api/v1/dxsf", Auth(svc))
+	dxsf := r.Group("/gyz-svc/v1/dxsf", Auth(svc))
 	dxsf.POST("/teacher/list", th.List)
 	dxsf.GET("/teacher/options", th.Options)
 	dxsf.GET("/teacher/detail", th.Detail)
@@ -85,14 +85,14 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 	dxsf.POST("/teacher/resign/add", rh.Add)
 
 	// 诊股记录（路径与前端 diagnose.js 注释里的 URL 完全一致）
-	diag := r.Group("/api/v1/dxsf/teacher/diagnose", Auth(svc))
+	diag := r.Group("/gyz-svc/v1/dxsf/teacher/diagnose", Auth(svc))
 	diag.POST("/list", dh.List)
 	diag.GET("/detail", dh.Detail)
 	diag.POST("/submit/report", dh.SubmitReport)
 	diag.POST("/audit", dh.Audit)
 
 	// 用户管理（登录账号 CRUD，见 PLAN-admin-user.md；admin_user 是系统账号域，不挂 /dxsf）
-	admin := r.Group("/api/v1/admin", Auth(svc))
+	admin := r.Group("/gyz-svc/v1/admin", Auth(svc))
 	admin.POST("/user/list", auh.List)
 	admin.POST("/user/add", auh.Add)
 	admin.POST("/user/edit", auh.Edit)
@@ -113,7 +113,7 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 	authed.POST("/products/delete", oh.ProductDelete)
 
 	// AB 版模块配置管理台 CRUD（C 端 H5 gyz-h5-spacestation 显隐配置，见 PLAN-ab-module.md）
-	ab := r.Group("/api/v1/ab", Auth(svc))
+	ab := r.Group("/gyz-svc/v1/ab", Auth(svc))
 	ab.POST("/modules/list", abh.ModuleList)
 	ab.GET("/modules/options", abh.ModuleOptions)
 	ab.POST("/modules/add", abh.ModuleAdd)
@@ -126,12 +126,12 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 
 	// AB 聚合查询：免鉴权直挂引擎（H5 无本服务登录态，公网域名直访，login 同款先例），
 	// 返回全量配置两级 map，语义区别于 modules 资源的分页列表
-	r.GET("/api/v1/ab/config", abh.AbConfig)
+	r.GET("/gyz-svc/v1/ab/config", abh.AbConfig)
 
 	// 前端监控 ingest（H5 探针上报，见 PLAN-frontend-monitor.md）：免鉴权直挂——
 	// H5 探针无本服务登录态，公网直访，ab/config 同款先例；查询/告警接口挂 authed 组（阶段二）
-	r.GET("/api/v1/mon/event", mh.IngestGet)
-	r.POST("/api/v1/mon/event", mh.IngestPost)
+	r.GET("/gyz-svc/v1/mon/event", mh.IngestGet)
+	r.POST("/gyz-svc/v1/mon/event", mh.IngestPost)
 
 	// 前端监控管理台（概览/事件多口径查询/告警，见 PLAN-frontend-monitor.md）
 	authed.POST("/mon/event/list", mh.EventList)

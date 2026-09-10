@@ -9,7 +9,7 @@
         "contact": {},
         "version": "1.0"
     },
-    "basePath": "/api/v1",
+    "basePath": "/gyz-svc/v1",
     "paths": {
         "/ab/config": {
             "get": {
@@ -3251,6 +3251,10 @@
                     "type": "integer",
                     "example": 10
                 },
+                "project": {
+                    "type": "string",
+                    "example": "personalCenter"
+                },
                 "rule_code": {
                     "type": "string",
                     "example": "PROBE_FAIL"
@@ -3355,6 +3359,11 @@
                     "type": "integer",
                     "example": 20
                 },
+                "project": {
+                    "description": "精确匹配；空=不过滤",
+                    "type": "string",
+                    "example": "personalCenter"
+                },
                 "route": {
                     "type": "string",
                     "example": "produPkg"
@@ -3409,6 +3418,10 @@
                 "created_at": {
                     "type": "string"
                 },
+                "device_brand": {
+                    "description": "代号→品牌（service 填充，展示用；不改写原始代号）",
+                    "type": "string"
+                },
                 "device_model": {
                     "type": "string"
                 },
@@ -3432,6 +3445,12 @@
                     "type": "string"
                 },
                 "os": {
+                    "type": "string"
+                },
+                "osv": {
+                    "type": "string"
+                },
+                "project": {
                     "type": "string"
                 },
                 "route": {
@@ -3465,11 +3484,17 @@
         "model.MonGroupRow": {
             "type": "object",
             "properties": {
+                "brand": {
+                    "description": "by_mdl 的代号品牌（service 填充）",
+                    "type": "string",
+                    "example": "华为/荣耀"
+                },
                 "count": {
                     "type": "integer",
                     "example": 80
                 },
                 "extra": {
+                    "description": "by_mdl 复用作语法不兼容数",
                     "type": "integer",
                     "example": 3
                 },
@@ -3583,7 +3608,7 @@
                     "type": "integer"
                 },
                 "errors": {
-                    "description": "错误类事件（total - boot）",
+                    "description": "错误类事件（total − boot − device）",
                     "type": "integer"
                 },
                 "sessions": {

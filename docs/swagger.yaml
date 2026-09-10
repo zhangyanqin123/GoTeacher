@@ -1,4 +1,4 @@
-basePath: /api/v1
+basePath: /gyz-svc/v1
 definitions:
   model.AbConfigResp:
     properties:
@@ -613,6 +613,9 @@ definitions:
       page_size:
         example: 10
         type: integer
+      project:
+        example: personalCenter
+        type: string
       rule_code:
         example: PROBE_FAIL
         type: string
@@ -688,6 +691,10 @@ definitions:
       page_size:
         example: 20
         type: integer
+      project:
+        description: 精确匹配；空=不过滤
+        example: personalCenter
+        type: string
       route:
         example: produPkg
         type: string
@@ -726,6 +733,9 @@ definitions:
         type: integer
       created_at:
         type: string
+      device_brand:
+        description: 代号→品牌（service 填充，展示用；不改写原始代号）
+        type: string
       device_model:
         type: string
       env:
@@ -742,6 +752,10 @@ definitions:
       net_type:
         type: string
       os:
+        type: string
+      osv:
+        type: string
+      project:
         type: string
       route:
         type: string
@@ -764,10 +778,15 @@ definitions:
     type: object
   model.MonGroupRow:
     properties:
+      brand:
+        description: by_mdl 的代号品牌（service 填充）
+        example: 华为/荣耀
+        type: string
       count:
         example: 80
         type: integer
       extra:
+        description: by_mdl 复用作语法不兼容数
         example: 3
         type: integer
       key:
@@ -847,7 +866,7 @@ definitions:
         description: 去重机型数
         type: integer
       errors:
-        description: 错误类事件（total - boot）
+        description: 错误类事件（total − boot − device）
         type: integer
       sessions:
         description: 去重会话数

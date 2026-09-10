@@ -3255,6 +3255,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 10
                 },
+                "project": {
+                    "type": "string",
+                    "example": "personalCenter"
+                },
                 "rule_code": {
                     "type": "string",
                     "example": "PROBE_FAIL"
@@ -3359,6 +3363,11 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 20
                 },
+                "project": {
+                    "description": "精确匹配；空=不过滤",
+                    "type": "string",
+                    "example": "personalCenter"
+                },
                 "route": {
                     "type": "string",
                     "example": "produPkg"
@@ -3413,6 +3422,10 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "device_brand": {
+                    "description": "代号→品牌（service 填充，展示用；不改写原始代号）",
+                    "type": "string"
+                },
                 "device_model": {
                     "type": "string"
                 },
@@ -3436,6 +3449,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "os": {
+                    "type": "string"
+                },
+                "osv": {
+                    "type": "string"
+                },
+                "project": {
                     "type": "string"
                 },
                 "route": {
@@ -3469,11 +3488,17 @@ const docTemplate = `{
         "model.MonGroupRow": {
             "type": "object",
             "properties": {
+                "brand": {
+                    "description": "by_mdl 的代号品牌（service 填充）",
+                    "type": "string",
+                    "example": "华为/荣耀"
+                },
                 "count": {
                     "type": "integer",
                     "example": 80
                 },
                 "extra": {
+                    "description": "by_mdl 复用作语法不兼容数",
                     "type": "integer",
                     "example": 3
                 },
@@ -3587,7 +3612,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "errors": {
-                    "description": "错误类事件（total - boot）",
+                    "description": "错误类事件（total − boot − device）",
                     "type": "integer"
                 },
                 "sessions": {
@@ -4622,7 +4647,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "",
-	BasePath:         "/api/v1",
+	BasePath:         "/gyz-svc/v1",
 	Schemes:          []string{"http"},
 	Title:            "im系统诊股 API",
 	Description:      "chatSys（老师管理/绑定业务员/离职转移）+ 诊股记录接口。\n统一响应结构 {code, msg, data}；写操作 msg 为约定中文，查询类为 \"success\"。\n业务接口需 Bearer token（JWT + Redis 白名单，见 PLAN-auth.md）。",

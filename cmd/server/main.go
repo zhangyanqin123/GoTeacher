@@ -4,7 +4,7 @@
 // @description	统一响应结构 {code, msg, data}；写操作 msg 为约定中文，查询类为 "success"。
 // @description	业务接口需 Bearer token（JWT + Redis 白名单，见 PLAN-auth.md）。
 // @schemes		http
-// @BasePath		/api/v1
+// @BasePath		/gyz-svc/v1
 // @securityDefinitions.apikey	ApiKeyAuth
 // @in							header
 // @name						Authorization
