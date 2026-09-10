@@ -76,6 +76,20 @@ func (s *Service) IngestEvents(ctx context.Context, events []model.MonEventInges
 	if len(rows) == 0 {
 		return 0, rejected
 	}
+	// 落库开关关闭：不上报入库；chunk_load_error（P0 白屏事故）直推企微绕过 DB/ticker
+	if !s.mon.EventPersistEnabled {
+		pushed := false
+		for i, row := range rows {
+			if row.EventType == "chunk_load_error" {
+				s.pushChunkLoadError(events[i], ip)
+				pushed = true
+			}
+		}
+		if pushed { // 只有 chunk_load_error 被推送；其他事件静默跳过
+			return len(rows), rejected
+		}
+		return len(rows), rejected
+	}
 	if err := s.repo.InsertMonEvents(ctx, rows); err != nil {
 		slog.Error("mon ingest insert failed", "rows", len(rows), "err", err)
 		return 0, len(events) // 库失败时全部计为 rejected，GET 通道仍回 204（探针无重试语义）

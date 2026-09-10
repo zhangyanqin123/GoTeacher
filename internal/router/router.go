@@ -49,6 +49,7 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 		ErrorThreshold:     cfg.MonAlertErrorThreshold,
 		RetentionDays:      cfg.MonRetentionDays,
 		WebhookURL:         cfg.MonAlertWebhookURL,
+		EventPersistEnabled: cfg.MonEventPersistEnabled,
 	}
 	svc := service.New(repo, rdb, cfg.JWTSecret, time.Duration(cfg.JWTTTLHours)*time.Hour, cfg.XiaoeAPIBase, publisher, monCfg)
 	// 部署分支：路由注释后 handler 变量不再使用（局部变量 unused 编译不过），随路由一并注释
