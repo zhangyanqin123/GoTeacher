@@ -41,6 +41,7 @@ type Config struct {
 	MonAlertErrorThreshold     int      // ERROR_SURGE 阈值（win+vue+unhandled 合计）
 	MonRetentionDays           int      // mon_event 保留天数（每日分批清理）
 	MonAlertWebhookURL         string   // 告警 webhook（空=仅落表不推送）
+	MonEventPersistEnabled     bool     // 事件落库开关（默认 true；false 时不上报入库、chunk_load_error 直推企微不依赖 DB/ticker）
 }
 
 // Load 加载配置并组装 DSN。
@@ -77,6 +78,7 @@ func Load() *Config {
 		MonAlertErrorThreshold:     getEnvInt("MON_ALERT_ERROR_THRESHOLD", 50),
 		MonRetentionDays:           getEnvInt("MON_RETENTION_DAYS", 90),
 		MonAlertWebhookURL:         getEnv("MON_ALERT_WEBHOOK_URL", ""),
+		MonEventPersistEnabled:     getEnvBool("MON_EVENT_PERSIST_ENABLED", true),
 	}
 
 	mc := mysql.Config{

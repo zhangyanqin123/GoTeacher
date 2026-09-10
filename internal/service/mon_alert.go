@@ -30,6 +30,7 @@ type MonAlertConfig struct {
 	ErrorThreshold     int      // ERROR_SURGE 阈值（win+vue+unhandled 合计）
 	RetentionDays      int      // mon_event 保留天数（每日分批清理）
 	WebhookURL         string   // 告警 webhook（空=仅落表不推送）
+	EventPersistEnabled bool     // 事件落库开关（默认 true；false 时不上报入库、chunk_load_error 直推企微）
 }
 
 // 告警规则常量（规则就三条且语义稳定，不做规则 CRUD——见 PLAN 决策）
@@ -210,6 +211,7 @@ func (s *Service) postMonWebhook(ruleCode, level, env, project string, _ /*count
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "**[前端监控告警]** <font color=\"warning\">%s · %s</font>\n", level, monRuleName(ruleCode))
+	fmt.Fprintf(&b, "> 时间: %s\n", time.Now().Format(monTimeLayout))
 	fmt.Fprintf(&b, "> 项目: %s ｜ 环境: %s\n", monProjectName(project), env)
 	if len(detail.TopMdl) > 0 {
 		fmt.Fprintf(&b, "> 机型: %s\n", monGroupText(detail.TopMdl))
@@ -345,4 +347,59 @@ func (s *Service) AckMonAlert(ctx context.Context, id int64, ackUser, ackNote st
 		return ErrMonAlertNotPending
 	}
 	return nil
+}
+
+// pushChunkLoadError 落库关闭时直推：chunk_load_error（P0 白屏事故）绕开 DB/ticker 即时推企微。
+// 卡片格式与告警 postMonWebhook 一致（级别/规则/项目/时间/机型/内核/路由/资源 URL/会话ID）
+func (s *Service) pushChunkLoadError(e model.MonEventIngest, ip string) {
+	if s.mon.WebhookURL == "" {
+		return
+	}
+	now := time.Now().Format(monTimeLayout)
+	detail := monAlertDetail{
+		Project: e.Proj, SampleSid: e.Sid,
+	}
+	// 边劫边用：IngestEvents 只给了原始 ingest（未过清洗→Row），从 ingest 直接取字段
+	detail.TopMdl = []model.MonGroupRow{{Key: e.Mdl, Brand: monDeviceBrand(e.Mdl)}}
+	detail.TopRoute = []model.MonGroupRow{{Key: e.Rt}}
+	detail.TopCv = []model.MonGroupRow{{Key: strconv.Itoa(e.Cv)}}
+	detail.TopSrc = []model.MonGroupRow{{Key: e.Src}}
+	s.pubWebhook(MonRuleChunkSurge, MonLevelP0, e.Env, e.Proj, now, detail)
+}
+
+// pubWebhook 推企微的内部方便方法（与 postMonWebhook 功能相同，但接收已格式化的时间字符串）。
+// 复用 postMonWebhook 时需传 count/threshold（仅告警告警展示用）——直推不展示这两个字段，传 (0,0) 利用现有 _ 占位忽略
+func (s *Service) pubWebhook(ruleCode, level, env, project, eventTime string, detail monAlertDetail) {
+	var b strings.Builder
+	fmt.Fprintf(&b, "**[前端监控告警]** <font color=\"warning\">%s · %s</font>\n", level, monRuleName(ruleCode))
+	fmt.Fprintf(&b, "> 时间: %s\n", eventTime)
+	fmt.Fprintf(&b, "> 项目: %s ｜ 环境: %s\n", monProjectName(project), env)
+	if len(detail.TopMdl) > 0 {
+		fmt.Fprintf(&b, "> 机型: %s\n", monGroupText(detail.TopMdl))
+	}
+	if len(detail.TopCv) > 0 {
+		fmt.Fprintf(&b, "> 内核: %s\n", monCvGroupText(detail.TopCv))
+	}
+	if len(detail.TopRoute) > 0 {
+		fmt.Fprintf(&b, "> 路由: %s\n", monGroupText(detail.TopRoute))
+	}
+	if len(detail.TopSrc) > 0 {
+		fmt.Fprintf(&b, "> 资源: %s\n", monGroupText(detail.TopSrc))
+	}
+	if detail.SampleSid != "" {
+		fmt.Fprintf(&b, "> 会话ID: %s", detail.SampleSid)
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	body, _ := json.Marshal(map[string]any{
+		"msgtype": "markdown",
+		"markdown": map[string]string{"content": b.String()},
+	})
+	resp, err := client.Post(s.mon.WebhookURL, "application/json", bytes.NewReader(body))
+	if err != nil {
+		slog.Error("mon chunk push webhook failed", "err", err)
+		return
+	}
+	resp.Body.Close()
+	slog.Info("mon chunk push webhook sent", "project", project, "http", resp.StatusCode)
 }

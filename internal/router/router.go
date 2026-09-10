@@ -45,6 +45,7 @@ func New(db *sql.DB, rdb *redis.Client, cfg *config.Config, publisher mq.Publish
 		ErrorThreshold:     cfg.MonAlertErrorThreshold,
 		RetentionDays:      cfg.MonRetentionDays,
 		WebhookURL:         cfg.MonAlertWebhookURL,
+		EventPersistEnabled: cfg.MonEventPersistEnabled,
 	}
 	svc := service.New(repo, rdb, cfg.JWTSecret, time.Duration(cfg.JWTTTLHours)*time.Hour, cfg.XiaoeAPIBase, publisher, monCfg)
 	th := handler.NewTeacher(svc)
