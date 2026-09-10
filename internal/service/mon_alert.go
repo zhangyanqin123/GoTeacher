@@ -120,7 +120,7 @@ func (s *Service) runMonAlertOnce(ctx context.Context) {
 			continue
 		}
 		for _, project := range projects {
-			s.checkMonRule(ctx, env, project, MonRuleProbeFail, MonLevelP0, []string{"probe_fail"}, s.mon.ProbeFailThreshold)
+			s.checkMonRule(ctx, env, project, MonRuleProbeFail, MonLevelP0, []string{"probe_fail", "entry_load_error"}, s.mon.ProbeFailThreshold)
 			s.checkMonRule(ctx, env, project, MonRuleChunkSurge, MonLevelP0, []string{"chunk_load_error"}, s.mon.ChunkThreshold)
 			s.checkMonRule(ctx, env, project, MonRuleErrorSurge, MonLevelP1, monErrorTypes, s.mon.ErrorThreshold)
 		}
