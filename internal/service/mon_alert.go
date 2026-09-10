@@ -38,6 +38,7 @@ const (
 	MonRuleProbeFail      = "PROBE_FAIL"       // P0：能力探测失败（老内核设备出现）
 	MonRuleChunkSurge     = "CHUNK_LOAD_SURGE" // P0：页面 chunk 加载失败激增（白屏事故）
 	MonRuleErrorSurge     = "ERROR_SURGE"      // P1：JS 错误激增（win+vue+unhandled 合计）
+	MonRuleEntryFail      = "ENTRY_LOAD_FAILURE" // P0：入口模块加载失败（SyntaxError 白屏）
 )
 
 // 告警级别（语义：P0 = 用户已实际受害；P1 = 错误量异常需关注）
@@ -120,9 +121,10 @@ func (s *Service) runMonAlertOnce(ctx context.Context) {
 			continue
 		}
 		for _, project := range projects {
-			s.checkMonRule(ctx, env, project, MonRuleProbeFail, MonLevelP0, []string{"probe_fail", "entry_load_error"}, s.mon.ProbeFailThreshold)
+			s.checkMonRule(ctx, env, project, MonRuleProbeFail, MonLevelP0, []string{"probe_fail"}, s.mon.ProbeFailThreshold)
 			s.checkMonRule(ctx, env, project, MonRuleChunkSurge, MonLevelP0, []string{"chunk_load_error"}, s.mon.ChunkThreshold)
 			s.checkMonRule(ctx, env, project, MonRuleErrorSurge, MonLevelP1, monErrorTypes, s.mon.ErrorThreshold)
+			s.checkMonRule(ctx, env, project, MonRuleEntryFail, MonLevelP0, []string{"entry_load_error"}, s.mon.ProbeFailThreshold)
 		}
 	}
 }
@@ -275,6 +277,8 @@ func monRuleName(code string) string {
 		return "页面加载失败激增"
 	case MonRuleErrorSurge:
 		return "JS 错误激增"
+	case MonRuleEntryFail:
+		return "入口加载失败"
 	}
 	return code
 }
@@ -364,7 +368,11 @@ func (s *Service) pushChunkLoadError(e model.MonEventIngest, ip string) {
 	detail.TopRoute = []model.MonGroupRow{{Key: e.Rt}}
 	detail.TopCv = []model.MonGroupRow{{Key: strconv.Itoa(e.Cv)}}
 	detail.TopSrc = []model.MonGroupRow{{Key: e.Src}}
-	s.pubWebhook(MonRuleChunkSurge, MonLevelP0, e.Env, e.Proj, now, detail)
+	if e.T == "entry_load_error" {
+		s.pubWebhook(MonRuleEntryFail, MonLevelP0, e.Env, e.Proj, now, detail)
+	} else {
+		s.pubWebhook(MonRuleChunkSurge, MonLevelP0, e.Env, e.Proj, now, detail)
+	}
 }
 
 // pubWebhook 推企微的内部方便方法（与 postMonWebhook 功能相同，但接收已格式化的时间字符串）。
